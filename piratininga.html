@@ -26,10 +26,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .divider{height:1px;background:#2a2a2a;margin:.25rem 0}
 .topbar-title{font-size:14px;font-weight:500;color:#e8e7e2}
 .topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px}
-.btn-launch{background:#e8b544;color:#0f0f0f;border:none;border-radius:6px;padding:0 14px;height:32px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px}
-.btn-launch:hover{background:#d4a33e}
+.btn-launch{background:#ef5350;color:#fff;border:none;border-radius:6px;padding:0 14px;height:32px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px}
+.btn-launch:hover{background:#c62828}
+.btn-ganho{background:#4caf50;color:#fff;border:none;border-radius:6px;padding:0 14px;height:32px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px}
+.btn-ganho:hover{background:#2e7d32}
 .topbar-date{font-size:12px;color:#555}
-.cards-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.25rem}
+.cards-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:1.25rem}
 @media(max-width:700px){.cards-row{grid-template-columns:1fr 1fr}}
 .card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:1rem 1.25rem}
 .card-label{font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;display:flex;align-items:center;gap:6px}
@@ -138,8 +140,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <span class="topbar-title" id="topbar-title">Visão Geral</span>
       <div class="topbar-right">
         <span class="topbar-date" id="topbar-date"></span>
+        <button class="btn-ganho" onclick="openModalGanho()">
+          <i class="ti ti-plus"></i> Lançar ganho
+        </button>
         <button class="btn-launch" onclick="openModal()">
-          <i class="ti ti-plus"></i> Lançar gasto
+          <i class="ti ti-minus"></i> Lançar gasto
         </button>
       </div>
     </div>
@@ -195,6 +200,34 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-ganho-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" style="color:#4caf50">Lançar ganho</span>
+      <button class="modal-close" onclick="closeModalGanho()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="form-group">
+      <label>Descrição</label>
+      <input type="text" id="g-desc" placeholder="Ex: Venda do apartamento">
+    </div>
+    <div class="modal-row">
+      <div class="form-group">
+        <label>Valor (R$)</label>
+        <input type="number" id="g-valor" placeholder="0,00" step="0.01" min="0">
+      </div>
+      <div class="form-group">
+        <label>Data</label>
+        <input type="date" id="g-data">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Observação (opcional)</label>
+      <input type="text" id="g-obs" placeholder="Detalhe...">
+    </div>
+    <button class="btn-confirm" id="btn-confirm-ganho" onclick="addGanho()" style="background:#4caf50">Confirmar ganho</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -241,6 +274,39 @@ async function sbInsert(row){
 async function sbDelete(id){
   const res = await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${id}`,{method:'DELETE',headers:HEADERS});
   if(!res.ok) throw new Error(await res.text());
+}
+
+// ── GANHOS ───────────────────────────────────────────────────────
+function openModalGanho(){
+  document.getElementById('modal-ganho-overlay').classList.add('open');
+  document.getElementById('g-data').value = new Date().toISOString().split('T')[0];
+  setTimeout(()=>document.getElementById('g-desc').focus(),100);
+}
+function closeModalGanho(){ document.getElementById('modal-ganho-overlay').classList.remove('open'); }
+document.getElementById('modal-ganho-overlay').addEventListener('click',function(e){ if(e.target===this) closeModalGanho(); });
+
+async function addGanho(){
+  const desc = document.getElementById('g-desc').value.trim();
+  const val  = parseFloat(document.getElementById('g-valor').value);
+  const data = document.getElementById('g-data').value;
+  const obs  = document.getElementById('g-obs').value.trim();
+  if(!desc){ alert('Preencha a descrição.'); return; }
+  if(isNaN(val)||val<=0){ alert('Preencha um valor válido.'); return; }
+  const btn = document.getElementById('btn-confirm-ganho');
+  btn.disabled = true; btn.textContent = 'Salvando...';
+  try{
+    await sbInsert({descricao:desc,categoria:'ganho',data,valor:val,status:'pago',obs,orcamento:0});
+    document.getElementById('g-desc').value='';
+    document.getElementById('g-valor').value='';
+    document.getElementById('g-obs').value='';
+    closeModalGanho();
+    toast('Ganho registrado!');
+    await loadGastos();
+  } catch(e){
+    toast('Erro ao salvar: '+e.message,'err');
+  } finally{
+    btn.disabled=false; btn.textContent='Confirmar ganho';
+  }
 }
 
 // ── LOAD ─────────────────────────────────────────────────────────
@@ -318,21 +384,23 @@ function render(){
 
 // ── GERAL ────────────────────────────────────────────────────────
 function renderGeral(){
-  const ativos = gastos.filter(g=>g.status!=='cancel');
+  const ganhos  = gastos.filter(g=>g.categoria==='ganho');
+  const totalGanhos = ganhos.reduce((s,g)=>s+(g.valor||0),0);
+  const ativos = gastos.filter(g=>g.status!=='cancel'&&g.categoria!=='ganho');
   const total  = ativos.reduce((s,g)=>s+(g.valor||0),0);
-  const pago   = gastos.filter(g=>g.status==='pago').reduce((s,g)=>s+(g.valor||0),0);
+  const pago   = gastos.filter(g=>g.status==='pago'&&g.categoria!=='ganho').reduce((s,g)=>s+(g.valor||0),0);
   const apagar = gastos.filter(g=>g.status==='apagar').reduce((s,g)=>s+(g.valor||0),0);
-  const saldo  = orcamento - total;
-  const pct    = orcamento>0?Math.min(100,Math.round(total/orcamento*100)):0;
+  const saldo  = totalGanhos - total;
+  const pct    = totalGanhos>0?Math.min(100,Math.round(total/totalGanhos*100)):0;
   const barColor = pct>90?'#ef5350':pct>70?'#e8b544':'#4caf50';
 
   document.getElementById('content').innerHTML = `
     <div class="progress-wrap">
       <div class="progress-header">
-        <span class="progress-label">Orçamento disponível</span>
+        <span class="progress-label">Total de ganhos</span>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <input class="orc-input" type="number" id="orc-val" value="${orcamento}" step="1000" onchange="saveOrc(this.value)">
-          <span class="progress-pct" style="color:${barColor}">${pct}% comprometido</span>
+          <span style="font-size:15px;font-weight:600;color:#4caf50">${fmt(totalGanhos)}</span>
+          <span class="progress-pct" style="color:${barColor}">${pct}% gasto</span>
         </div>
       </div>
       <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
@@ -344,8 +412,13 @@ function renderGeral(){
 
     <div class="cards-row">
       <div class="card">
-        <div class="card-label"><i class="ti ti-receipt" style="font-size:13px"></i> Total comprometido</div>
-        <div class="card-value">${fmt(total)}</div>
+        <div class="card-label"><i class="ti ti-trending-up" style="font-size:13px;color:#4caf50"></i> Total de ganhos</div>
+        <div class="card-value green">${fmt(totalGanhos)}</div>
+        <div class="card-sub">${ganhos.length} entradas</div>
+      </div>
+      <div class="card">
+        <div class="card-label"><i class="ti ti-receipt" style="font-size:13px;color:#ef5350"></i> Total gasto</div>
+        <div class="card-value red">${fmt(total)}</div>
         <div class="card-sub">${ativos.length} lançamentos</div>
       </div>
       <div class="card">
@@ -381,7 +454,7 @@ function renderGeral(){
           <th>Data</th><th>Descrição</th><th>Categoria</th>
           <th style="text-align:right">Valor</th><th>Status</th><th>Obs</th><th></th>
         </tr></thead>
-        <tbody>${renderRows(gastos)}</tbody>
+        <tbody>${renderRows(gastos.filter(g=>g.categoria!=='ganho'))}</tbody>
       </table>
     </div>
   `;
