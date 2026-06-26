@@ -645,7 +645,7 @@ function render(){
 function renderGeral(){
   const ganhos  = gastos.filter(g=>g.categoria==='ganho');
   const totalGanhos = ganhos.reduce((s,g)=>s+(g.valor||0),0);
-  const ativos = gastos.filter(g=>g.status!=='cancel'&&g.categoria!=='ganho');
+  const ativos = gastos.filter(g=>g.status==='pago'&&g.categoria!=='ganho');
   const total  = ativos.reduce((s,g)=>s+(g.valor||0),0);
   const pago   = gastos.filter(g=>g.status==='pago'&&g.categoria!=='ganho').reduce((s,g)=>s+(g.valor||0),0);
   const apagar = gastos.filter(g=>g.status==='apagar').reduce((s,g)=>s+(g.valor||0),0);
