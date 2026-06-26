@@ -656,9 +656,9 @@ function renderGeral(){
   document.getElementById('content').innerHTML = `
     <div class="progress-wrap">
       <div class="progress-header">
-        <span class="progress-label">Total de ganhos</span>
+        <span class="progress-label">Saldo restante</span>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <span style="font-size:15px;font-weight:600;color:#4caf50">${fmt(totalGanhos)}</span>
+          <span style="font-size:15px;font-weight:600;color:${saldo<0?'#ef5350':'#4caf50'}">${fmt(saldo)}</span>
           <span class="progress-pct" style="color:${barColor}">${pct}% gasto</span>
         </div>
       </div>
