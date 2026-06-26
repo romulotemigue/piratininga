@@ -76,7 +76,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .nav-dots{background:none;border:none;color:#444;cursor:pointer;padding:6px 8px;font-size:14px;position:absolute;right:4px;opacity:0;transition:opacity .15s;border-radius:4px}
 .nav-item-wrap:hover .nav-dots{opacity:1}
 .nav-dots:hover{color:#e8b544;background:#2a2000}
-.cat-menu{display:none;position:absolute;right:4px;top:100%;background:#222;border:1px solid #333;border-radius:7px;z-index:50;min-width:130px;padding:4px 0;box-shadow:0 4px 16px rgba(0,0,0,.5)}
+.cat-menu{display:none;position:fixed;background:#222;border:1px solid #333;border-radius:7px;z-index:999;min-width:140px;padding:4px 0;box-shadow:0 4px 20px rgba(0,0,0,.8)}
 .cat-menu.open{display:block}
 .cat-menu-item{padding:8px 12px;font-size:12px;color:#ccc;cursor:pointer;display:flex;align-items:center;gap:8px}
 .cat-menu-item:hover{background:#2a2a2a;color:#e8e7e2}
@@ -88,7 +88,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .nav-subitem-dots{background:none;border:none;color:#444;cursor:pointer;padding:2px 5px;font-size:12px;opacity:0;border-radius:3px}
 .nav-subitem:hover .nav-subitem-dots{opacity:1}
 .nav-subitem-dots:hover{color:#e8b544}
-.subcat-menu{display:none;position:absolute;right:4px;top:100%;background:#222;border:1px solid #333;border-radius:7px;z-index:51;min-width:120px;padding:4px 0;box-shadow:0 4px 16px rgba(0,0,0,.5)}
+.subcat-menu{display:none;position:fixed;background:#222;border:1px solid #333;border-radius:7px;z-index:999;min-width:120px;padding:4px 0;box-shadow:0 4px 20px rgba(0,0,0,.8)}
 .subcat-menu.open{display:block}
 .subcat-row{position:relative;display:flex;align-items:center}
 .subcat-row:hover .subcat-dots-btn{opacity:1!important}
@@ -450,7 +450,7 @@ function renderCatNav(){
     `).join('') : '';
     return `<div>
       <div class="nav-item-wrap" id="nav-wrap-${k}">
-        <button style="background:none;border:none;color:${hasSubs?'#555':'transparent'};cursor:pointer;padding:4px 4px 4px 8px;font-size:11px;transition:transform .2s;transform:rotate(${isOpen?90:0}deg)" id="chev-${k}" onclick="toggleExpand('${k}',event)"><i class="ti ti-chevron-right"></i></button>
+        <button id="chev-${k}" style="background:none;border:none;color:${hasSubs?'#555':'transparent'};cursor:${hasSubs?'pointer':'default'};padding:4px 4px 4px 8px;font-size:11px;transition:transform .2s;transform:rotate(${isOpen?'90':'0'}deg)" onclick="${hasSubs?'toggleExpand(''+k+'',event)':''}"><i class="ti ti-chevron-right"></i></button>
         <div class="nav-item" onclick="navigate('${k}')" id="nav-${k}" style="padding-left:2px;flex:1">
           ${CATS[k].icon} ${CATS[k].label}
         </div>
@@ -474,8 +474,16 @@ function toggleExpand(k, e){
   const expanded = JSON.parse(localStorage.getItem('pirati_expanded')||'{}');
   expanded[k] = !expanded[k];
   localStorage.setItem('pirati_expanded', JSON.stringify(expanded));
-  localStorage.setItem('pirati_expanded', JSON.stringify(expanded));
-  renderCatNav();
+  const list = document.getElementById('subcat-list-'+k);
+  const chev = document.getElementById('chev-'+k);
+  if(!list) return;
+  if(expanded[k]){
+    list.style.maxHeight = list.scrollHeight + 'px';
+    if(chev) chev.style.transform='rotate(90deg)';
+  } else {
+    list.style.maxHeight = '0';
+    if(chev) chev.style.transform='rotate(0deg)';
+  }
 }
 
 function toggleExpand(k, e){
@@ -496,8 +504,13 @@ function toggleExpand(k, e){
 
 function toggleCatMenu(k, e){
   e.stopPropagation();
-  document.querySelectorAll('.cat-menu').forEach(m=>{ if(m.id!=='cat-menu-'+k) m.classList.remove('open'); });
-  document.getElementById('cat-menu-'+k).classList.toggle('open');
+  document.querySelectorAll('.cat-menu,.subcat-menu').forEach(m=>m.classList.remove('open'));
+  const menu = document.getElementById('cat-menu-'+k);
+  const btn = e.currentTarget;
+  const rect = btn.getBoundingClientRect();
+  menu.style.top = rect.bottom + 'px';
+  menu.style.left = (rect.right - 140) + 'px';
+  menu.classList.add('open');
 }
 document.addEventListener('click', ()=>document.querySelectorAll('.cat-menu').forEach(m=>m.classList.remove('open')));
 
@@ -785,8 +798,13 @@ function deleteSubCat(catKey, subKey){
 
 function toggleSubCatMenu(id, e){
   e.stopPropagation();
-  document.querySelectorAll('.subcat-menu').forEach(m=>{ if(m.id!==id) m.classList.remove('open'); });
-  document.getElementById(id).classList.toggle('open');
+  document.querySelectorAll('.cat-menu,.subcat-menu').forEach(m=>m.classList.remove('open'));
+  const menu = document.getElementById(id);
+  const btn = e.currentTarget;
+  const rect = btn.getBoundingClientRect();
+  menu.style.top = rect.bottom + 'px';
+  menu.style.left = (rect.right - 130) + 'px';
+  menu.classList.add('open');
 }
 
 // ── LOAD ─────────────────────────────────────────────────────────
