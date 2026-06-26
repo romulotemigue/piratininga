@@ -671,9 +671,9 @@ function renderGeral(){
 
     <div class="cards-row">
       <div class="card">
-        <div class="card-label"><i class="ti ti-trending-up" style="font-size:13px;color:#4caf50"></i> Total de ganhos</div>
-        <div class="card-value green">${fmt(totalGanhos)}</div>
-        <div class="card-sub">${ganhos.length} entradas</div>
+        <div class="card-label"><i class="ti ti-wallet" style="font-size:13px;color:#4caf50"></i> Saldo restante</div>
+        <div class="card-value ${saldo<0?'red':'green'}">${fmt(saldo)}</div>
+        <div class="card-sub">${ganhos.length} entradas registradas</div>
       </div>
       <div class="card">
         <div class="card-label"><i class="ti ti-receipt" style="font-size:13px;color:#ef5350"></i> Total gasto</div>
@@ -689,8 +689,9 @@ function renderGeral(){
         <div class="card-value yellow">${fmt(apagar)}</div>
       </div>
       <div class="card">
-        <div class="card-label"><i class="ti ti-wallet" style="font-size:13px"></i> Saldo restante</div>
-        <div class="card-value ${saldo<0?'red':'muted'}">${fmt(saldo)}</div>
+        <div class="card-label"><i class="ti ti-trending-up" style="font-size:13px;color:#888"></i> Total de ganhos</div>
+        <div class="card-value muted">${fmt(totalGanhos)}</div>
+        <div class="card-sub">${ganhos.length} entradas</div>
       </div>
     </div>
 
