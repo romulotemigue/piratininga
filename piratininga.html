@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reforma — Controle de Gastos</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f4f0;color:#0b0b0b;min-height:100vh}
+header{background:#0b0b0b;color:#fff;padding:1rem 1.5rem;display:flex;align-items:center;gap:12px}
+header h1{font-size:15px;font-weight:500;letter-spacing:.02em}
+header span{font-size:12px;color:#888;margin-left:auto}
+.container{max-width:900px;margin:0 auto;padding:1.5rem}
+.orcamento-row{background:#fff;border:1px solid #e8e7e2;border-radius:12px;padding:1rem 1.25rem;display:flex;align-items:center;gap:12px;margin-bottom:1.25rem;flex-wrap:wrap}
+.orcamento-row label{font-size:12px;color:#888;white-space:nowrap}
+.orc-input{height:36px;border:1px solid #d0cfc9;border-radius:8px;padding:0 10px;font-size:15px;font-weight:500;width:180px;background:#fafaf8;color:#0b0b0b}
+.orc-input:focus{outline:none;border-color:#2a78d6;box-shadow:0 0 0 3px rgba(42,120,214,.12)}
+.progress-bar-bg{flex:1;min-width:80px;height:8px;background:#e8e7e2;border-radius:20px;overflow:hidden}
+.progress-bar-fill{height:100%;border-radius:20px;transition:width .4s ease,background .4s ease}
+.pct-label{font-size:13px;font-weight:500;white-space:nowrap;min-width:36px;text-align:right}
+.top-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1.25rem}
+@media(max-width:560px){.top-cards{grid-template-columns:1fr}}
+.card{background:#fff;border:1px solid #e8e7e2;border-radius:12px;padding:1rem 1.25rem}
+.card-label{font-size:11px;color:#888;margin-bottom:6px;display:flex;align-items:center;gap:5px;text-transform:uppercase;letter-spacing:.04em}
+.card-value{font-size:22px;font-weight:500}
+.card-value.green{color:#1baf7a}
+.card-value.amber{color:#c98500}
+.card-value.red{color:#e34948}
+.form-card{background:#fff;border:1px solid #e8e7e2;border-radius:12px;padding:1.25rem;margin-bottom:1.25rem}
+.section-title{font-size:11px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
+.form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:10px}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group label{font-size:11px;color:#888}
+.form-group input,.form-group select{height:36px;border:1px solid #d0cfc9;border-radius:8px;padding:0 10px;font-size:13px;background:#fafaf8;color:#0b0b0b}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:#2a78d6;box-shadow:0 0 0 3px rgba(42,120,214,.12)}
+.btn-add{width:100%;height:38px;background:#0b0b0b;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:4px}
+.btn-add:hover{background:#333}
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.25rem}
+@media(max-width:560px){.charts-row{grid-template-columns:1fr}}
+.chart-card{background:#fff;border:1px solid #e8e7e2;border-radius:12px;padding:1.25rem}
+.table-wrap{background:#fff;border:1px solid #e8e7e2;border-radius:12px;overflow:hidden}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{background:#fafaf8;color:#888;font-weight:500;padding:10px 14px;text-align:left;border-bottom:1px solid #e8e7e2;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+tbody td{padding:10px 14px;border-bottom:1px solid #f0efe9;color:#0b0b0b}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:#fafaf8}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500}
+.badge.pago{background:#d4f0e3;color:#0a6b3e}
+.badge.apagar{background:#fff3cd;color:#7d5a00}
+.badge.cancel{background:#f8d7da;color:#7d1f1f}
+.del-btn{background:none;border:none;cursor:pointer;color:#ccc;font-size:15px;padding:4px 6px;border-radius:4px}
+.del-btn:hover{color:#e34948;background:#fef2f2}
+.empty{text-align:center;padding:2.5rem;color:#aaa;font-size:13px}
+.legend-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:#666}
+.legend-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+</style>
+</head>
+<body>
+<header>
+  <i class="ti ti-home-2" style="font-size:18px"></i>
+  <h1>Reforma &amp; Mudança — Controle de Gastos</h1>
+  <span id="header-date"></span>
+</header>
+
+<div class="container">
+
+  <div class="orcamento-row">
+    <i class="ti ti-wallet" style="font-size:18px;color:#888"></i>
+    <label>Orçamento disponível (R$)</label>
+    <input class="orc-input" type="number" id="orcamento" value="80000" step="1000">
+    <div class="progress-bar-bg">
+      <div class="progress-bar-fill" id="progress-fill" style="width:0%;background:#2a78d6"></div>
+    </div>
+    <span class="pct-label" id="progress-pct">0%</span>
+  </div>
+
+  <div class="top-cards">
+    <div class="card">
+      <div class="card-label"><i class="ti ti-receipt" style="font-size:14px"></i> Total comprometido</div>
+      <div class="card-value" id="card-total">R$ 0,00</div>
+    </div>
+    <div class="card">
+      <div class="card-label"><i class="ti ti-circle-check" style="font-size:14px;color:#1baf7a"></i> Já pago</div>
+      <div class="card-value green" id="card-pago">R$ 0,00</div>
+    </div>
+    <div class="card">
+      <div class="card-label"><i class="ti ti-coin" style="font-size:14px;color:#c98500"></i> Saldo restante</div>
+      <div class="card-value amber" id="card-saldo">R$ 0,00</div>
+    </div>
+  </div>
+
+  <div class="form-card">
+    <div class="section-title">Lançar novo gasto</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Data</label>
+        <input type="date" id="f-data">
+      </div>
+      <div class="form-group" style="grid-column:span 2">
+        <label>Descrição</label>
+        <input type="text" id="f-desc" placeholder="Ex: Piso porcelanato sala">
+      </div>
+      <div class="form-group">
+        <label>Categoria</label>
+        <select id="f-cat">
+          <option>Obra/Reforma</option>
+          <option>Móveis</option>
+          <option>Eletrodomésticos</option>
+          <option>Taxas/Cartório</option>
+          <option>Mudança</option>
+          <option>Outros</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Valor (R$)</label>
+        <input type="number" id="f-valor" placeholder="0,00" step="0.01" min="0">
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="f-status">
+          <option value="pago">Pago</option>
+          <option value="apagar">A pagar</option>
+          <option value="cancel">Cancelado</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn-add" onclick="addGasto()">
+      <i class="ti ti-plus"></i> Adicionar gasto
+    </button>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="section-title">Por categoria</div>
+      <div id="bar-legend" class="legend-row"></div>
+      <div style="position:relative;height:180px">
+        <canvas id="barChart" role="img" aria-label="Gastos por categoria"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="section-title">Distribuição</div>
+      <div id="pie-legend" class="legend-row"></div>
+      <div style="position:relative;height:180px">
+        <canvas id="pieChart" role="img" aria-label="Distribuição dos gastos por categoria"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Descrição</th>
+          <th>Categoria</th>
+          <th style="text-align:right">Valor</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="table-body">
+        <tr><td colspan="6" class="empty">Nenhum gasto lançado ainda.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+const CATS   = ["Obra/Reforma","Móveis","Eletrodomésticos","Taxas/Cartório","Mudança","Outros"];
+const COLORS = ["#2a78d6","#1baf7a","#eda100","#4a3aa7","#e34948","#73726c"];
+
+let gastos = [];
+try { gastos = JSON.parse(localStorage.getItem('reforma_gastos') || '[]'); } catch(e){}
+
+let barChart, pieChart;
+
+document.getElementById('header-date').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+document.getElementById('f-data').value = new Date().toISOString().split('T')[0];
+
+function fmt(v){ return 'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function save(){ try{localStorage.setItem('reforma_gastos',JSON.stringify(gastos));}catch(e){} }
+
+function addGasto(){
+  const data  = document.getElementById('f-data').value;
+  const desc  = document.getElementById('f-desc').value.trim();
+  const cat   = document.getElementById('f-cat').value;
+  const val   = parseFloat(document.getElementById('f-valor').value);
+  const st    = document.getElementById('f-status').value;
+  if(!desc){ alert('Preencha a descrição.'); return; }
+  if(isNaN(val)||val<=0){ alert('Preencha um valor válido.'); return; }
+  gastos.unshift({id:Date.now(),data,desc,cat,val,st});
+  save();
+  document.getElementById('f-desc').value='';
+  document.getElementById('f-valor').value='';
+  render();
+}
+
+function removeGasto(id){
+  if(!confirm('Remover este gasto?')) return;
+  gastos = gastos.filter(g=>g.id!==id);
+  save();
+  render();
+}
+
+function render(){
+  const orc    = parseFloat(document.getElementById('orcamento').value)||0;
+  const ativos = gastos.filter(g=>g.st!=='cancel');
+  const total  = ativos.reduce((s,g)=>s+g.val,0);
+  const pago   = gastos.filter(g=>g.st==='pago').reduce((s,g)=>s+g.val,0);
+  const saldo  = orc - total;
+  const pct    = orc>0 ? Math.min(100,Math.round(total/orc*100)) : 0;
+
+  document.getElementById('card-total').textContent = fmt(total);
+  document.getElementById('card-pago').textContent  = fmt(pago);
+  document.getElementById('card-saldo').textContent = fmt(saldo);
+  document.getElementById('card-saldo').className   = 'card-value '+(saldo<0?'red':'amber');
+  document.getElementById('progress-fill').style.width = pct+'%';
+  document.getElementById('progress-fill').style.background = pct>90?'#e34948':pct>70?'#eda100':'#2a78d6';
+  document.getElementById('progress-pct').textContent = pct+'%';
+  document.getElementById('progress-pct').style.color = pct>90?'#e34948':pct>70?'#c98500':'#0b0b0b';
+
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = gastos.length ? gastos.map(g=>`
+    <tr>
+      <td style="color:#888;white-space:nowrap">${g.data||'—'}</td>
+      <td>${g.desc}</td>
+      <td style="color:#888">${g.cat}</td>
+      <td style="text-align:right;font-weight:500">${fmt(g.val)}</td>
+      <td><span class="badge ${g.st}">${g.st==='pago'?'Pago':g.st==='apagar'?'A pagar':'Cancelado'}</span></td>
+      <td><button class="del-btn" onclick="removeGasto(${g.id})" title="Remover"><i class="ti ti-trash"></i></button></td>
+    </tr>
+  `).join('') : '<tr><td colspan="6" class="empty">Nenhum gasto lançado ainda.</td></tr>';
+
+  updateCharts(ativos);
+}
+
+function updateCharts(ativos){
+  const totals  = CATS.map(c=>ativos.filter(g=>g.cat===c).reduce((s,g)=>s+g.val,0));
+  const hasData = totals.some(v=>v>0);
+
+  const barLegend = document.getElementById('bar-legend');
+  barLegend.innerHTML = CATS.map((c,i)=>`<span class="legend-item"><span class="legend-dot" style="background:${COLORS[i]}"></span>${c.split('/')[0]}</span>`).join('');
+
+  if(barChart){
+    barChart.data.datasets[0].data = totals;
+    barChart.update();
+  } else {
+    barChart = new Chart(document.getElementById('barChart'),{
+      type:'bar',
+      data:{
+        labels: CATS.map(c=>c.length>10?c.split('/')[0]:c),
+        datasets:[{label:'Total',data:totals,backgroundColor:COLORS,borderRadius:4,borderSkipped:false}]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)}}},
+        scales:{
+          x:{grid:{display:false},ticks:{color:'#aaa',font:{size:10}}},
+          y:{grid:{color:'#f0efe9'},ticks:{color:'#aaa',font:{size:10},callback:v=>v>=1000?'R$'+Math.round(v/1000)+'k':'R$'+v}}
+        }
+      }
+    });
+  }
+
+  const pieData   = hasData ? totals : [1];
+  const pieColors = hasData ? COLORS : ['#e8e7e2'];
+  const pieLegend = document.getElementById('pie-legend');
+  pieLegend.innerHTML = hasData ? CATS.map((c,i)=>totals[i]>0?`<span class="legend-item"><span class="legend-dot" style="background:${COLORS[i]}"></span>${c.split('/')[0]}</span>`:'').join('') : '<span style="font-size:11px;color:#aaa">Sem dados ainda</span>';
+
+  if(pieChart){
+    pieChart.data.datasets[0].data = pieData;
+    pieChart.data.datasets[0].backgroundColor = pieColors;
+    pieChart.data.labels = hasData?CATS:['Sem dados'];
+    pieChart.update();
+  } else {
+    pieChart = new Chart(document.getElementById('pieChart'),{
+      type:'doughnut',
+      data:{labels:hasData?CATS:['Sem dados'],datasets:[{data:pieData,backgroundColor:pieColors,borderWidth:2,borderColor:'#fff'}]},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>hasData?ctx.label+': '+fmt(ctx.raw):''}}}
+      }
+    });
+  }
+}
+
+document.getElementById('orcamento').addEventListener('input', render);
+render();
+</script>
+</body>
+</html>
