@@ -687,6 +687,10 @@ function renderGeral(){
       <div class="card">
         <div class="card-label"><i class="ti ti-clock" style="font-size:13px;color:#e8b544"></i> A pagar</div>
         <div class="card-value yellow">${fmt(apagar)}</div>
+        <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #2a2a2a">
+          <span style="color:#555">Saldo se tudo pago:</span><br>
+          <span style="font-size:14px;font-weight:600;color:${(saldo-apagar)<0?'#ef5350':'#4caf50'}">${fmt(saldo-apagar)}</span>
+        </div>
       </div>
       <div class="card">
         <div class="card-label"><i class="ti ti-trending-up" style="font-size:13px;color:#888"></i> Total de ganhos</div>
