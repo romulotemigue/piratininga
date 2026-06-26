@@ -182,7 +182,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="modal-row">
       <div class="form-group">
         <label>Valor (R$)</label>
-        <input type="number" id="f-valor" placeholder="0,00" step="0.01" min="0">
+        <input type="text" id="f-valor" placeholder="0,00" oninput="maskMoney(this)" inputmode="numeric">
       </div>
       <div class="form-group">
         <label>Status</label>
@@ -214,7 +214,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="modal-row">
       <div class="form-group">
         <label>Valor (R$)</label>
-        <input type="number" id="g-valor" placeholder="0,00" step="0.01" min="0">
+        <input type="text" id="g-valor" placeholder="0,00" oninput="maskMoney(this)" inputmode="numeric">
       </div>
       <div class="form-group">
         <label>Data</label>
@@ -302,7 +302,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="modal-row">
       <div class="form-group">
         <label>Valor (R$)</label>
-        <input type="number" id="e-valor" step="0.01" min="0">
+        <input type="text" id="e-valor" oninput="maskMoney(this)" inputmode="numeric">
       </div>
       <div class="form-group" id="e-status-group">
         <label>Status</label>
@@ -427,6 +427,19 @@ let orcamento = parseFloat(localStorage.getItem('pirati_orc')||'80000');
 let currentPage = 'geral';
 let barChart, pieChart, catChart;
 
+function maskMoney(el){
+  let v = el.value.replace(/\D/g,'');
+  if(!v){ el.value=''; return; }
+  v = (parseInt(v,10)/100).toFixed(2);
+  el.value = Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function parseMoney(s){
+  if(!s) return NaN;
+  return parseFloat(s.replace(/\./g,'').replace(',','.'));
+}
+function fmtInput(v){
+  return Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
 function fmt(v){ return 'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function fmtShort(v){ return v>=1000?'R$'+Math.round(v/1000)+'k':fmt(v); }
 
@@ -464,7 +477,7 @@ document.getElementById('modal-ganho-overlay').addEventListener('click',function
 
 async function addGanho(){
   const desc = document.getElementById('g-desc').value.trim();
-  const val  = parseFloat(document.getElementById('g-valor').value);
+  const val  = parseMoney(document.getElementById('g-valor').value);
   const data = document.getElementById('g-data').value;
   const obs  = document.getElementById('g-obs').value.trim();
   if(!desc){ alert('Preencha a descrição.'); return; }
@@ -498,7 +511,7 @@ function openEdit(id){
 
   document.getElementById('edit-modal-title').textContent = editingIsGanho ? 'Editar ganho' : 'Editar gasto';
   document.getElementById('e-desc').value = g.descricao||'';
-  document.getElementById('e-valor').value = g.valor||'';
+  document.getElementById('e-valor').value = g.valor ? fmtInput(g.valor) : '';
   document.getElementById('e-obs').value = g.obs||'';
 
   if(editingIsGanho){
@@ -525,7 +538,7 @@ document.getElementById('modal-edit-overlay').addEventListener('click',function(
 
 async function saveEdit(){
   const desc = document.getElementById('e-desc').value.trim();
-  const val  = parseFloat(document.getElementById('e-valor').value);
+  const val  = parseMoney(document.getElementById('e-valor').value);
   const obs  = document.getElementById('e-obs').value.trim();
   if(!desc){ alert('Preencha a descrição.'); return; }
   if(isNaN(val)||val<=0){ alert('Preencha um valor válido.'); return; }
@@ -590,7 +603,7 @@ async function addGasto(){
   const desc = document.getElementById('f-desc').value.trim();
   const cat  = document.getElementById('f-cat').value;
   const data = document.getElementById('f-data').value;
-  const val  = parseFloat(document.getElementById('f-valor').value);
+  const val  = parseMoney(document.getElementById('f-valor').value);
   const st   = document.getElementById('f-status').value;
   const obs  = document.getElementById('f-obs').value.trim();
   if(!desc){ alert('Preencha a descrição.'); return; }
