@@ -81,6 +81,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .cat-menu-item{padding:8px 12px;font-size:12px;color:#ccc;cursor:pointer;display:flex;align-items:center;gap:8px}
 .cat-menu-item:hover{background:#2a2a2a;color:#e8e7e2}
 .cat-menu-item.danger:hover{color:#ef5350}
+.nav-subitem{display:flex;align-items:center;justify-content:space-between;padding:6px 1.25rem 6px 2.5rem;font-size:12px;color:#666;cursor:pointer;border-left:2px solid transparent;transition:all .15s}
+.nav-subitem:hover{color:#e8e7e2;background:#1a1a1a}
+.nav-subitem.active{color:#e8b544;border-left-color:#e8b544}
+.nav-subitem-label{flex:1}
+.nav-subitem-dots{background:none;border:none;color:#444;cursor:pointer;padding:2px 5px;font-size:12px;opacity:0;border-radius:3px}
+.nav-subitem:hover .nav-subitem-dots{opacity:1}
+.nav-subitem-dots:hover{color:#e8b544}
+.subcat-menu{display:none;position:absolute;right:4px;top:100%;background:#222;border:1px solid #333;border-radius:7px;z-index:51;min-width:120px;padding:4px 0;box-shadow:0 4px 16px rgba(0,0,0,.5)}
+.subcat-menu.open{display:block}
 .empty{text-align:center;padding:2.5rem;color:#444;font-size:13px}
 .cat-total-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:1.25rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:2rem;flex-wrap:wrap}
 .cat-stat{display:flex;flex-direction:column;gap:4px}
@@ -130,8 +139,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <i class="ti ti-layout-dashboard"></i> Visão Geral
       </div>
       <div class="divider"></div>
-      <button class="btn-add-cat" onclick="openModalAddCat()"><i class="ti ti-plus"></i> Adicionar categoria</button>
-      <div class="nav-section">Categorias</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:.75rem 1.25rem .25rem">
+        <span style="font-size:10px;color:#444;text-transform:uppercase;letter-spacing:.08em">Categorias</span>
+        <button onclick="openModalAddCat()" title="Nova categoria" style="background:none;border:none;color:#555;cursor:pointer;font-size:16px;padding:0 2px;line-height:1" onmouseover="this.style.color='#e8b544'" onmouseout="this.style.color='#555'"><i class="ti ti-plus"></i></button>
+      </div>
       <div id="cat-nav-list"></div>
       <div class="divider"></div>
       <div class="nav-item" onclick="navigate('ganhos')" id="nav-ganhos">
@@ -318,6 +329,34 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <input type="text" id="e-obs">
     </div>
     <button class="btn-confirm" id="btn-confirm-edit" onclick="saveEdit()">Salvar alterações</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-add-subcat-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Criar subcategoria</span>
+      <button class="modal-close" onclick="closeModalAddSubCat()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="form-group">
+      <label>Nome da subcategoria</label>
+      <input type="text" id="nsc-nome" placeholder="Ex: Mão de obra">
+    </div>
+    <button class="btn-confirm" onclick="addSubCat()">Criar subcategoria</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-edit-subcat-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Editar subcategoria</span>
+      <button class="modal-close" onclick="closeModalEditSubCat()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="form-group">
+      <label>Nome</label>
+      <input type="text" id="esc-nome">
+    </div>
+    <button class="btn-confirm" onclick="saveEditSubCat()">Salvar</button>
   </div>
 </div>
 
@@ -572,6 +611,68 @@ async function saveEdit(){
   }
 }
 
+// ── SUBCATEGORIAS ────────────────────────────────────────────────
+let SUBCATS = JSON.parse(localStorage.getItem('pirati_subcats') || '{}');
+function saveSubCats(){ localStorage.setItem('pirati_subcats', JSON.stringify(SUBCATS)); }
+
+let addingSubCatFor = null;
+let editingSubCat = {catKey:null, subKey:null};
+
+function openModalAddSubCat(catKey){
+  addingSubCatFor = catKey;
+  document.getElementById('nsc-nome').value = '';
+  document.getElementById('modal-add-subcat-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('nsc-nome').focus(),100);
+  document.querySelectorAll('.cat-menu').forEach(m=>m.classList.remove('open'));
+}
+function closeModalAddSubCat(){ document.getElementById('modal-add-subcat-overlay').classList.remove('open'); addingSubCatFor=null; }
+document.getElementById('modal-add-subcat-overlay').addEventListener('click',function(e){ if(e.target===this) closeModalAddSubCat(); });
+
+function addSubCat(){
+  const nome = document.getElementById('nsc-nome').value.trim();
+  if(!nome){ alert('Preencha o nome.'); return; }
+  const key = nome.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'')+'_'+Date.now();
+  if(!SUBCATS[addingSubCatFor]) SUBCATS[addingSubCatFor] = {};
+  SUBCATS[addingSubCatFor][key] = {label:nome};
+  saveSubCats();
+  closeModalAddSubCat();
+  renderCatNav();
+  toast('Subcategoria criada!');
+}
+
+function openEditSubCat(catKey, subKey){
+  editingSubCat = {catKey, subKey};
+  document.getElementById('esc-nome').value = SUBCATS[catKey][subKey].label;
+  document.getElementById('modal-edit-subcat-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('esc-nome').focus(),100);
+}
+function closeModalEditSubCat(){ document.getElementById('modal-edit-subcat-overlay').classList.remove('open'); }
+document.getElementById('modal-edit-subcat-overlay').addEventListener('click',function(e){ if(e.target===this) closeModalEditSubCat(); });
+
+function saveEditSubCat(){
+  const nome = document.getElementById('esc-nome').value.trim();
+  if(!nome){ alert('Preencha o nome.'); return; }
+  SUBCATS[editingSubCat.catKey][editingSubCat.subKey].label = nome;
+  saveSubCats();
+  closeModalEditSubCat();
+  renderCatNav();
+  toast('Subcategoria atualizada!');
+}
+
+function deleteSubCat(catKey, subKey){
+  if(!confirm('Excluir subcategoria "'+SUBCATS[catKey][subKey].label+'"?')) return;
+  delete SUBCATS[catKey][subKey];
+  saveSubCats();
+  renderCatNav();
+  toast('Subcategoria removida.');
+}
+
+function toggleSubCatMenu(id, e){
+  e.stopPropagation();
+  document.querySelectorAll('.subcat-menu').forEach(m=>{ if(m.id!==id) m.classList.remove('open'); });
+  document.getElementById(id).classList.toggle('open');
+}
+
 // ── LOAD ─────────────────────────────────────────────────────────
 async function loadGastos(){
   try{
@@ -611,7 +712,9 @@ async function addGasto(){
   const btn = document.getElementById('btn-confirm');
   btn.disabled = true; btn.textContent = 'Salvando...';
   try{
-    await sbInsert({descricao:desc,categoria:cat,data,valor:val,status:st,obs,orcamento});
+    const subcat = document.getElementById('modal-overlay').dataset.subcat||'';
+    await sbInsert({descricao:desc,categoria:cat,data,valor:val,status:st,obs,orcamento,subcategoria:subcat});
+    delete document.getElementById('modal-overlay').dataset.subcat;
     document.getElementById('f-desc').value='';
     document.getElementById('f-valor').value='';
     document.getElementById('f-obs').value='';
@@ -640,6 +743,16 @@ function navigate(page){
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   const activeEl = document.getElementById('nav-'+page);
   if(activeEl) activeEl.classList.add('active');
+  // handle subcat pages like 'obra__subkey'
+  if(page.includes('__')){
+    const [catKey, subKey] = page.split('__');
+    document.getElementById('topbar-title').textContent = CATS[catKey]?.label + ' › ' + (SUBCATS[catKey]?.[subKey]?.label||'');
+    if(barChart){barChart.destroy();barChart=null;}
+    if(pieChart){pieChart.destroy();pieChart=null;}
+    if(catChart){catChart.destroy();catChart=null;}
+    render();
+    return;
+  }
   const titles={geral:'Visão Geral',obra:'Obra / Reforma',moveis:'Móveis',eletro:'Eletrodomésticos',taxas:'Taxas / Cartório',mudanca:'Mudança',ganhos:'Ganhos'};
   document.getElementById('topbar-title').textContent = titles[page];
   if(barChart){barChart.destroy();barChart=null;}
@@ -651,6 +764,7 @@ function navigate(page){
 function render(){
   if(currentPage==='geral') renderGeral();
   else if(currentPage==='ganhos') renderGanhos();
+  else if(currentPage.includes('__')) renderSubCat(currentPage);
   else renderCat(currentPage);
 }
 
@@ -811,6 +925,61 @@ function renderGanhoRows(list){
       </td>
     </tr>
   `).join('');
+}
+
+// ── SUBCATEGORIA PAGE ────────────────────────────────────────────
+function renderSubCat(page){
+  const [catKey, subKey] = page.split('__');
+  const info = CATS[catKey];
+  const subLabel = SUBCATS[catKey]?.[subKey]?.label || '';
+  const lista = gastos.filter(g=>g.categoria===catKey && g.subcategoria===subKey);
+  const total = lista.filter(g=>g.status!=='cancel').reduce((s,g)=>s+(g.valor||0),0);
+  const pago  = lista.filter(g=>g.status==='pago').reduce((s,g)=>s+(g.valor||0),0);
+  const apagar= lista.filter(g=>g.status==='apagar').reduce((s,g)=>s+(g.valor||0),0);
+
+  document.getElementById('content').innerHTML = `
+    <div class="cat-total-card" style="border-left:3px solid ${info.color}">
+      <div class="cat-stat">
+        <span class="cat-stat-label">Total</span>
+        <span class="cat-stat-value" style="color:${info.color}">${fmt(total)}</span>
+      </div>
+      <div class="cat-stat">
+        <span class="cat-stat-label">Pago</span>
+        <span class="cat-stat-value" style="color:#4caf50">${fmt(pago)}</span>
+      </div>
+      <div class="cat-stat">
+        <span class="cat-stat-label">A pagar</span>
+        <span class="cat-stat-value" style="color:#e8b544">${fmt(apagar)}</span>
+      </div>
+      <div style="margin-left:auto">
+        <button class="btn-launch" onclick="openModalWithSubCat('${catKey}','${subKey}')"><i class="ti ti-plus"></i> Lançar aqui</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="table-card">
+        <div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:#4caf50;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
+          <i class="ti ti-circle-check"></i> Pago
+        </div>
+        <table><thead><tr><th>Data</th><th>Descrição</th><th style="text-align:right">Valor</th><th>Obs</th><th></th></tr></thead>
+        <tbody>${renderRowsFiltered(lista,'pago')}</tbody></table>
+      </div>
+      <div class="table-card">
+        <div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:#e8b544;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
+          <i class="ti ti-clock"></i> A pagar
+        </div>
+        <table><thead><tr><th>Data</th><th>Descrição</th><th style="text-align:right">Valor</th><th>Obs</th><th></th></tr></thead>
+        <tbody>${renderRowsFiltered(lista,'apagar')}</tbody></table>
+      </div>
+    </div>
+  `;
+}
+
+function openModalWithSubCat(catKey, subKey){
+  populateCatSelect('f-cat');
+  document.getElementById('f-cat').value = catKey;
+  document.getElementById('modal-overlay').classList.add('open');
+  document.getElementById('modal-overlay').dataset.subcat = subKey;
+  setTimeout(()=>document.getElementById('f-desc').focus(),100);
 }
 
 // ── CATEGORIA ────────────────────────────────────────────────────
