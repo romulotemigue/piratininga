@@ -90,6 +90,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .nav-subitem-dots:hover{color:#e8b544}
 .subcat-menu{display:none;position:absolute;right:4px;top:100%;background:#222;border:1px solid #333;border-radius:7px;z-index:51;min-width:120px;padding:4px 0;box-shadow:0 4px 16px rgba(0,0,0,.5)}
 .subcat-menu.open{display:block}
+.subcat-row{position:relative;display:flex;align-items:center}
+.subcat-row:hover .subcat-dots-btn{opacity:1!important}
 .cat-chevron{background:none;border:none;color:#555;cursor:pointer;padding:4px 6px;font-size:12px;transition:transform .2s;flex-shrink:0;line-height:1}
 .cat-chevron.open{transform:rotate(90deg)}
 .cat-chevron:hover{color:#e8b544}
@@ -370,6 +372,44 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-subcat-launch-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="subcat-launch-title">Lançar gasto</span>
+      <button class="modal-close" onclick="closeModalSubCat()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="form-group">
+      <label>Descrição</label>
+      <input type="text" id="sl-desc" placeholder="Ex: Mão de obra Dioclécio">
+    </div>
+    <div class="modal-row">
+      <div class="form-group">
+        <label>Valor (R$)</label>
+        <input type="text" id="sl-valor" placeholder="0,00" oninput="maskMoney(this)" inputmode="numeric">
+      </div>
+      <div class="form-group">
+        <label>Data</label>
+        <input type="date" id="sl-data">
+      </div>
+    </div>
+    <div class="modal-row">
+      <div class="form-group">
+        <label>Status</label>
+        <select id="sl-status">
+          <option value="pago">Pago</option>
+          <option value="apagar">A pagar</option>
+          <option value="cancel">Cancelado</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Observação</label>
+        <input type="text" id="sl-obs" placeholder="Detalhe...">
+      </div>
+    </div>
+    <button class="btn-confirm" id="btn-confirm-sl" onclick="addGastoSubCat()">Confirmar lançamento</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -397,11 +437,11 @@ function renderCatNav(){
     const hasSubs = SUBCATS[k] && Object.keys(SUBCATS[k]).length>0;
     const isOpen = !!expanded[k];
     const subs = hasSubs ? Object.keys(SUBCATS[k]).map(sk=>`
-      <div style="position:relative;display:flex;align-items:center">
+      <div class="subcat-row">
         <div class="nav-item" style="padding-left:2.5rem;font-size:12px;color:#666;flex:1" onclick="navigate('${k}__${sk}')" id="nav-${k}__${sk}">
           ↳ ${SUBCATS[k][sk].label}
         </div>
-        <button style="background:none;border:none;color:#444;cursor:pointer;padding:4px 6px;font-size:13px" onclick="toggleSubCatMenu('subcat-menu-${k}-${sk}',event)"><i class="ti ti-dots-vertical"></i></button>
+        <button class="subcat-dots-btn" style="background:none;border:none;color:#444;cursor:pointer;padding:4px 6px;font-size:13px;opacity:0;transition:opacity .15s" onclick="toggleSubCatMenu('subcat-menu-${k}-${sk}',event)"><i class="ti ti-dots-vertical"></i></button>
         <div class="subcat-menu" id="subcat-menu-${k}-${sk}">
           <div class="cat-menu-item" onclick="openEditSubCat('${k}','${sk}')"><i class="ti ti-pencil"></i> Renomear</div>
           <div class="cat-menu-item danger" onclick="deleteSubCat('${k}','${sk}')"><i class="ti ti-trash"></i> Excluir</div>
@@ -434,15 +474,8 @@ function toggleExpand(k, e){
   const expanded = JSON.parse(localStorage.getItem('pirati_expanded')||'{}');
   expanded[k] = !expanded[k];
   localStorage.setItem('pirati_expanded', JSON.stringify(expanded));
-  const list = document.getElementById('subcat-list-'+k);
-  const chev = document.getElementById('chev-'+k);
-  if(expanded[k]){
-    list.style.maxHeight='500px';
-    chev.style.transform='rotate(90deg)';
-  } else {
-    list.style.maxHeight='0';
-    chev.style.transform='rotate(0deg)';
-  }
+  localStorage.setItem('pirati_expanded', JSON.stringify(expanded));
+  renderCatNav();
 }
 
 function toggleExpand(k, e){
@@ -1010,6 +1043,46 @@ function renderGanhoRows(list){
   `).join('');
 }
 
+// ── SUBCAT LAUNCH ────────────────────────────────────────────────
+let launchingSubCat = {catKey:null, subKey:null};
+
+function openModalSubCat(catKey, subKey){
+  launchingSubCat = {catKey, subKey};
+  const catLabel = CATS[catKey]?.label||'';
+  const subLabel = SUBCATS[catKey]?.[subKey]?.label||'';
+  document.getElementById('subcat-launch-title').textContent = 'Lançar em ' + subLabel;
+  document.getElementById('sl-desc').value='';
+  document.getElementById('sl-valor').value='';
+  document.getElementById('sl-obs').value='';
+  document.getElementById('sl-data').value=new Date().toISOString().split('T')[0];
+  document.getElementById('modal-subcat-launch-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('sl-desc').focus(),100);
+}
+function closeModalSubCat(){ document.getElementById('modal-subcat-launch-overlay').classList.remove('open'); }
+document.getElementById('modal-subcat-launch-overlay').addEventListener('click',function(e){ if(e.target===this) closeModalSubCat(); });
+
+async function addGastoSubCat(){
+  const desc = document.getElementById('sl-desc').value.trim();
+  const val  = parseMoney(document.getElementById('sl-valor').value);
+  const data = document.getElementById('sl-data').value;
+  const st   = document.getElementById('sl-status').value;
+  const obs  = document.getElementById('sl-obs').value.trim();
+  if(!desc){ alert('Preencha a descrição.'); return; }
+  if(isNaN(val)||val<=0){ alert('Preencha um valor válido.'); return; }
+  const btn = document.getElementById('btn-confirm-sl');
+  btn.disabled=true; btn.textContent='Salvando...';
+  try{
+    await sbInsert({descricao:desc,categoria:launchingSubCat.catKey,subcategoria:launchingSubCat.subKey,data,valor:val,status:st,obs,orcamento:0});
+    closeModalSubCat();
+    toast('Gasto salvo!');
+    await loadGastos();
+  } catch(e){
+    toast('Erro: '+e.message,'err');
+  } finally{
+    btn.disabled=false; btn.textContent='Confirmar lançamento';
+  }
+}
+
 // ── SUBCATEGORIA PAGE ────────────────────────────────────────────
 function renderSubCat(page){
   const [catKey, subKey] = page.split('__');
@@ -1035,7 +1108,7 @@ function renderSubCat(page){
         <span class="cat-stat-value" style="color:#e8b544">${fmt(apagar)}</span>
       </div>
       <div style="margin-left:auto">
-        <button class="btn-launch" onclick="openModalWithSubCat('${catKey}','${subKey}')"><i class="ti ti-plus"></i> Lançar aqui</button>
+        <button class="btn-launch" onclick="openModalSubCat('${catKey}','${subKey}')"><i class="ti ti-minus"></i> Lançar aqui</button>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
