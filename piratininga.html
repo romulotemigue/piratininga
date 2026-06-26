@@ -8,18 +8,14 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f0f0f;color:#e8e7e2;min-height:100vh;display:flex;flex-direction:column}
-
-/* LAYOUT */
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f0f0f;color:#e8e7e2;min-height:100vh}
 .app{display:flex;height:100vh;overflow:hidden}
 .sidebar{width:200px;background:#161616;border-right:1px solid #2a2a2a;display:flex;flex-direction:column;flex-shrink:0}
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
 .topbar{height:48px;background:#161616;border-bottom:1px solid #2a2a2a;display:flex;align-items:center;padding:0 1.25rem;gap:1rem;flex-shrink:0}
 .content{flex:1;overflow-y:auto;padding:1.5rem}
-
-/* SIDEBAR */
 .sidebar-brand{padding:1rem 1.25rem;border-bottom:1px solid #2a2a2a}
-.sidebar-brand .name{font-size:13px;font-weight:600;color:#e8e7e2;letter-spacing:.02em}
+.sidebar-brand .name{font-size:13px;font-weight:600;color:#e8e7e2}
 .sidebar-brand .sub{font-size:11px;color:#555;margin-top:2px}
 .sidebar-nav{padding:.5rem 0;flex:1}
 .nav-item{display:flex;align-items:center;gap:10px;padding:9px 1.25rem;font-size:13px;color:#888;cursor:pointer;border-left:2px solid transparent;transition:all .15s}
@@ -27,17 +23,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .nav-item.active{color:#e8b544;border-left-color:#e8b544;background:#1e1e1e}
 .nav-item i{font-size:16px}
 .nav-section{font-size:10px;color:#444;padding:1rem 1.25rem .4rem;letter-spacing:.08em;text-transform:uppercase}
-
-/* TOPBAR */
+.divider{height:1px;background:#2a2a2a;margin:.25rem 0}
 .topbar-title{font-size:14px;font-weight:500;color:#e8e7e2}
-.topbar-sub{font-size:11px;color:#555;margin-left:4px}
 .topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px}
-.btn-launch{background:#e8b544;color:#0f0f0f;border:none;border-radius:6px;padding:0 14px;height:32px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;letter-spacing:.02em}
+.btn-launch{background:#e8b544;color:#0f0f0f;border:none;border-radius:6px;padding:0 14px;height:32px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px}
 .btn-launch:hover{background:#d4a33e}
 .topbar-date{font-size:12px;color:#555}
-
-/* CARDS */
-.cards-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem}
+.cards-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.25rem}
+@media(max-width:700px){.cards-row{grid-template-columns:1fr 1fr}}
 .card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:1rem 1.25rem}
 .card-label{font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;display:flex;align-items:center;gap:6px}
 .card-value{font-size:22px;font-weight:500;color:#e8e7e2}
@@ -46,11 +39,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .card-value.red{color:#ef5350}
 .card-value.muted{color:#888}
 .card-sub{font-size:11px;color:#555;margin-top:4px}
-
-/* PROGRESS */
-.progress-wrap{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.5rem}
-.progress-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-.progress-label{font-size:11px;color:#555;text-transform:uppercase;letter-spacing:.06em}
+.progress-wrap{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.25rem}
+.progress-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px}
+.progress-label{font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em}
 .progress-pct{font-size:13px;font-weight:500}
 .progress-bar-bg{height:6px;background:#2a2a2a;border-radius:20px;overflow:hidden}
 .progress-bar-fill{height:100%;border-radius:20px;transition:width .5s ease,background .3s}
@@ -58,22 +49,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .progress-amounts span{font-size:11px;color:#555}
 .orc-input{background:#111;border:1px solid #333;border-radius:6px;color:#e8b544;font-size:14px;font-weight:500;padding:2px 8px;width:160px;text-align:right}
 .orc-input:focus{outline:none;border-color:#e8b544}
-
-/* SEÇÃO CATEGORIA */
-.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem}
-.section-title{font-size:14px;font-weight:500;color:#e8e7e2;display:flex;align-items:center;gap:8px}
-.section-badge{background:#2a2a2a;color:#888;font-size:11px;padding:2px 8px;border-radius:20px}
-.cat-total-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:1.25rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:2rem;flex-wrap:wrap}
-.cat-stat{display:flex;flex-direction:column;gap:4px}
-.cat-stat-label{font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em}
-.cat-stat-value{font-size:18px;font-weight:500}
-
-/* CHART */
-.charts-row{display:grid;grid-template-columns:1.5fr 1fr;gap:12px;margin-bottom:1.5rem}
+.charts-row{display:grid;grid-template-columns:1.5fr 1fr;gap:12px;margin-bottom:1.25rem}
+@media(max-width:700px){.charts-row{grid-template-columns:1fr}}
 .chart-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:1.25rem}
 .chart-title{font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
-
-/* TABLE */
 .table-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;overflow:hidden}
 .table-card table{width:100%;border-collapse:collapse;font-size:13px}
 .table-card th{background:#111;color:#555;font-weight:500;padding:10px 14px;text-align:left;border-bottom:1px solid #222;font-size:10px;text-transform:uppercase;letter-spacing:.06em}
@@ -87,10 +66,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .del-btn{background:none;border:none;cursor:pointer;color:#444;font-size:14px;padding:4px 6px;border-radius:4px}
 .del-btn:hover{color:#ef5350;background:#2a1515}
 .empty{text-align:center;padding:2.5rem;color:#444;font-size:13px}
-.divider{height:1px;background:#2a2a2a;margin:.5rem 0}
-
-/* MODAL */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center}
+.cat-total-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:1.25rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:2rem;flex-wrap:wrap}
+.cat-stat{display:flex;flex-direction:column;gap:4px}
+.cat-stat-label{font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em}
+.cat-stat-value{font-size:18px;font-weight:500}
+.legend-row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:#888}
+.legend-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;align-items:center;justify-content:center}
 .modal-overlay.open{display:flex}
 .modal{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:1.5rem;width:420px;max-width:95vw}
 .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem}
@@ -98,7 +81,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .modal-close{background:none;border:none;color:#555;font-size:18px;cursor:pointer;padding:4px}
 .modal-close:hover{color:#e8e7e2}
 .modal .form-group{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
-.modal .form-group label{font-size:11px;color:#555;text-transform:uppercase;letter-spacing:.04em}
+.modal .form-group label{font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em}
 .modal .form-group input,
 .modal .form-group select{height:38px;background:#111;border:1px solid #333;border-radius:7px;padding:0 12px;font-size:13px;color:#e8e7e2}
 .modal .form-group input:focus,
@@ -107,11 +90,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .modal-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .btn-confirm{width:100%;height:40px;background:#e8b544;color:#0f0f0f;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;margin-top:4px}
 .btn-confirm:hover{background:#d4a33e}
-.legend-row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px}
-.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:#888}
-.legend-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
-
-/* SCROLLBAR */
+.btn-confirm:disabled{opacity:.5;cursor:not-allowed}
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:.75rem 1rem;font-size:13px;color:#e8e7e2;display:none;z-index:200;align-items:center;gap:8px}
+.toast.show{display:flex}
+.toast.ok{border-color:#4caf50;color:#4caf50}
+.toast.err{border-color:#ef5350;color:#ef5350}
+.loading{text-align:center;padding:3rem;color:#444;font-size:13px}
 ::-webkit-scrollbar{width:4px}
 ::-webkit-scrollbar-track{background:#0f0f0f}
 ::-webkit-scrollbar-thumb{background:#333;border-radius:4px}
@@ -120,7 +104,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <body>
 
 <div class="app">
-  <!-- SIDEBAR -->
   <div class="sidebar">
     <div class="sidebar-brand">
       <div class="name">Piratininga</div>
@@ -150,12 +133,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
   </div>
 
-  <!-- MAIN -->
   <div class="main">
     <div class="topbar">
-      <div>
-        <span class="topbar-title" id="topbar-title">Visão Geral</span>
-      </div>
+      <span class="topbar-title" id="topbar-title">Visão Geral</span>
       <div class="topbar-right">
         <span class="topbar-date" id="topbar-date"></span>
         <button class="btn-launch" onclick="openModal()">
@@ -163,13 +143,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         </button>
       </div>
     </div>
-
-    <!-- CONTEÚDO -->
-    <div class="content" id="content"></div>
+    <div class="content" id="content"><div class="loading">Carregando...</div></div>
   </div>
 </div>
 
-<!-- MODAL -->
 <div class="modal-overlay" id="modal-overlay">
   <div class="modal">
     <div class="modal-header">
@@ -214,41 +191,79 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <label>Observação (opcional)</label>
       <input type="text" id="f-obs" placeholder="Fornecedor, nota, detalhe...">
     </div>
-    <button class="btn-confirm" onclick="addGasto()">Confirmar lançamento</button>
+    <button class="btn-confirm" id="btn-confirm" onclick="addGasto()">Confirmar lançamento</button>
   </div>
 </div>
 
+<div class="toast" id="toast"></div>
+
 <script>
+// ── CONFIG SUPABASE ──────────────────────────────────────────────
+const SB_URL = 'https://jdoyzuqwmgclgicceqoc.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impkb3l6dXF3bWdjbGdpY2NlcW9jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0OTYxNTUsImV4cCI6MjA5ODA3MjE1NX0.clZnnjg404ItiG5XKCSwWE0YZeY1OU_sis7_gH7cP4g';
+const TABLE  = 'piratininga';
+const HEADERS = {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
+
 const CATS = {
-  obra:    {label:'Obra / Reforma',    icon:'ti-hammer',      color:'#e8b544'},
-  moveis:  {label:'Móveis',            icon:'ti-armchair',    color:'#4caf50'},
-  eletro:  {label:'Eletrodomésticos',  icon:'ti-plug',        color:'#2a78d6'},
-  taxas:   {label:'Taxas / Cartório',  icon:'ti-receipt-2',   color:'#ab47bc'},
-  mudanca: {label:'Mudança',           icon:'ti-truck',       color:'#ef5350'},
+  obra:    {label:'Obra / Reforma',   icon:'ti-hammer',   color:'#e8b544'},
+  moveis:  {label:'Móveis',           icon:'ti-armchair', color:'#4caf50'},
+  eletro:  {label:'Eletrodomésticos', icon:'ti-plug',     color:'#2a78d6'},
+  taxas:   {label:'Taxas / Cartório', icon:'ti-receipt-2',color:'#ab47bc'},
+  mudanca: {label:'Mudança',          icon:'ti-truck',    color:'#ef5350'},
 };
 
 let gastos = [];
-try{ gastos = JSON.parse(localStorage.getItem('piratininga_gastos')||'[]'); }catch(e){}
-
+let orcamento = parseFloat(localStorage.getItem('pirati_orc')||'80000');
 let currentPage = 'geral';
 let barChart, pieChart, catChart;
 
-function save(){ try{localStorage.setItem('piratininga_gastos',JSON.stringify(gastos));}catch(e){} }
 function fmt(v){ return 'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function fmtShort(v){ return v>=1000?'R$'+Math.round(v/1000)+'k':fmt(v); }
 
-document.getElementById('topbar-date').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
-document.getElementById('f-data').value = new Date().toISOString().split('T')[0];
+function toast(msg, type='ok'){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show '+type;
+  setTimeout(()=>t.className='toast',2500);
+}
 
+// ── SUPABASE API ─────────────────────────────────────────────────
+async function sbFetch(gastos){
+  const res = await fetch(`${SB_URL}/rest/v1/${TABLE}?select=*&order=created_at.desc`,{headers:HEADERS});
+  if(!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+async function sbInsert(row){
+  const res = await fetch(`${SB_URL}/rest/v1/${TABLE}`,{method:'POST',headers:{...HEADERS,'Prefer':'return=representation'},body:JSON.stringify(row)});
+  if(!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+async function sbDelete(id){
+  const res = await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${id}`,{method:'DELETE',headers:HEADERS});
+  if(!res.ok) throw new Error(await res.text());
+}
+
+// ── LOAD ─────────────────────────────────────────────────────────
+async function loadGastos(){
+  try{
+    gastos = await sbFetch();
+    render();
+  } catch(e){
+    console.error(e);
+    document.getElementById('content').innerHTML = '<div class="loading" style="color:#ef5350">Erro ao conectar ao banco de dados.<br><small>'+e.message+'</small></div>';
+  }
+}
+
+// ── MODAL ────────────────────────────────────────────────────────
 function openModal(cat){
   if(cat) document.getElementById('f-cat').value = cat;
   document.getElementById('modal-overlay').classList.add('open');
-  document.getElementById('f-desc').focus();
+  setTimeout(()=>document.getElementById('f-desc').focus(),100);
 }
 function closeModal(){ document.getElementById('modal-overlay').classList.remove('open'); }
 document.getElementById('modal-overlay').addEventListener('click',function(e){ if(e.target===this) closeModal(); });
 
-function addGasto(){
+async function addGasto(){
   const desc = document.getElementById('f-desc').value.trim();
   const cat  = document.getElementById('f-cat').value;
   const data = document.getElementById('f-data').value;
@@ -257,27 +272,38 @@ function addGasto(){
   const obs  = document.getElementById('f-obs').value.trim();
   if(!desc){ alert('Preencha a descrição.'); return; }
   if(isNaN(val)||val<=0){ alert('Preencha um valor válido.'); return; }
-  gastos.unshift({id:Date.now(),desc,cat,data,val,st,obs});
-  save();
-  document.getElementById('f-desc').value='';
-  document.getElementById('f-valor').value='';
-  document.getElementById('f-obs').value='';
-  closeModal();
-  render();
+  const btn = document.getElementById('btn-confirm');
+  btn.disabled = true; btn.textContent = 'Salvando...';
+  try{
+    await sbInsert({descricao:desc,categoria:cat,data,valor:val,status:st,obs,orcamento});
+    document.getElementById('f-desc').value='';
+    document.getElementById('f-valor').value='';
+    document.getElementById('f-obs').value='';
+    closeModal();
+    toast('Gasto salvo com sucesso!');
+    await loadGastos();
+  } catch(e){
+    toast('Erro ao salvar: '+e.message,'err');
+  } finally{
+    btn.disabled=false; btn.textContent='Confirmar lançamento';
+  }
 }
 
-function removeGasto(id){
+async function removeGasto(id){
   if(!confirm('Remover este gasto?')) return;
-  gastos = gastos.filter(g=>g.id!==id);
-  save();
-  render();
+  try{
+    await sbDelete(id);
+    toast('Gasto removido.');
+    await loadGastos();
+  } catch(e){ toast('Erro ao remover.','err'); }
 }
 
+// ── NAVIGATE ─────────────────────────────────────────────────────
 function navigate(page){
   currentPage = page;
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   document.getElementById('nav-'+page).classList.add('active');
-  const titles = {geral:'Visão Geral',obra:'Obra / Reforma',moveis:'Móveis',eletro:'Eletrodomésticos',taxas:'Taxas / Cartório',mudanca:'Mudança'};
+  const titles={geral:'Visão Geral',obra:'Obra / Reforma',moveis:'Móveis',eletro:'Eletrodomésticos',taxas:'Taxas / Cartório',mudanca:'Mudança'};
   document.getElementById('topbar-title').textContent = titles[page];
   if(barChart){barChart.destroy();barChart=null;}
   if(pieChart){pieChart.destroy();pieChart=null;}
@@ -290,29 +316,22 @@ function render(){
   else renderCat(currentPage);
 }
 
-function getOrcamento(){
-  const el = document.getElementById('orc-val');
-  return el ? parseFloat(el.value)||0 : parseFloat(localStorage.getItem('piratininga_orc')||'80000');
-}
-
+// ── GERAL ────────────────────────────────────────────────────────
 function renderGeral(){
-  const orc    = parseFloat(localStorage.getItem('piratininga_orc')||'80000');
-  const ativos = gastos.filter(g=>g.st!=='cancel');
-  const total  = ativos.reduce((s,g)=>s+g.val,0);
-  const pago   = gastos.filter(g=>g.st==='pago').reduce((s,g)=>s+g.val,0);
-  const apagar = gastos.filter(g=>g.st==='apagar').reduce((s,g)=>s+g.val,0);
-  const saldo  = orc - total;
-  const pct    = orc>0?Math.min(100,Math.round(total/orc*100)):0;
+  const ativos = gastos.filter(g=>g.status!=='cancel');
+  const total  = ativos.reduce((s,g)=>s+(g.valor||0),0);
+  const pago   = gastos.filter(g=>g.status==='pago').reduce((s,g)=>s+(g.valor||0),0);
+  const apagar = gastos.filter(g=>g.status==='apagar').reduce((s,g)=>s+(g.valor||0),0);
+  const saldo  = orcamento - total;
+  const pct    = orcamento>0?Math.min(100,Math.round(total/orcamento*100)):0;
   const barColor = pct>90?'#ef5350':pct>70?'#e8b544':'#4caf50';
-
-  const totByCat = Object.keys(CATS).map(k=>({key:k,val:ativos.filter(g=>g.cat===k).reduce((s,g)=>s+g.val,0)}));
 
   document.getElementById('content').innerHTML = `
     <div class="progress-wrap">
       <div class="progress-header">
         <span class="progress-label">Orçamento disponível</span>
-        <div style="display:flex;align-items:center;gap:10px">
-          <input class="orc-input" type="number" id="orc-val" value="${orc}" step="1000" onchange="saveOrc(this.value)">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <input class="orc-input" type="number" id="orc-val" value="${orcamento}" step="1000" onchange="saveOrc(this.value)">
           <span class="progress-pct" style="color:${barColor}">${pct}% comprometido</span>
         </div>
       </div>
@@ -338,7 +357,7 @@ function renderGeral(){
         <div class="card-value yellow">${fmt(apagar)}</div>
       </div>
       <div class="card">
-        <div class="card-label"><i class="ti ti-wallet" style="font-size:13px;color:${saldo<0?'#ef5350':'#888'}"></i> Saldo restante</div>
+        <div class="card-label"><i class="ti ti-wallet" style="font-size:13px"></i> Saldo restante</div>
         <div class="card-value ${saldo<0?'red':'muted'}">${fmt(saldo)}</div>
       </div>
     </div>
@@ -347,12 +366,12 @@ function renderGeral(){
       <div class="chart-card">
         <div class="chart-title">Total por categoria</div>
         <div id="bar-legend" class="legend-row"></div>
-        <div style="position:relative;height:200px"><canvas id="barChart" role="img" aria-label="Gastos por categoria"></canvas></div>
+        <div style="position:relative;height:200px"><canvas id="barChart"></canvas></div>
       </div>
       <div class="chart-card">
         <div class="chart-title">Distribuição</div>
         <div id="pie-legend" class="legend-row"></div>
-        <div style="position:relative;height:200px"><canvas id="pieChart" role="img" aria-label="Distribuição por categoria"></canvas></div>
+        <div style="position:relative;height:200px"><canvas id="pieChart"></canvas></div>
       </div>
     </div>
 
@@ -362,28 +381,25 @@ function renderGeral(){
           <th>Data</th><th>Descrição</th><th>Categoria</th>
           <th style="text-align:right">Valor</th><th>Status</th><th>Obs</th><th></th>
         </tr></thead>
-        <tbody id="table-body">${renderRows(gastos)}</tbody>
+        <tbody>${renderRows(gastos)}</tbody>
       </table>
     </div>
   `;
 
-  // charts
-  const labels  = Object.values(CATS).map(c=>c.label.split('/')[0].trim());
-  const values  = Object.keys(CATS).map(k=>ativos.filter(g=>g.cat===k).reduce((s,g)=>s+g.val,0));
-  const colors  = Object.values(CATS).map(c=>c.color);
+  const values = Object.keys(CATS).map(k=>ativos.filter(g=>g.categoria===k).reduce((s,g)=>s+(g.valor||0),0));
+  const colors = Object.values(CATS).map(c=>c.color);
+  const labels = Object.values(CATS).map(c=>c.label.split('/')[0].trim());
   const hasData = values.some(v=>v>0);
 
   document.getElementById('bar-legend').innerHTML = Object.values(CATS).map((c,i)=>`<span class="legend-item"><span class="legend-dot" style="background:${c.color}"></span>${c.label.split('/')[0].trim()}</span>`).join('');
 
   barChart = new Chart(document.getElementById('barChart'),{
     type:'bar',
-    data:{labels,datasets:[{label:'Total',data:values,backgroundColor:colors,borderRadius:4,borderSkipped:false}]},
+    data:{labels,datasets:[{data:values,backgroundColor:colors,borderRadius:4,borderSkipped:false}]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)}}},
-      scales:{
-        x:{grid:{display:false},ticks:{color:'#555',font:{size:10}}},
-        y:{grid:{color:'#222'},ticks:{color:'#555',font:{size:10},callback:v=>fmtShort(v)}}
-      }}
+      scales:{x:{grid:{display:false},ticks:{color:'#555',font:{size:10}}},
+              y:{grid:{color:'#222'},ticks:{color:'#555',font:{size:10},callback:v=>fmtShort(v)}}}}
   });
 
   const pd = hasData?values:[1];
@@ -400,22 +416,19 @@ function renderGeral(){
   });
 }
 
+// ── CATEGORIA ────────────────────────────────────────────────────
 function renderCat(cat){
   const info   = CATS[cat];
-  const lista  = gastos.filter(g=>g.cat===cat);
-  const ativos = lista.filter(g=>g.st!=='cancel');
-  const total  = ativos.reduce((s,g)=>s+g.val,0);
-  const pago   = lista.filter(g=>g.st==='pago').reduce((s,g)=>s+g.val,0);
-  const apagar = lista.filter(g=>g.st==='apagar').reduce((s,g)=>s+g.val,0);
+  const lista  = gastos.filter(g=>g.categoria===cat);
+  const ativos = lista.filter(g=>g.status!=='cancel');
+  const total  = ativos.reduce((s,g)=>s+(g.valor||0),0);
+  const pago   = lista.filter(g=>g.status==='pago').reduce((s,g)=>s+(g.valor||0),0);
+  const apagar = lista.filter(g=>g.status==='apagar').reduce((s,g)=>s+(g.valor||0),0);
 
-  // group by month for chart
-  const byMonth = {};
-  ativos.forEach(g=>{
-    const m = g.data?g.data.slice(0,7):'s/d';
-    byMonth[m] = (byMonth[m]||0)+g.val;
-  });
-  const months = Object.keys(byMonth).sort();
-  const mVals  = months.map(m=>byMonth[m]);
+  const byMonth={};
+  ativos.forEach(g=>{const m=g.data?g.data.slice(0,7):'s/d';byMonth[m]=(byMonth[m]||0)+(g.valor||0);});
+  const months=Object.keys(byMonth).sort();
+  const mVals=months.map(m=>byMonth[m]);
 
   document.getElementById('content').innerHTML = `
     <div class="cat-total-card" style="border-left:3px solid ${info.color}">
@@ -436,16 +449,15 @@ function renderCat(cat){
         <span class="cat-stat-value" style="color:#888">${ativos.length}</span>
       </div>
       <div style="margin-left:auto">
-        <button class="btn-launch" onclick="openModal('${cat}')"><i class="ti ti-plus"></i> Lançar em ${info.label.split('/')[0].trim()}</button>
+        <button class="btn-launch" onclick="openModal('${cat}')"><i class="ti ti-plus"></i> Lançar aqui</button>
       </div>
     </div>
 
-    <div class="charts-row" style="${months.length<2?'display:none':''}">
-      <div class="chart-card" style="grid-column:span 2">
-        <div class="chart-title">Evolução de gastos</div>
-        <div style="position:relative;height:160px"><canvas id="catChart" role="img" aria-label="Evolução de gastos na categoria"></canvas></div>
-      </div>
-    </div>
+    ${months.length>=2?`
+    <div class="chart-card" style="margin-bottom:1.25rem">
+      <div class="chart-title">Evolução de gastos</div>
+      <div style="position:relative;height:160px"><canvas id="catChart"></canvas></div>
+    </div>`:''}
 
     <div class="table-card">
       <table>
@@ -453,7 +465,7 @@ function renderCat(cat){
           <th>Data</th><th>Descrição</th>
           <th style="text-align:right">Valor</th><th>Status</th><th>Obs</th><th></th>
         </tr></thead>
-        <tbody id="table-body">${renderRows(lista, true)}</tbody>
+        <tbody>${renderRows(lista, true)}</tbody>
       </table>
     </div>
   `;
@@ -462,26 +474,24 @@ function renderCat(cat){
     catChart = new Chart(document.getElementById('catChart'),{
       type:'bar',
       data:{labels:months.map(m=>{const[y,mo]=m.split('-');return mo+'/'+y.slice(2);}),
-            datasets:[{label:'Total',data:mVals,backgroundColor:info.color,borderRadius:4,borderSkipped:false}]},
+            datasets:[{data:mVals,backgroundColor:info.color,borderRadius:4,borderSkipped:false}]},
       options:{responsive:true,maintainAspectRatio:false,
         plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)}}},
-        scales:{
-          x:{grid:{display:false},ticks:{color:'#555',font:{size:10}}},
-          y:{grid:{color:'#222'},ticks:{color:'#555',font:{size:10},callback:v=>fmtShort(v)}}
-        }}
+        scales:{x:{grid:{display:false},ticks:{color:'#555',font:{size:10}}},
+                y:{grid:{color:'#222'},ticks:{color:'#555',font:{size:10},callback:v=>fmtShort(v)}}}}
     });
   }
 }
 
 function renderRows(list, hideCat=false){
-  if(!list.length) return '<tr><td colspan="7" class="empty">Nenhum gasto aqui ainda.</td></tr>';
+  if(!list.length) return `<tr><td colspan="${hideCat?6:7}" class="empty">Nenhum gasto aqui ainda.</td></tr>`;
   return list.map(g=>`
     <tr>
       <td style="color:#555;white-space:nowrap;font-size:12px">${g.data||'—'}</td>
-      <td>${g.desc}</td>
-      ${hideCat?'':'<td style="color:#555;font-size:12px">'+CATS[g.cat].label+'</td>'}
-      <td style="text-align:right;font-weight:500">${fmt(g.val)}</td>
-      <td><span class="badge ${g.st}">${g.st==='pago'?'Pago':g.st==='apagar'?'A pagar':'Cancelado'}</span></td>
+      <td>${g.descricao||''}</td>
+      ${hideCat?'':'<td style="color:#555;font-size:12px">'+(CATS[g.categoria]?.label||g.categoria)+'</td>'}
+      <td style="text-align:right;font-weight:500">${fmt(g.valor||0)}</td>
+      <td><span class="badge ${g.status}">${g.status==='pago'?'Pago':g.status==='apagar'?'A pagar':'Cancelado'}</span></td>
       <td style="color:#555;font-size:12px">${g.obs||''}</td>
       <td><button class="del-btn" onclick="removeGasto(${g.id})"><i class="ti ti-trash"></i></button></td>
     </tr>
@@ -489,10 +499,14 @@ function renderRows(list, hideCat=false){
 }
 
 function saveOrc(v){
-  localStorage.setItem('piratininga_orc', parseFloat(v)||0);
+  orcamento = parseFloat(v)||0;
+  localStorage.setItem('pirati_orc', orcamento);
 }
 
-render();
+// ── INIT ─────────────────────────────────────────────────────────
+document.getElementById('topbar-date').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+document.getElementById('f-data').value = new Date().toISOString().split('T')[0];
+loadGastos();
 </script>
 </body>
 </html>
