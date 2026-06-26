@@ -91,6 +91,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .subcat-menu{display:none;position:fixed;background:#222;border:1px solid #333;border-radius:7px;z-index:999;min-width:120px;padding:4px 0;box-shadow:0 4px 20px rgba(0,0,0,.8)}
 .subcat-menu.open{display:block}
 .subcat-row{position:relative;display:flex;align-items:center}
+.nav-drag{cursor:grab;color:#333;padding:4px 2px 4px 6px;font-size:13px;flex-shrink:0}
+.nav-drag:active{cursor:grabbing}
+.nav-cat-wrap{transition:opacity .15s}
+.nav-cat-wrap.dragging{opacity:.4}
+.nav-cat-wrap.drag-over{border-top:2px solid #e8b544}
 .subcat-row:hover .subcat-dots-btn{opacity:1!important}
 .cat-chevron{background:none;border:none;color:#555;cursor:pointer;padding:4px 6px;font-size:12px;transition:transform .2s;flex-shrink:0;line-height:1}
 .cat-chevron.open{transform:rotate(90deg)}
@@ -420,11 +425,23 @@ const TABLE  = 'piratininga';
 const HEADERS = {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
 
 const DEFAULT_CATS = {
-  obra:    {label:'Obra / Reforma',   icon:'🔨',   color:'#e8b544'},
-  moveis:  {label:'Móveis',           icon:'🪑', color:'#4caf50'},
-  eletro:  {label:'Eletrodomésticos', icon:'🔌',     color:'#2a78d6'},
-  taxas:   {label:'Taxas / Cartório', icon:'🧾',color:'#ab47bc'},
-  mudanca: {label:'Mudança',          icon:'🚚',    color:'#ef5350'},
+  obra:        {label:'Obra / Reforma',    icon:'🔨', color:'#e8b544'},
+  moveis:      {label:'Móveis',            icon:'🪑', color:'#4caf50'},
+  eletro:      {label:'Eletrodomésticos',  icon:'🔌', color:'#2a78d6'},
+  taxas:       {label:'Taxas / Cartório',  icon:'🧾', color:'#ab47bc'},
+  mudanca:     {label:'Mudança',           icon:'🚚', color:'#ef5350'},
+  planejados:  {label:'Planejados',        icon:'📐', color:'#00bcd4'},
+  decoracao:   {label:'Decoração',         icon:'🎨', color:'#ff7043'},
+  iluminacao:  {label:'Iluminação',        icon:'💡', color:'#ffd600'},
+  loucas:      {label:'Louças',            icon:'🚿', color:'#80cbc4'},
+  metais:      {label:'Metais',            icon:'🔩', color:'#90a4ae'},
+  eletros:     {label:'Eletros',           icon:'⚡', color:'#42a5f5'},
+  revestimentos:{label:'Revestimentos',    icon:'🧱', color:'#a1887f'},
+  marmoraria:  {label:'Marmoraria',        icon:'🪨', color:'#b0bec5'},
+  arcondicionado:{label:'Ar Condicionado', icon:'❄️', color:'#4dd0e1'},
+  camamesabanho:{label:'Cama/Mesa/Banho',  icon:'🛁', color:'#f48fb1'},
+  lavanderia:  {label:'Lavanderia',        icon:'🧺', color:'#ce93d8'},
+  outroscustos:{label:'Outros custos',     icon:'📦', color:'#78909c'},
 };
 let _savedCats = localStorage.getItem('pirati_cats');
 let CATS = _savedCats ? JSON.parse(_savedCats) : JSON.parse(JSON.stringify(DEFAULT_CATS));
@@ -451,9 +468,15 @@ function renderCatNav(){
         </div>
       </div>
     `).join('') : '';
-    return `<div>
+    return `<div class="nav-cat-wrap" id="cat-wrap-${k}" draggable="true"
+      ondragstart="dragStart('${k}',event)"
+      ondragover="dragOver('${k}',event)"
+      ondragleave="dragLeave('${k}',event)"
+      ondrop="dragDrop('${k}',event)"
+      ondragend="dragEnd(event)">
       <div class="nav-item-wrap" id="nav-wrap-${k}">
-        <button id="chev-${k}" style="background:none;border:none;color:${hasSubs?'#555':'transparent'};cursor:${hasSubs?'pointer':'default'};padding:4px 4px 4px 8px;font-size:11px;transition:transform .2s;transform:rotate(${isOpen?90:0}deg)" onclick="if(${hasSubs}) toggleExpand('${k}',event)"><i class="ti ti-chevron-right"></i></button>
+        <span class="nav-drag" draggable="false" title="Arrastar">⠿</span>
+        <button id="chev-${k}" style="background:none;border:none;color:${hasSubs?'#555':'transparent'};cursor:${hasSubs?'pointer':'default'};padding:4px 2px;font-size:11px;transition:transform .2s;transform:rotate(${isOpen?90:0}deg)" onclick="if(${hasSubs}) toggleExpand('${k}',event)"><i class="ti ti-chevron-right"></i></button>
         <div class="nav-item" onclick="navigate('${k}')" id="nav-${k}" style="padding-left:2px;flex:1">
           ${CATS[k].icon} ${CATS[k].label}
         </div>
@@ -800,6 +823,54 @@ function toggleSubCatMenu(id, e){
     menu.style.left = (rect.right - 130) + 'px';
     menu.classList.add('open');
   }
+}
+
+// ── DRAG & DROP CATEGORIAS ───────────────────────────────────────
+let dragKey = null;
+
+function dragStart(k, e){
+  dragKey = k;
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(()=>{ const el=document.getElementById('cat-wrap-'+k); if(el) el.classList.add('dragging'); },0);
+}
+
+function dragOver(k, e){
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  if(k===dragKey) return;
+  document.querySelectorAll('.nav-cat-wrap').forEach(el=>el.classList.remove('drag-over'));
+  const el = document.getElementById('cat-wrap-'+k);
+  if(el) el.classList.add('drag-over');
+}
+
+function dragLeave(k, e){
+  const el = document.getElementById('cat-wrap-'+k);
+  if(el) el.classList.remove('drag-over');
+}
+
+function dragDrop(k, e){
+  e.preventDefault();
+  if(k===dragKey) return;
+  const keys = Object.keys(CATS);
+  const fromIdx = keys.indexOf(dragKey);
+  const toIdx = keys.indexOf(k);
+  if(fromIdx===-1||toIdx===-1) return;
+  // reorder
+  const entries = Object.entries(CATS);
+  const [moved] = entries.splice(fromIdx, 1);
+  entries.splice(toIdx, 0, moved);
+  CATS = Object.fromEntries(entries);
+  saveCats();
+  renderCatNav();
+  dragKey = null;
+}
+
+function dragEnd(e){
+  dragKey = null;
+  document.querySelectorAll('.nav-cat-wrap').forEach(el=>{
+    el.classList.remove('dragging');
+    el.classList.remove('drag-over');
+  });
 }
 
 // ── LOAD ─────────────────────────────────────────────────────────
