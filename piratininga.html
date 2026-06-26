@@ -132,6 +132,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="nav-item" onclick="navigate('mudanca')" id="nav-mudanca">
         <i class="ti ti-truck"></i> Mudança
       </div>
+      <div class="divider"></div>
+      <div class="nav-item" onclick="navigate('ganhos')" id="nav-ganhos">
+        <i class="ti ti-trending-up"></i> Ganhos
+      </div>
     </div>
   </div>
 
@@ -369,7 +373,7 @@ function navigate(page){
   currentPage = page;
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   document.getElementById('nav-'+page).classList.add('active');
-  const titles={geral:'Visão Geral',obra:'Obra / Reforma',moveis:'Móveis',eletro:'Eletrodomésticos',taxas:'Taxas / Cartório',mudanca:'Mudança'};
+  const titles={geral:'Visão Geral',obra:'Obra / Reforma',moveis:'Móveis',eletro:'Eletrodomésticos',taxas:'Taxas / Cartório',mudanca:'Mudança',ganhos:'Ganhos'};
   document.getElementById('topbar-title').textContent = titles[page];
   if(barChart){barChart.destroy();barChart=null;}
   if(pieChart){pieChart.destroy();pieChart=null;}
@@ -379,6 +383,7 @@ function navigate(page){
 
 function render(){
   if(currentPage==='geral') renderGeral();
+  else if(currentPage==='ganhos') renderGanhos();
   else renderCat(currentPage);
 }
 
@@ -487,6 +492,50 @@ function renderGeral(){
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>hasData?ctx.label+': '+fmt(ctx.raw):''}}}}
   });
+}
+
+// ── GANHOS PAGE ──────────────────────────────────────────────────
+function renderGanhos(){
+  const lista = gastos.filter(g=>g.categoria==='ganho');
+  const total = lista.reduce((s,g)=>s+(g.valor||0),0);
+
+  document.getElementById('content').innerHTML = `
+    <div class="cat-total-card" style="border-left:3px solid #4caf50">
+      <div class="cat-stat">
+        <span class="cat-stat-label">Total de ganhos</span>
+        <span class="cat-stat-value" style="color:#4caf50">${fmt(total)}</span>
+      </div>
+      <div class="cat-stat">
+        <span class="cat-stat-label">Entradas</span>
+        <span class="cat-stat-value" style="color:#888">${lista.length}</span>
+      </div>
+      <div style="margin-left:auto">
+        <button class="btn-ganho" onclick="openModalGanho()"><i class="ti ti-plus"></i> Lançar ganho</button>
+      </div>
+    </div>
+    <div class="table-card">
+      <table>
+        <thead><tr>
+          <th>Data</th><th>Descrição</th>
+          <th style="text-align:right">Valor</th><th>Obs</th><th></th>
+        </tr></thead>
+        <tbody>${renderGanhoRows(lista)}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderGanhoRows(list){
+  if(!list.length) return '<tr><td colspan="5" class="empty">Nenhum ganho registrado ainda.</td></tr>';
+  return list.map(g=>`
+    <tr>
+      <td style="color:#555;white-space:nowrap;font-size:12px">${g.data||'—'}</td>
+      <td>${g.descricao||''}</td>
+      <td style="text-align:right;font-weight:500;color:#4caf50">${fmt(g.valor||0)}</td>
+      <td style="color:#555;font-size:12px">${g.obs||''}</td>
+      <td><button class="del-btn" onclick="removeGasto(${g.id})"><i class="ti ti-trash"></i></button></td>
+    </tr>
+  `).join('');
 }
 
 // ── CATEGORIA ────────────────────────────────────────────────────
