@@ -392,23 +392,57 @@ function saveCats(){ localStorage.setItem('pirati_cats', JSON.stringify(CATS)); 
 function renderCatNav(){
   const list = document.getElementById('cat-nav-list');
   if(!list) return;
-  list.innerHTML = Object.keys(CATS).map(k=>`
-    <div class="nav-item-wrap" id="nav-wrap-${k}">
-      <div class="nav-item" onclick="navigate('${k}')" id="nav-${k}">
-        ${CATS[k].icon} ${CATS[k].label}
+  const expanded = JSON.parse(localStorage.getItem('pirati_expanded')||'{}');
+  list.innerHTML = Object.keys(CATS).map(k=>{
+    const hasSubs = SUBCATS[k] && Object.keys(SUBCATS[k]).length>0;
+    const isOpen = !!expanded[k];
+    const subs = hasSubs ? Object.keys(SUBCATS[k]).map(sk=>`
+      <div style="position:relative;display:flex;align-items:center">
+        <div class="nav-item" style="padding-left:2.5rem;font-size:12px;color:#666;flex:1" onclick="navigate('${k}__${sk}')" id="nav-${k}__${sk}">
+          ↳ ${SUBCATS[k][sk].label}
+        </div>
+        <button style="background:none;border:none;color:#444;cursor:pointer;padding:4px 6px;font-size:13px" onclick="toggleSubCatMenu('subcat-menu-${k}-${sk}',event)"><i class="ti ti-dots-vertical"></i></button>
+        <div class="subcat-menu" id="subcat-menu-${k}-${sk}">
+          <div class="cat-menu-item" onclick="openEditSubCat('${k}','${sk}')"><i class="ti ti-pencil"></i> Renomear</div>
+          <div class="cat-menu-item danger" onclick="deleteSubCat('${k}','${sk}')"><i class="ti ti-trash"></i> Excluir</div>
+        </div>
       </div>
-      <button class="nav-dots" onclick="toggleCatMenu('${k}',event)" title="Opções"><i class="ti ti-dots-vertical"></i></button>
-      <div class="cat-menu" id="cat-menu-${k}">
-        <div class="cat-menu-item" onclick="openModalAddSubCat('${k}')"><i class="ti ti-plus"></i> Subcategoria</div>
-        <div class="cat-menu-item" onclick="openEditCat('${k}')"><i class="ti ti-pencil"></i> Renomear</div>
-        <div class="cat-menu-item danger" onclick="deleteCat('${k}')"><i class="ti ti-trash"></i> Excluir</div>
+    `).join('') : '';
+    return `<div>
+      <div class="nav-item-wrap" id="nav-wrap-${k}">
+        <button style="background:none;border:none;color:${hasSubs?'#555':'transparent'};cursor:pointer;padding:4px 4px 4px 8px;font-size:11px;transition:transform .2s;transform:rotate(${isOpen?90:0}deg)" id="chev-${k}" onclick="toggleExpand('${k}',event)"><i class="ti ti-chevron-right"></i></button>
+        <div class="nav-item" onclick="navigate('${k}')" id="nav-${k}" style="padding-left:2px;flex:1">
+          ${CATS[k].icon} ${CATS[k].label}
+        </div>
+        <button class="nav-dots" onclick="toggleCatMenu('${k}',event)" title="Opções"><i class="ti ti-dots-vertical"></i></button>
+        <div class="cat-menu" id="cat-menu-${k}">
+          <div class="cat-menu-item" onclick="openModalAddSubCat('${k}')"><i class="ti ti-plus"></i> Subcategoria</div>
+          <div class="cat-menu-item" onclick="openEditCat('${k}')"><i class="ti ti-pencil"></i> Renomear</div>
+          <div class="cat-menu-item danger" onclick="deleteCat('${k}')"><i class="ti ti-trash"></i> Excluir</div>
+        </div>
       </div>
-    </div>
-  `).join('');
-  // reapply active
+      <div id="subcat-list-${k}" style="overflow:hidden;max-height:${isOpen?'500px':'0'};transition:max-height .25s ease">${subs}</div>
+    </div>`;
+  }).join('');
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   const active = document.getElementById('nav-'+currentPage);
   if(active) active.classList.add('active');
+}
+
+function toggleExpand(k, e){
+  e.stopPropagation();
+  const expanded = JSON.parse(localStorage.getItem('pirati_expanded')||'{}');
+  expanded[k] = !expanded[k];
+  localStorage.setItem('pirati_expanded', JSON.stringify(expanded));
+  const list = document.getElementById('subcat-list-'+k);
+  const chev = document.getElementById('chev-'+k);
+  if(expanded[k]){
+    list.style.maxHeight='500px';
+    chev.style.transform='rotate(90deg)';
+  } else {
+    list.style.maxHeight='0';
+    chev.style.transform='rotate(0deg)';
+  }
 }
 
 function toggleExpand(k, e){
