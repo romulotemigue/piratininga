@@ -649,7 +649,7 @@ function renderGeral(){
   const total  = ativos.reduce((s,g)=>s+(g.valor||0),0);
   const pago   = gastos.filter(g=>g.status==='pago'&&g.categoria!=='ganho').reduce((s,g)=>s+(g.valor||0),0);
   const apagar = gastos.filter(g=>g.status==='apagar').reduce((s,g)=>s+(g.valor||0),0);
-  const saldo  = totalGanhos - total;
+  const saldo  = totalGanhos - pago;
   const pct    = totalGanhos>0?Math.min(100,Math.round(total/totalGanhos*100)):0;
   const barColor = pct>90?'#ef5350':pct>70?'#e8b544':'#4caf50';
 
@@ -843,14 +843,31 @@ function renderCat(cat){
       <div style="position:relative;height:160px"><canvas id="catChart"></canvas></div>
     </div>`:''}
 
-    <div class="table-card">
-      <table>
-        <thead><tr>
-          <th>Data</th><th>Descrição</th>
-          <th style="text-align:right">Valor</th><th>Status</th><th>Obs</th><th></th>
-        </tr></thead>
-        <tbody>${renderRows(lista, true)}</tbody>
-      </table>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="table-card">
+        <div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:#4caf50;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
+          <i class="ti ti-circle-check"></i> Pago
+        </div>
+        <table>
+          <thead><tr>
+            <th>Data</th><th>Descrição</th>
+            <th style="text-align:right">Valor</th><th>Obs</th><th></th>
+          </tr></thead>
+          <tbody>${renderRowsFiltered(lista,'pago')}</tbody>
+        </table>
+      </div>
+      <div class="table-card">
+        <div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:#e8b544;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
+          <i class="ti ti-clock"></i> A pagar
+        </div>
+        <table>
+          <thead><tr>
+            <th>Data</th><th>Descrição</th>
+            <th style="text-align:right">Valor</th><th>Obs</th><th></th>
+          </tr></thead>
+          <tbody>${renderRowsFiltered(lista,'apagar')}</tbody>
+        </table>
+      </div>
     </div>
   `;
 
@@ -865,6 +882,23 @@ function renderCat(cat){
                 y:{grid:{color:'#222'},ticks:{color:'#555',font:{size:10},callback:v=>fmtShort(v)}}}}
     });
   }
+}
+
+function renderRowsFiltered(list, status){
+  const filtered = list.filter(g=>g.status===status);
+  if(!filtered.length) return `<tr><td colspan="5" class="empty" style="padding:1.5rem">Nenhum item</td></tr>`;
+  return filtered.map(g=>`
+    <tr>
+      <td style="color:#555;white-space:nowrap;font-size:12px">${g.data||'—'}</td>
+      <td>${g.descricao||''}</td>
+      <td style="text-align:right;font-weight:500">${fmt(g.valor||0)}</td>
+      <td style="color:#555;font-size:12px">${g.obs||''}</td>
+      <td style="white-space:nowrap">
+        <button class="edit-btn" onclick="openEdit(${g.id})"><i class="ti ti-pencil"></i></button>
+        <button class="del-btn" onclick="removeGasto(${g.id})"><i class="ti ti-trash"></i></button>
+      </td>
+    </tr>
+  `).join('');
 }
 
 function renderRows(list, hideCat=false){
