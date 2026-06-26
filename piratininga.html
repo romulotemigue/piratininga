@@ -67,6 +67,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .badge.cancel{background:#2a1515;color:#ef5350}
 .del-btn{background:none;border:none;cursor:pointer;color:#444;font-size:14px;padding:4px 6px;border-radius:4px}
 .del-btn:hover{color:#ef5350;background:#2a1515}
+.edit-btn{background:none;border:none;cursor:pointer;color:#444;font-size:14px;padding:4px 6px;border-radius:4px}
+.edit-btn:hover{color:#e8b544;background:#2a2000}
 .empty{text-align:center;padding:2.5rem;color:#444;font-size:13px}
 .cat-total-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:1.25rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:2rem;flex-wrap:wrap}
 .cat-stat{display:flex;flex-direction:column;gap:4px}
@@ -232,6 +234,58 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-edit-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="edit-modal-title">Editar lançamento</span>
+      <button class="modal-close" onclick="closeModalEdit()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="form-group">
+      <label>Descrição</label>
+      <input type="text" id="e-desc">
+    </div>
+    <div id="e-cat-row" class="modal-row">
+      <div class="form-group">
+        <label>Categoria</label>
+        <select id="e-cat">
+          <option value="obra">Obra / Reforma</option>
+          <option value="moveis">Móveis</option>
+          <option value="eletro">Eletrodomésticos</option>
+          <option value="taxas">Taxas / Cartório</option>
+          <option value="mudanca">Mudança</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Data</label>
+        <input type="date" id="e-data">
+      </div>
+    </div>
+    <div id="e-data-row-ganho" class="form-group" style="display:none">
+      <label>Data</label>
+      <input type="date" id="e-data-ganho">
+    </div>
+    <div class="modal-row">
+      <div class="form-group">
+        <label>Valor (R$)</label>
+        <input type="number" id="e-valor" step="0.01" min="0">
+      </div>
+      <div class="form-group" id="e-status-group">
+        <label>Status</label>
+        <select id="e-status">
+          <option value="pago">Pago</option>
+          <option value="apagar">A pagar</option>
+          <option value="cancel">Cancelado</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Observação</label>
+      <input type="text" id="e-obs">
+    </div>
+    <button class="btn-confirm" id="btn-confirm-edit" onclick="saveEdit()">Salvar alterações</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -310,6 +364,79 @@ async function addGanho(){
     toast('Erro ao salvar: '+e.message,'err');
   } finally{
     btn.disabled=false; btn.textContent='Confirmar ganho';
+  }
+}
+
+// ── EDIT ─────────────────────────────────────────────────────────
+let editingId = null;
+let editingIsGanho = false;
+
+function openEdit(id){
+  const g = gastos.find(x=>x.id===id);
+  if(!g) return;
+  editingId = id;
+  editingIsGanho = g.categoria==='ganho';
+
+  document.getElementById('edit-modal-title').textContent = editingIsGanho ? 'Editar ganho' : 'Editar gasto';
+  document.getElementById('e-desc').value = g.descricao||'';
+  document.getElementById('e-valor').value = g.valor||'';
+  document.getElementById('e-obs').value = g.obs||'';
+
+  if(editingIsGanho){
+    document.getElementById('e-cat-row').style.display='none';
+    document.getElementById('e-data-row-ganho').style.display='';
+    document.getElementById('e-data-ganho').value = g.data||'';
+    document.getElementById('e-status-group').style.display='none';
+    document.getElementById('btn-confirm-edit').style.background='#4caf50';
+  } else {
+    document.getElementById('e-cat-row').style.display='';
+    document.getElementById('e-data-row-ganho').style.display='none';
+    document.getElementById('e-cat').value = g.categoria||'obra';
+    document.getElementById('e-data').value = g.data||'';
+    document.getElementById('e-status-group').style.display='';
+    document.getElementById('e-status').value = g.status||'pago';
+    document.getElementById('btn-confirm-edit').style.background='#e8b544';
+  }
+
+  document.getElementById('modal-edit-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('e-desc').focus(),100);
+}
+function closeModalEdit(){ document.getElementById('modal-edit-overlay').classList.remove('open'); editingId=null; }
+document.getElementById('modal-edit-overlay').addEventListener('click',function(e){ if(e.target===this) closeModalEdit(); });
+
+async function saveEdit(){
+  const desc = document.getElementById('e-desc').value.trim();
+  const val  = parseFloat(document.getElementById('e-valor').value);
+  const obs  = document.getElementById('e-obs').value.trim();
+  if(!desc){ alert('Preencha a descrição.'); return; }
+  if(isNaN(val)||val<=0){ alert('Preencha um valor válido.'); return; }
+
+  const btn = document.getElementById('btn-confirm-edit');
+  btn.disabled=true; btn.textContent='Salvando...';
+
+  let row = {descricao:desc, valor:val, obs};
+  if(editingIsGanho){
+    row.data = document.getElementById('e-data-ganho').value;
+  } else {
+    row.categoria = document.getElementById('e-cat').value;
+    row.data = document.getElementById('e-data').value;
+    row.status = document.getElementById('e-status').value;
+  }
+
+  try{
+    const res = await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${editingId}`,{
+      method:'PATCH',
+      headers:{...HEADERS,'Prefer':'return=representation'},
+      body:JSON.stringify(row)
+    });
+    if(!res.ok) throw new Error(await res.text());
+    closeModalEdit();
+    toast('Lançamento atualizado!');
+    await loadGastos();
+  } catch(e){
+    toast('Erro ao salvar: '+e.message,'err');
+  } finally{
+    btn.disabled=false; btn.textContent='Salvar alterações';
   }
 }
 
@@ -533,7 +660,10 @@ function renderGanhoRows(list){
       <td>${g.descricao||''}</td>
       <td style="text-align:right;font-weight:500;color:#4caf50">${fmt(g.valor||0)}</td>
       <td style="color:#555;font-size:12px">${g.obs||''}</td>
-      <td><button class="del-btn" onclick="removeGasto(${g.id})"><i class="ti ti-trash"></i></button></td>
+      <td style="white-space:nowrap">
+        <button class="edit-btn" onclick="openEdit(${g.id})"><i class="ti ti-pencil"></i></button>
+        <button class="del-btn" onclick="removeGasto(${g.id})"><i class="ti ti-trash"></i></button>
+      </td>
     </tr>
   `).join('');
 }
@@ -615,7 +745,10 @@ function renderRows(list, hideCat=false){
       <td style="text-align:right;font-weight:500">${fmt(g.valor||0)}</td>
       <td><span class="badge ${g.status}">${g.status==='pago'?'Pago':g.status==='apagar'?'A pagar':'Cancelado'}</span></td>
       <td style="color:#555;font-size:12px">${g.obs||''}</td>
-      <td><button class="del-btn" onclick="removeGasto(${g.id})"><i class="ti ti-trash"></i></button></td>
+      <td style="white-space:nowrap">
+        <button class="edit-btn" onclick="openEdit(${g.id})"><i class="ti ti-pencil"></i></button>
+        <button class="del-btn" onclick="removeGasto(${g.id})"><i class="ti ti-trash"></i></button>
+      </td>
     </tr>
   `).join('');
 }
