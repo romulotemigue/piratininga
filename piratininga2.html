@@ -1189,7 +1189,8 @@ async function addGastoSubCat(){
   const btn = document.getElementById('btn-confirm-sl');
   btn.disabled=true; btn.textContent='Salvando...';
   try{
-    const sllink = document.getElementById('sl-link').value.trim();
+    const sllinkEl = document.getElementById('sl-link');
+    const sllink = sllinkEl ? sllinkEl.value.trim() : '';
     await sbInsert({descricao:desc,categoria:launchingSubCat.catKey,subcategoria:launchingSubCat.subKey,data,valor:val,status:st,obs,orcamento:0,link:sllink});
     closeModalSubCat();
     toast('Gasto salvo!');
