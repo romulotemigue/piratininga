@@ -1334,7 +1334,8 @@ async function addGastoSubCat(){
 function renderSubCat(page){
   const [catKey, subKey] = page.split('__');
   const info = CATS[catKey];
-  const subLabel = SUBCATS[catKey]?.[subKey]?.label || '';
+  if(!info){ navigate('geral'); return; }
+  const subLabel = SUBCATS[catKey]?.[subKey]?.label || subKey;
   const lista = gastos.filter(g=>g.categoria===catKey && g.subcategoria===subKey);
   const getValSub = g => (g.valor||0) * (g.quantidade||1);
   const total = lista.filter(g=>g.status!=='cancel').reduce((s,g)=>s+getValSub(g),0);
@@ -1364,14 +1365,14 @@ function renderSubCat(page){
         <div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:#4caf50;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
           <i class="ti ti-circle-check"></i> Pago
         </div>
-        <table><thead><tr><th>Data</th><th>Descrição</th><th>Subcategoria</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
+        <table><thead><tr><th>Data</th><th>Descrição</th><th>Sub</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
         <tbody>${renderRowsFiltered(lista,'pago',cat)}</tbody></table>
       </div>
       <div class="table-card">
         <div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:#e8b544;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
           <i class="ti ti-clock"></i> A pagar
         </div>
-        <table><thead><tr><th>Data</th><th>Descrição</th><th>Subcategoria</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
+        <table><thead><tr><th>Data</th><th>Descrição</th><th>Sub</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
         <tbody>${renderRowsFiltered(lista,'apagar',cat)}</tbody></table>
       </div>
     </div>
