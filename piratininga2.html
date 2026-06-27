@@ -102,6 +102,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .subcat-menu{display:none;position:fixed;background:#222;border:1px solid #333;border-radius:7px;z-index:999;min-width:120px;padding:4px 0;box-shadow:0 4px 20px rgba(0,0,0,.8)}
 .subcat-menu.open{display:block}
 .subcat-row{position:relative;display:flex;align-items:center}
+.sortable{cursor:pointer;user-select:none;white-space:nowrap}
+.sortable:hover{color:#e8b544}
+.sort-icon{margin-left:4px;font-size:10px;opacity:.5}
+.sortable.asc .sort-icon::after{content:'▲'}
+.sortable.desc .sort-icon::after{content:'▼'}
+.sortable:not(.asc):not(.desc) .sort-icon::after{content:'⇅'}
 .qty-wrap{display:flex;align-items:center;gap:4px;white-space:nowrap}
 .qty-btn{background:#2a2a2a;border:none;color:#e8e7e2;width:22px;height:22px;border-radius:4px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;line-height:1}
 .qty-btn:hover{background:#3a3a3a}
@@ -950,6 +956,38 @@ async function changeQty(id, delta){
   } catch(e){ toast('Erro ao atualizar quantidade.','err'); }
 }
 
+// ── SORT ─────────────────────────────────────────────────────────
+let sortCol = null;
+let sortDir = 'desc';
+
+function sortBy(col){
+  if(sortCol===col){
+    sortDir = sortDir==='desc'?'asc':'desc';
+  } else {
+    sortCol = col;
+    sortDir = 'desc';
+  }
+  render();
+}
+
+function getSortedGastos(list){
+  if(!sortCol) return list;
+  return [...list].sort((a,b)=>{
+    let av, bv;
+    if(sortCol==='valor') { av=(a.valor||0)*(a.quantidade||1); bv=(b.valor||0)*(b.quantidade||1); }
+    else if(sortCol==='data') { av=a.data||''; bv=b.data||''; }
+    else if(sortCol==='descricao') { av=a.descricao||''; bv=b.descricao||''; }
+    else if(sortCol==='status') { av=a.status||''; bv=b.status||''; }
+    if(typeof av==='string') return sortDir==='asc'?av.localeCompare(bv):bv.localeCompare(av);
+    return sortDir==='asc'?av-bv:bv-av;
+  });
+}
+
+function thSort(col, label){
+  const cls = sortCol===col ? (sortDir==='asc'?'asc':'desc') : '';
+  return `<th class="sortable ${cls}" onclick="sortBy('${col}')">${label}<span class="sort-icon"></span></th>`;
+}
+
 // ── LOAD ─────────────────────────────────────────────────────────
 // Migration map: old key patterns -> new clean keys
 const KEY_MIGRATION = {
@@ -1162,10 +1200,10 @@ function renderGeral(){
     <div class="table-card">
       <table>
         <thead><tr>
-          <th>Data</th><th>Descrição</th><th>Categoria</th>
-          <th style="text-align:right">Valor</th><th>Qtd</th><th>Status</th><th>Obs</th><th>Link</th><th></th>
+          ${thSort('data','Data')}${thSort('descricao','Descrição')}<th>Categoria</th>
+          <th style="text-align:right;cursor:pointer;user-select:none" class="sortable \${sortCol==='valor'?sortDir:''}" onclick="sortBy('valor')">Valor<span class="sort-icon"></span></th><th>Qtd</th>\${thSort('status','Status')}<th>Obs</th><th>Link</th><th></th>
         </tr></thead>
-        <tbody>${renderRows(gastos.filter(g=>g.categoria!=='ganho'))}</tbody>
+        <tbody>${renderRows(getSortedGastos(gastos.filter(g=>g.categoria!=='ganho')))}</tbody>
       </table>
     </div>
   `;
@@ -1222,7 +1260,7 @@ function renderGanhos(){
     <div class="table-card">
       <table>
         <thead><tr>
-          <th>Data</th><th>Descrição</th>
+          <th>Data</th><th>Descrição</th><th>Subcategoria</th>
           <th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th>
         </tr></thead>
         <tbody>${renderGanhoRows(lista)}</tbody>
@@ -1326,15 +1364,15 @@ function renderSubCat(page){
         <div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:#4caf50;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
           <i class="ti ti-circle-check"></i> Pago
         </div>
-        <table><thead><tr><th>Data</th><th>Descrição</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
-        <tbody>${renderRowsFiltered(lista,'pago')}</tbody></table>
+        <table><thead><tr><th>Data</th><th>Descrição</th><th>Subcategoria</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
+        <tbody>${renderRowsFiltered(lista,'pago',cat)}</tbody></table>
       </div>
       <div class="table-card">
         <div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:#e8b544;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
           <i class="ti ti-clock"></i> A pagar
         </div>
-        <table><thead><tr><th>Data</th><th>Descrição</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
-        <tbody>${renderRowsFiltered(lista,'apagar')}</tbody></table>
+        <table><thead><tr><th>Data</th><th>Descrição</th><th>Subcategoria</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
+        <tbody>${renderRowsFiltered(lista,'apagar',cat)}</tbody></table>
       </div>
     </div>
   `;
@@ -1403,7 +1441,7 @@ function renderCat(cat){
             <th>Data</th><th>Descrição</th>
             <th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th>
           </tr></thead>
-          <tbody>${renderRowsFiltered(lista,'pago')}</tbody>
+          <tbody>${renderRowsFiltered(lista,'pago',cat)}</tbody>
         </table>
       </div>
       <div class="table-card">
@@ -1415,7 +1453,7 @@ function renderCat(cat){
             <th>Data</th><th>Descrição</th>
             <th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th>
           </tr></thead>
-          <tbody>${renderRowsFiltered(lista,'apagar')}</tbody>
+          <tbody>${renderRowsFiltered(lista,'apagar',cat)}</tbody>
         </table>
       </div>
     </div>
