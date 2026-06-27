@@ -8,6 +8,15 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
+.auth-screen{position:fixed;inset:0;background:#0f0f0f;z-index:9999;display:flex;align-items:center;justify-content:center}
+.auth-box{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:14px;padding:2rem;width:340px;text-align:center}
+.auth-logo{font-size:14px;font-weight:600;color:#e8e7e2;margin-bottom:4px}
+.auth-sub{font-size:12px;color:#555;margin-bottom:1.5rem}
+.auth-input{width:100%;height:42px;background:#111;border:1px solid #333;border-radius:8px;padding:0 14px;font-size:15px;color:#e8e7e2;text-align:center;letter-spacing:.1em;margin-bottom:12px}
+.auth-input:focus{outline:none;border-color:#e8b544}
+.auth-btn{width:100%;height:40px;background:#e8b544;color:#0f0f0f;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
+.auth-btn:hover{background:#d4a33e}
+.auth-error{font-size:12px;color:#ef5350;margin-top:8px;display:none}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f0f0f;color:#e8e7e2;min-height:100vh}
 .app{display:flex;height:100vh;overflow:hidden}
 .sidebar{width:200px;background:#161616;border-right:1px solid #2a2a2a;display:flex;flex-direction:column;flex-shrink:0}
@@ -143,7 +152,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </head>
 <body>
 
-<div class="app">
+<div class="auth-screen" id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">Piratininga</div>
+    <div class="auth-sub">controle de gastos</div>
+    <input class="auth-input" type="password" id="auth-input" placeholder="••••••••" onkeydown="if(event.key==='Enter') checkAuth()">
+    <button class="auth-btn" onclick="checkAuth()">Entrar</button>
+    <div class="auth-error" id="auth-error">Senha incorreta</div>
+  </div>
+</div>
+
+<div class="app" id="main-app" style="display:none">
   <div class="sidebar">
     <div class="sidebar-brand">
       <div class="name">Piratininga</div>
@@ -432,6 +451,33 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="toast" id="toast"></div>
 
 <script>
+// ── AUTH ─────────────────────────────────────────────────────────
+const AUTH_KEY = 'pirati_auth';
+const AUTH_HASH = btoa('vingou'); // base64 of password
+
+function checkAuth(){
+  const val = document.getElementById('auth-input').value;
+  if(btoa(val) === AUTH_HASH){
+    localStorage.setItem(AUTH_KEY, AUTH_HASH);
+    document.getElementById('auth-screen').style.display='none';
+    document.getElementById('main-app').style.display='flex';
+    loadGastos();
+  } else {
+    document.getElementById('auth-error').style.display='block';
+    document.getElementById('auth-input').value='';
+    document.getElementById('auth-input').focus();
+  }
+}
+
+function initAuth(){
+  if(localStorage.getItem(AUTH_KEY) === AUTH_HASH){
+    document.getElementById('auth-screen').style.display='none';
+    document.getElementById('main-app').style.display='flex';
+  } else {
+    setTimeout(()=>document.getElementById('auth-input').focus(),100);
+  }
+}
+
 // ── CONFIG SUPABASE ──────────────────────────────────────────────
 const SB_URL = 'https://jdoyzuqwmgclgicceqoc.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impkb3l6dXF3bWdjbGdpY2NlcW9jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0OTYxNTUsImV4cCI6MjA5ODA3MjE1NX0.clZnnjg404ItiG5XKCSwWE0YZeY1OU_sis7_gH7cP4g';
@@ -1387,7 +1433,8 @@ function saveOrc(v){
 document.getElementById('topbar-date').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
 document.getElementById('f-data').value = new Date().toISOString().split('T')[0];
 renderCatNav();
-loadGastos();
+initAuth();
 </script>
+</div>
 </body>
 </html>
