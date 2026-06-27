@@ -1014,8 +1014,9 @@ function navigate(page){
     render();
     return;
   }
-  const titles={geral:'Visão Geral',obra:'Obra / Reforma',moveis:'Móveis',eletro:'Eletrodomésticos',taxas:'Taxas / Cartório',mudanca:'Mudança',ganhos:'Ganhos'};
-  document.getElementById('topbar-title').textContent = titles[page];
+  const fixedTitles={geral:'Visão Geral',ganhos:'Ganhos'};
+  const title = fixedTitles[page] || (CATS[page]?.label) || page;
+  document.getElementById('topbar-title').textContent = title;
   if(barChart){barChart.destroy();barChart=null;}
   if(pieChart){pieChart.destroy();pieChart=null;}
   if(catChart){catChart.destroy();catChart=null;}
