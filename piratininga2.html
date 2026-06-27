@@ -223,6 +223,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <label>Observação (opcional)</label>
       <input type="text" id="f-obs" placeholder="Fornecedor, nota, detalhe...">
     </div>
+    <div class="form-group">
+      <label>Link (opcional)</label>
+      <input type="url" id="f-link" placeholder="https://...">
+    </div>
     <button class="btn-confirm" id="btn-confirm" onclick="addGasto()">Confirmar lançamento</button>
   </div>
 </div>
@@ -344,6 +348,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="form-group">
       <label>Observação</label>
       <input type="text" id="e-obs">
+    </div>
+    <div class="form-group">
+      <label>Link</label>
+      <input type="url" id="e-link" placeholder="https://...">
     </div>
     <button class="btn-confirm" id="btn-confirm-edit" onclick="saveEdit()">Salvar alterações</button>
   </div>
@@ -693,6 +701,7 @@ function openEdit(id){
   document.getElementById('e-desc').value = g.descricao||'';
   document.getElementById('e-valor').value = g.valor ? fmtInput(g.valor) : '';
   document.getElementById('e-obs').value = g.obs||'';
+  document.getElementById('e-link').value = g.link||'';
 
   if(editingIsGanho){
     document.getElementById('e-cat-row').style.display='none';
@@ -726,7 +735,8 @@ async function saveEdit(){
   const btn = document.getElementById('btn-confirm-edit');
   btn.disabled=true; btn.textContent='Salvando...';
 
-  let row = {descricao:desc, valor:val, obs};
+  const elink = document.getElementById('e-link').value.trim();
+  let row = {descricao:desc, valor:val, obs, link:elink};
   if(editingIsGanho){
     row.data = document.getElementById('e-data-ganho').value;
   } else {
@@ -913,11 +923,13 @@ async function addGasto(){
   btn.disabled = true; btn.textContent = 'Salvando...';
   try{
     const subcat = document.getElementById('modal-overlay').dataset.subcat||'';
-    await sbInsert({descricao:desc,categoria:cat,data,valor:val,status:st,obs,orcamento,subcategoria:subcat});
+    const link = document.getElementById('f-link').value.trim();
+    await sbInsert({descricao:desc,categoria:cat,data,valor:val,status:st,obs,orcamento,subcategoria:subcat,link});
     delete document.getElementById('modal-overlay').dataset.subcat;
     document.getElementById('f-desc').value='';
     document.getElementById('f-valor').value='';
     document.getElementById('f-obs').value='';
+    document.getElementById('f-link').value='';
     closeModal();
     toast('Gasto salvo com sucesso!');
     await loadGastos();
@@ -1043,7 +1055,7 @@ function renderGeral(){
       <table>
         <thead><tr>
           <th>Data</th><th>Descrição</th><th>Categoria</th>
-          <th style="text-align:right">Valor</th><th>Status</th><th>Obs</th><th></th>
+          <th style="text-align:right">Valor</th><th>Status</th><th>Obs</th><th></th><th></th>
         </tr></thead>
         <tbody>${renderRows(gastos.filter(g=>g.categoria!=='ganho'))}</tbody>
       </table>
@@ -1119,6 +1131,7 @@ function renderGanhoRows(list){
       <td>${g.descricao||''}</td>
       <td style="text-align:right;font-weight:500;color:#4caf50">${fmt(g.valor||0)}</td>
       <td style="color:#555;font-size:12px">${g.obs||''}</td>
+      <td style="white-space:nowrap;text-align:center">${g.link?`<a href="${g.link}" target="_blank" title="${g.link}" style="color:#2a78d6;font-size:15px"><i class="ti ti-external-link"></i></a>`:''}</td>
       <td style="white-space:nowrap">
         <button class="edit-btn" onclick="openEdit(${g.id})"><i class="ti ti-pencil"></i></button>
         <button class="del-btn" onclick="removeGasto(${g.id})"><i class="ti ti-trash"></i></button>
@@ -1156,7 +1169,8 @@ async function addGastoSubCat(){
   const btn = document.getElementById('btn-confirm-sl');
   btn.disabled=true; btn.textContent='Salvando...';
   try{
-    await sbInsert({descricao:desc,categoria:launchingSubCat.catKey,subcategoria:launchingSubCat.subKey,data,valor:val,status:st,obs,orcamento:0});
+    const sllink = document.getElementById('sl-link').value.trim();
+    await sbInsert({descricao:desc,categoria:launchingSubCat.catKey,subcategoria:launchingSubCat.subKey,data,valor:val,status:st,obs,orcamento:0,link:sllink});
     closeModalSubCat();
     toast('Gasto salvo!');
     await loadGastos();
@@ -1315,6 +1329,7 @@ function renderRowsFiltered(list, status){
       <td>${g.descricao||''}</td>
       <td style="text-align:right;font-weight:500">${fmt(g.valor||0)}</td>
       <td style="color:#555;font-size:12px">${g.obs||''}</td>
+      <td style="white-space:nowrap;text-align:center">${g.link?`<a href="${g.link}" target="_blank" title="${g.link}" style="color:#2a78d6;font-size:15px"><i class="ti ti-external-link"></i></a>`:''}</td>
       <td style="white-space:nowrap">
         <button class="edit-btn" onclick="openEdit(${g.id})"><i class="ti ti-pencil"></i></button>
         <button class="del-btn" onclick="removeGasto(${g.id})"><i class="ti ti-trash"></i></button>
@@ -1333,6 +1348,7 @@ function renderRows(list, hideCat=false){
       <td style="text-align:right;font-weight:500">${fmt(g.valor||0)}</td>
       <td><span class="badge ${g.status}">${g.status==='pago'?'Pago':g.status==='apagar'?'A pagar':'Cancelado'}</span></td>
       <td style="color:#555;font-size:12px">${g.obs||''}</td>
+      <td style="white-space:nowrap;text-align:center">${g.link?`<a href="${g.link}" target="_blank" title="${g.link}" style="color:#2a78d6;font-size:15px"><i class="ti ti-external-link"></i></a>`:''}</td>
       <td style="white-space:nowrap">
         <button class="edit-btn" onclick="openEdit(${g.id})"><i class="ti ti-pencil"></i></button>
         <button class="del-btn" onclick="removeGasto(${g.id})"><i class="ti ti-trash"></i></button>
