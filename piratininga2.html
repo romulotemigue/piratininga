@@ -791,34 +791,21 @@ function saveSubCats(){ localStorage.setItem('pirati_subcats', JSON.stringify(SU
 
 // Ensure subcats match migrated keys
 function ensureSubCats(){
-  // Remove old timestamp-based keys and replace with clean ones
-  const cleanMap = {
-    'moveis': {
-      'sala_1782515049650': {newKey:'sala', label:'Sala'},
-      'quarto_1782518836829': {newKey:'quarto', label:'Quarto'},
-      'escritrio_1782526606461': {newKey:'escritorio', label:'Escritório'},
+  // Completely rebuild SUBCATS from scratch with clean keys
+  SUBCATS = {
+    moveis: {
+      sala: {label:'Sala'},
+      quarto: {label:'Quarto'},
+      escritorio: {label:'Escritório'},
+      cozinha: {label:'Cozinha'},
     },
-    'iluminacao': {
-      'cozinha_1782521235409': {newKey:'cozinha-e-sala', label:'Cozinha e Sala'},
-      'cozinha-e-sala_1782564826928': {newKey:'cozinha-e-sala', label:'Cozinha e Sala'},
+    iluminacao: {
+      'cozinha-e-sala': {label:'Cozinha e Sala'},
     },
-    'revestimentos': {
-      'salacozinhacorredordispensa_1782529558': {newKey:'sala-cozinha-corredor-dispensa', label:'Sala/Cozinha/Corredor/Dispensa'},
-      'salacozinhacorredordispensa_17825295580': {newKey:'sala-cozinha-corredor-dispensa', label:'Sala/Cozinha/Corredor/Dispensa'},
+    revestimentos: {
+      'sala-cozinha-corredor-dispensa': {label:'Sala/Cozinha/Corredor/Dispensa'},
     }
   };
-
-  // For each cat, remove old keys and ensure clean keys exist
-  Object.keys(cleanMap).forEach(cat=>{
-    if(!SUBCATS[cat]) SUBCATS[cat]={};
-    Object.keys(cleanMap[cat]).forEach(oldKey=>{
-      const {newKey, label} = cleanMap[cat][oldKey];
-      if(SUBCATS[cat][oldKey]){
-        delete SUBCATS[cat][oldKey]; // remove old
-      }
-      SUBCATS[cat][newKey] = {label}; // ensure clean key
-    });
-  });
   saveSubCats();
 }
 
@@ -1070,8 +1057,7 @@ function navigate(page){
     if(barChart){barChart.destroy();barChart=null;}
     if(pieChart){pieChart.destroy();pieChart=null;}
     if(catChart){catChart.destroy();catChart=null;}
-    document.getElementById('content').innerHTML='<div class="loading">Carregando...</div>';
-    setTimeout(()=>render(), 50);
+    render();
     return;
   }
   const fixedTitles={geral:'Visão Geral',ganhos:'Ganhos'};
@@ -1080,8 +1066,7 @@ function navigate(page){
   if(barChart){barChart.destroy();barChart=null;}
   if(pieChart){pieChart.destroy();pieChart=null;}
   if(catChart){catChart.destroy();catChart=null;}
-  document.getElementById('content').innerHTML='<div class="loading">Carregando...</div>';
-  setTimeout(()=>render(), 50);
+  render();
 }
 
 function render(){
