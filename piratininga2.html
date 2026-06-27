@@ -789,6 +789,22 @@ async function saveEdit(){
 let SUBCATS = JSON.parse(localStorage.getItem('pirati_subcats') || '{}');
 function saveSubCats(){ localStorage.setItem('pirati_subcats', JSON.stringify(SUBCATS)); }
 
+// Ensure subcats match migrated keys
+function ensureSubCats(){
+  // Móveis subcats
+  if(!SUBCATS['moveis']) SUBCATS['moveis']={};
+  if(!SUBCATS['moveis']['sala']) SUBCATS['moveis']['sala']={label:'Sala'};
+  if(!SUBCATS['moveis']['quarto']) SUBCATS['moveis']['quarto']={label:'Quarto'};
+  if(!SUBCATS['moveis']['escritorio']) SUBCATS['moveis']['escritorio']={label:'Escritório'};
+  // Iluminação subcats
+  if(!SUBCATS['iluminacao']) SUBCATS['iluminacao']={};
+  if(!SUBCATS['iluminacao']['cozinha-e-sala']) SUBCATS['iluminacao']['cozinha-e-sala']={label:'Cozinha e Sala'};
+  // Revestimentos subcats
+  if(!SUBCATS['revestimentos']) SUBCATS['revestimentos']={};
+  if(!SUBCATS['revestimentos']['sala-cozinha-corredor-dispensa']) SUBCATS['revestimentos']['sala-cozinha-corredor-dispensa']={label:'Sala/Cozinha/Corredor/Dispensa'};
+  saveSubCats();
+}
+
 let addingSubCatFor = null;
 let editingSubCat = {catKey:null, subKey:null};
 
@@ -805,7 +821,7 @@ document.getElementById('modal-add-subcat-overlay').addEventListener('click',fun
 function addSubCat(){
   const nome = document.getElementById('nsc-nome').value.trim();
   if(!nome){ alert('Preencha o nome.'); return; }
-  const key = nome.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'')+'_'+Date.now();
+  const key = nome.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');
   if(!SUBCATS[addingSubCatFor]) SUBCATS[addingSubCatFor] = {};
   SUBCATS[addingSubCatFor][key] = {label:nome};
   saveSubCats();
@@ -923,9 +939,35 @@ async function changeQty(id, delta){
 }
 
 // ── LOAD ─────────────────────────────────────────────────────────
+// Migration map: old key patterns -> new clean keys
+const KEY_MIGRATION = {
+  'cozinha_1782521235409': 'cozinha-e-sala',
+  'cozinha-e-sala_1782564826928': 'cozinha-e-sala',
+  'sala_1782515049650': 'sala',
+  'quarto_1782518836829': 'quarto',
+  'escritrio_1782526606461': 'escritorio',
+  'salacozinhacorredordispensa_1782529558': 'sala-cozinha-corredor-dispensa',
+};
+
+async function migrateSubcats(gastosList){
+  const toMigrate = gastosList.filter(g=>g.subcategoria && KEY_MIGRATION[g.subcategoria]);
+  for(const g of toMigrate){
+    const newKey = KEY_MIGRATION[g.subcategoria];
+    try{
+      await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${g.id}`,{
+        method:'PATCH',
+        headers:{...HEADERS},
+        body:JSON.stringify({subcategoria:newKey})
+      });
+      g.subcategoria = newKey;
+    }catch(e){ console.warn('Migration failed for',g.id,e); }
+  }
+}
+
 async function loadGastos(){
   try{
     gastos = await sbFetch();
+    await migrateSubcats(gastos);
     renderCatNav();
     render();
   } catch(e){
@@ -1425,6 +1467,7 @@ function saveOrc(v){
 // ── INIT ─────────────────────────────────────────────────────────
 document.getElementById('topbar-date').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
 document.getElementById('f-data').value = new Date().toISOString().split('T')[0];
+ensureSubCats();
 renderCatNav();
 loadGastos();
 </script>
