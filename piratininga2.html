@@ -19,7 +19,9 @@
 .auth-error{font-size:12px;color:#ef5350;margin-top:8px;display:none}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f0f0f;color:#e8e7e2;min-height:100vh}
 .app{display:flex;height:100vh;overflow:hidden}
-.sidebar{width:200px;background:#161616;border-right:1px solid #2a2a2a;display:flex;flex-direction:column;flex-shrink:0}
+.sidebar{width:200px;min-width:160px;max-width:400px;background:#161616;border-right:1px solid #2a2a2a;display:flex;flex-direction:column;flex-shrink:0;position:relative}
+.sidebar-resizer{width:4px;background:transparent;cursor:col-resize;position:absolute;right:-2px;top:0;bottom:0;z-index:10;transition:background .15s}
+.sidebar-resizer:hover,.sidebar-resizer.dragging{background:#e8b544}
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
 .topbar{height:48px;background:#161616;border-bottom:1px solid #2a2a2a;display:flex;align-items:center;padding:0 1.25rem;gap:1rem;flex-shrink:0}
 .content{flex:1;overflow-y:auto;padding:1.5rem}
@@ -158,6 +160,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <div class="app" id="main-app">
   <div class="sidebar">
+    <div class="sidebar-resizer" id="sidebar-resizer"></div>
     <div class="sidebar-brand">
       <div class="name">Piratininga</div>
       <div class="sub">controle de gastos</div>
@@ -791,21 +794,26 @@ function saveSubCats(){ localStorage.setItem('pirati_subcats', JSON.stringify(SU
 
 // Ensure subcats match migrated keys
 function ensureSubCats(){
-  // Completely rebuild SUBCATS from scratch with clean keys
-  SUBCATS = {
-    moveis: {
-      sala: {label:'Sala'},
-      quarto: {label:'Quarto'},
-      escritorio: {label:'Escritório'},
-      cozinha: {label:'Cozinha'},
-    },
-    iluminacao: {
-      'cozinha-e-sala': {label:'Cozinha e Sala'},
-    },
-    revestimentos: {
-      'sala-cozinha-corredor-dispensa': {label:'Sala/Cozinha/Corredor/Dispensa'},
-    }
+  // Remove duplicate old-style keys (with timestamps or long names)
+  Object.keys(SUBCATS).forEach(cat=>{
+    Object.keys(SUBCATS[cat]||{}).forEach(key=>{
+      if(key.match(/_\d{13}$/) || key.length > 40){
+        delete SUBCATS[cat][key];
+      }
+    });
+  });
+  // Ensure known subcats exist
+  const needed = {
+    moveis: [{key:'sala',label:'Sala'},{key:'quarto',label:'Quarto'},{key:'escritorio',label:'Escritório'},{key:'cozinha',label:'Cozinha'}],
+    iluminacao: [{key:'cozinha-e-sala',label:'Cozinha e Sala'}],
+    revestimentos: [{key:'sala-cozinha-corredor-dispensa',label:'Sala/Cozinha/Corredor/Dispensa'}],
   };
+  Object.keys(needed).forEach(cat=>{
+    if(!SUBCATS[cat]) SUBCATS[cat]={};
+    needed[cat].forEach(({key,label})=>{
+      if(!SUBCATS[cat][key]) SUBCATS[cat][key]={label};
+    });
+  });
   saveSubCats();
 }
 
@@ -1070,6 +1078,9 @@ function navigate(page){
 }
 
 function render(){
+  // Always destroy charts before rendering
+  [barChart, pieChart, catChart].forEach(c=>{ try{ if(c) c.destroy(); }catch(e){} });
+  barChart=null; pieChart=null; catChart=null;
   if(currentPage==='geral') renderGeral();
   else if(currentPage==='ganhos') renderGanhos();
   else if(currentPage.includes('__')) renderSubCat(currentPage);
@@ -1340,6 +1351,7 @@ function openModalWithSubCat(catKey, subKey){
 // ── CATEGORIA ────────────────────────────────────────────────────
 function renderCat(cat){
   const info   = CATS[cat];
+  if(!info){ navigate('geral'); return; }
   const lista  = gastos.filter(g=>g.categoria===cat);
   const ativos = lista.filter(g=>g.status!=='cancel');
   const total  = ativos.reduce((s,g)=>s+getVal(g),0);
@@ -1465,6 +1477,33 @@ function saveOrc(v){
   orcamento = parseFloat(v)||0;
   localStorage.setItem('pirati_orc', orcamento);
 }
+
+// ── SIDEBAR RESIZE ───────────────────────────────────────────────
+(function(){
+  const resizer = document.getElementById('sidebar-resizer');
+  const sidebar = resizer.parentElement;
+  let startX, startW;
+  resizer.addEventListener('mousedown', e=>{
+    startX = e.clientX;
+    startW = sidebar.offsetWidth;
+    resizer.classList.add('dragging');
+    document.body.style.cursor='col-resize';
+    document.body.style.userSelect='none';
+    function onMove(e){
+      const newW = Math.min(400, Math.max(160, startW + e.clientX - startX));
+      sidebar.style.width = newW+'px';
+    }
+    function onUp(){
+      resizer.classList.remove('dragging');
+      document.body.style.cursor='';
+      document.body.style.userSelect='';
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+})();
 
 // ── INIT ─────────────────────────────────────────────────────────
 document.getElementById('topbar-date').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
