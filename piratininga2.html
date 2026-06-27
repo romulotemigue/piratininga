@@ -1354,9 +1354,10 @@ function renderCat(cat){
   if(!info){ navigate('geral'); return; }
   const lista  = gastos.filter(g=>g.categoria===cat);
   const ativos = lista.filter(g=>g.status!=='cancel');
-  const total  = ativos.reduce((s,g)=>s+getVal(g),0);
-  const pago   = lista.filter(g=>g.status==='pago').reduce((s,g)=>s+(g.valor||0),0);
-  const apagar = lista.filter(g=>g.status==='apagar').reduce((s,g)=>s+(g.valor||0),0);
+  const getValCat = g => (g.valor||0) * (g.quantidade||1);
+  const total  = ativos.reduce((s,g)=>s+getValCat(g),0);
+  const pago   = lista.filter(g=>g.status==='pago').reduce((s,g)=>s+getValCat(g),0);
+  const apagar = lista.filter(g=>g.status==='apagar').reduce((s,g)=>s+getValCat(g),0);
 
   const byMonth={};
   ativos.forEach(g=>{const m=g.data?g.data.slice(0,7):'s/d';byMonth[m]=(byMonth[m]||0)+(g.valor||0);});
