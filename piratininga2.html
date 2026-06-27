@@ -156,17 +156,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </head>
 <body>
 
-<div class="auth-screen" id="auth-screen">
-  <div class="auth-box">
-    <div class="auth-logo">Piratininga</div>
-    <div class="auth-sub">controle de gastos</div>
-    <input class="auth-input" type="password" id="auth-input" placeholder="••••••••" onkeydown="if(event.key==='Enter') checkAuth()">
-    <button class="auth-btn" onclick="checkAuth()">Entrar</button>
-    <div class="auth-error" id="auth-error">Senha incorreta</div>
-  </div>
-</div>
-
-<div class="app" id="main-app" style="display:none">
+<div class="app" id="main-app">
   <div class="sidebar">
     <div class="sidebar-brand">
       <div class="name">Piratininga</div>
@@ -455,33 +445,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="toast" id="toast"></div>
 
 <script>
-// ── AUTH ─────────────────────────────────────────────────────────
-const AUTH_KEY = 'pirati_auth';
-const AUTH_HASH = btoa('binbin'); // base64 of password
-
-function checkAuth(){
-  const val = document.getElementById('auth-input').value;
-  if(btoa(val) === AUTH_HASH){
-    localStorage.setItem(AUTH_KEY, AUTH_HASH);
-    document.getElementById('auth-screen').style.display='none';
-    document.getElementById('main-app').style.display='flex';
-    loadGastos();
-  } else {
-    document.getElementById('auth-error').style.display='block';
-    document.getElementById('auth-input').value='';
-    document.getElementById('auth-input').focus();
-  }
-}
-
-function initAuth(){
-  if(localStorage.getItem(AUTH_KEY) === AUTH_HASH){
-    document.getElementById('auth-screen').style.display='none';
-    document.getElementById('main-app').style.display='flex';
-  } else {
-    setTimeout(()=>document.getElementById('auth-input').focus(),100);
-  }
-}
-
 // ── CONFIG SUPABASE ──────────────────────────────────────────────
 const SB_URL = 'https://jdoyzuqwmgclgicceqoc.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impkb3l6dXF3bWdjbGdpY2NlcW9jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0OTYxNTUsImV4cCI6MjA5ODA3MjE1NX0.clZnnjg404ItiG5XKCSwWE0YZeY1OU_sis7_gH7cP4g';
@@ -1457,7 +1420,7 @@ function saveOrc(v){
 document.getElementById('topbar-date').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
 document.getElementById('f-data').value = new Date().toISOString().split('T')[0];
 renderCatNav();
-initAuth();
+loadGastos();
 </script>
 </div>
 </body>
