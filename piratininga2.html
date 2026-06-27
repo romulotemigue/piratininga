@@ -1033,10 +1033,11 @@ function render(){
 function renderGeral(){
   const ganhos  = gastos.filter(g=>g.categoria==='ganho');
   const totalGanhos = ganhos.reduce((s,g)=>s+(g.valor||0),0);
+  const getVal = g => (g.valor||0) * (g.quantidade||1);
   const ativos = gastos.filter(g=>g.status==='pago'&&g.categoria!=='ganho');
-  const total  = ativos.reduce((s,g)=>s+(g.valor||0),0);
-  const pago   = gastos.filter(g=>g.status==='pago'&&g.categoria!=='ganho').reduce((s,g)=>s+(g.valor||0),0);
-  const apagar = gastos.filter(g=>g.status==='apagar').reduce((s,g)=>s+(g.valor||0),0);
+  const total  = ativos.reduce((s,g)=>s+getVal(g),0);
+  const pago   = gastos.filter(g=>g.status==='pago'&&g.categoria!=='ganho').reduce((s,g)=>s+getVal(g),0);
+  const apagar = gastos.filter(g=>g.status==='apagar').reduce((s,g)=>s+getVal(g),0);
   const saldo  = totalGanhos - pago;
   const pct    = totalGanhos>0?Math.min(100,Math.round(total/totalGanhos*100)):0;
   const barColor = pct>90?'#ef5350':pct>70?'#e8b544':'#4caf50';
@@ -1179,6 +1180,7 @@ function renderGanhoRows(list){
       <td style="color:#555;white-space:nowrap;font-size:12px">${g.data||'—'}</td>
       <td>${g.descricao||''}</td>
       <td style="text-align:right;font-weight:500;color:#4caf50">${fmt(g.valor||0)}</td>
+      <td style="text-align:right;font-weight:500">${fmt((g.valor||0)*(g.quantidade||1))}</td>
       <td><div class="qty-wrap"><button class="qty-btn" onclick="changeQty(${g.id},-1)">−</button><span class="qty-val">${g.quantidade||1}</span><button class="qty-btn" onclick="changeQty(${g.id},1)">+</button></div></td>
       <td style="color:#555;font-size:12px">${g.obs||''}</td>
       <td style="white-space:nowrap;text-align:center">${g.link?`<a href="${g.link}" target="_blank" title="${g.link}" style="color:#2a78d6;font-size:15px"><i class="ti ti-external-link"></i></a>`:''}</td>
@@ -1238,9 +1240,10 @@ function renderSubCat(page){
   const info = CATS[catKey];
   const subLabel = SUBCATS[catKey]?.[subKey]?.label || '';
   const lista = gastos.filter(g=>g.categoria===catKey && g.subcategoria===subKey);
-  const total = lista.filter(g=>g.status!=='cancel').reduce((s,g)=>s+(g.valor||0),0);
-  const pago  = lista.filter(g=>g.status==='pago').reduce((s,g)=>s+(g.valor||0),0);
-  const apagar= lista.filter(g=>g.status==='apagar').reduce((s,g)=>s+(g.valor||0),0);
+  const getValSub = g => (g.valor||0) * (g.quantidade||1);
+  const total = lista.filter(g=>g.status!=='cancel').reduce((s,g)=>s+getValSub(g),0);
+  const pago  = lista.filter(g=>g.status==='pago').reduce((s,g)=>s+getValSub(g),0);
+  const apagar= lista.filter(g=>g.status==='apagar').reduce((s,g)=>s+getValSub(g),0);
 
   document.getElementById('content').innerHTML = `
     <div class="cat-total-card" style="border-left:3px solid ${info.color}">
@@ -1292,7 +1295,7 @@ function renderCat(cat){
   const info   = CATS[cat];
   const lista  = gastos.filter(g=>g.categoria===cat);
   const ativos = lista.filter(g=>g.status!=='cancel');
-  const total  = ativos.reduce((s,g)=>s+(g.valor||0),0);
+  const total  = ativos.reduce((s,g)=>s+getVal(g),0);
   const pago   = lista.filter(g=>g.status==='pago').reduce((s,g)=>s+(g.valor||0),0);
   const apagar = lista.filter(g=>g.status==='apagar').reduce((s,g)=>s+(g.valor||0),0);
 
@@ -1378,7 +1381,8 @@ function renderRowsFiltered(list, status){
     <tr>
       <td style="color:#555;white-space:nowrap;font-size:12px">${g.data||'—'}</td>
       <td>${g.descricao||''}</td>
-      <td style="text-align:right;font-weight:500">${fmt(g.valor||0)}</td>
+      <td style="text-align:right;font-weight:500">${fmt((g.valor||0)*(g.quantidade||1))}</td>
+      <td style="text-align:right;font-weight:500">${fmt((g.valor||0)*(g.quantidade||1))}</td>
       <td><div class="qty-wrap"><button class="qty-btn" onclick="changeQty(${g.id},-1)">−</button><span class="qty-val">${g.quantidade||1}</span><button class="qty-btn" onclick="changeQty(${g.id},1)">+</button></div></td>
       <td style="color:#555;font-size:12px">${g.obs||''}</td>
       <td style="white-space:nowrap;text-align:center">${g.link?`<a href="${g.link}" target="_blank" title="${g.link}" style="color:#2a78d6;font-size:15px"><i class="ti ti-external-link"></i></a>`:''}</td>
@@ -1397,9 +1401,10 @@ function renderRows(list, hideCat=false){
       <td style="color:#555;white-space:nowrap;font-size:12px">${g.data||'—'}</td>
       <td>${g.descricao||''}</td>
       ${hideCat?'':'<td style="color:#555;font-size:12px">'+(CATS[g.categoria]?.label||g.categoria)+'</td>'}
-      <td style="text-align:right;font-weight:500">${fmt(g.valor||0)}</td>
+      <td style="text-align:right;font-weight:500">${fmt((g.valor||0)*(g.quantidade||1))}</td>
       <td><div class="qty-wrap"><button class="qty-btn" onclick="changeQty(${g.id},-1)">−</button><span class="qty-val">${g.quantidade||1}</span><button class="qty-btn" onclick="changeQty(${g.id},1)">+</button></div></td>
       <td><span class="badge ${g.status}">${g.status==='pago'?'Pago':g.status==='apagar'?'A pagar':'Cancelado'}</span></td>
+      <td style="text-align:right;font-weight:500">${fmt((g.valor||0)*(g.quantidade||1))}</td>
       <td><div class="qty-wrap"><button class="qty-btn" onclick="changeQty(${g.id},-1)">−</button><span class="qty-val">${g.quantidade||1}</span><button class="qty-btn" onclick="changeQty(${g.id},1)">+</button></div></td>
       <td style="color:#555;font-size:12px">${g.obs||''}</td>
       <td style="white-space:nowrap;text-align:center">${g.link?`<a href="${g.link}" target="_blank" title="${g.link}" style="color:#2a78d6;font-size:15px"><i class="ti ti-external-link"></i></a>`:''}</td>
