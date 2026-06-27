@@ -100,6 +100,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .subcat-menu{display:none;position:fixed;background:#222;border:1px solid #333;border-radius:7px;z-index:999;min-width:120px;padding:4px 0;box-shadow:0 4px 20px rgba(0,0,0,.8)}
 .subcat-menu.open{display:block}
 .subcat-row{position:relative;display:flex;align-items:center}
+.qty-wrap{display:flex;align-items:center;gap:4px;white-space:nowrap}
+.qty-btn{background:#2a2a2a;border:none;color:#e8e7e2;width:22px;height:22px;border-radius:4px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;line-height:1}
+.qty-btn:hover{background:#3a3a3a}
+.qty-val{font-size:12px;color:#e8e7e2;min-width:20px;text-align:center;font-weight:500}
 .nav-drag{cursor:grab;color:#333;padding:4px 2px 4px 6px;font-size:13px;flex-shrink:0}
 .nav-drag:active{cursor:grabbing}
 .nav-cat-wrap{transition:opacity .15s}
@@ -725,7 +729,7 @@ async function addGanho(){
   const btn = document.getElementById('btn-confirm-ganho');
   btn.disabled = true; btn.textContent = 'Salvando...';
   try{
-    await sbInsert({descricao:desc,categoria:'ganho',data,valor:val,status:'pago',obs,orcamento:0});
+    await sbInsert({descricao:desc,categoria:'ganho',data,valor:val,status:'pago',obs,orcamento:0,quantidade:1});
     document.getElementById('g-desc').value='';
     document.getElementById('g-valor').value='';
     document.getElementById('g-obs').value='';
@@ -939,6 +943,22 @@ function dragEnd(e){
   });
 }
 
+// ── QUANTIDADE ───────────────────────────────────────────────────
+async function changeQty(id, delta){
+  const g = gastos.find(x=>x.id===id);
+  if(!g) return;
+  const newQty = Math.max(1, (g.quantidade||1) + delta);
+  try{
+    await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${id}`,{
+      method:'PATCH',
+      headers:{...HEADERS,'Prefer':'return=representation'},
+      body:JSON.stringify({quantidade:newQty})
+    });
+    g.quantidade = newQty;
+    render();
+  } catch(e){ toast('Erro ao atualizar quantidade.','err'); }
+}
+
 // ── LOAD ─────────────────────────────────────────────────────────
 async function loadGastos(){
   try{
@@ -990,7 +1010,7 @@ async function addGasto(){
   try{
     const subcat = document.getElementById('modal-overlay').dataset.subcat||'';
     const link = document.getElementById('f-link').value.trim();
-    await sbInsert({descricao:desc,categoria:cat,data,valor:val,status:st,obs,orcamento,subcategoria:subcat,link});
+    await sbInsert({descricao:desc,categoria:cat,data,valor:val,status:st,obs,orcamento,subcategoria:subcat,link,quantidade:1});
     delete document.getElementById('modal-overlay').dataset.subcat;
     document.getElementById('f-desc').value='';
     document.getElementById('f-valor').value='';
@@ -1121,7 +1141,7 @@ function renderGeral(){
       <table>
         <thead><tr>
           <th>Data</th><th>Descrição</th><th>Categoria</th>
-          <th style="text-align:right">Valor</th><th>Status</th><th>Obs</th><th>Link</th><th></th>
+          <th style="text-align:right">Valor</th><th>Qtd</th><th>Status</th><th>Obs</th><th>Link</th><th></th>
         </tr></thead>
         <tbody>${renderRows(gastos.filter(g=>g.categoria!=='ganho'))}</tbody>
       </table>
@@ -1181,7 +1201,7 @@ function renderGanhos(){
       <table>
         <thead><tr>
           <th>Data</th><th>Descrição</th>
-          <th style="text-align:right">Valor</th><th>Obs</th><th>Link</th><th></th>
+          <th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th>
         </tr></thead>
         <tbody>${renderGanhoRows(lista)}</tbody>
       </table>
@@ -1196,6 +1216,7 @@ function renderGanhoRows(list){
       <td style="color:#555;white-space:nowrap;font-size:12px">${g.data||'—'}</td>
       <td>${g.descricao||''}</td>
       <td style="text-align:right;font-weight:500;color:#4caf50">${fmt(g.valor||0)}</td>
+      <td><div class="qty-wrap"><button class="qty-btn" onclick="changeQty(${g.id},-1)">−</button><span class="qty-val">${g.quantidade||1}</span><button class="qty-btn" onclick="changeQty(${g.id},1)">+</button></div></td>
       <td style="color:#555;font-size:12px">${g.obs||''}</td>
       <td style="white-space:nowrap;text-align:center">${g.link?`<a href="${g.link}" target="_blank" title="${g.link}" style="color:#2a78d6;font-size:15px"><i class="ti ti-external-link"></i></a>`:''}</td>
       <td style="white-space:nowrap">
@@ -1237,7 +1258,7 @@ async function addGastoSubCat(){
   try{
     const sllinkEl = document.getElementById('sl-link');
     const sllink = sllinkEl ? sllinkEl.value.trim() : '';
-    await sbInsert({descricao:desc,categoria:launchingSubCat.catKey,subcategoria:launchingSubCat.subKey,data,valor:val,status:st,obs,orcamento:0,link:sllink});
+    await sbInsert({descricao:desc,categoria:launchingSubCat.catKey,subcategoria:launchingSubCat.subKey,data,valor:val,status:st,obs,orcamento:0,link:sllink,quantidade:1});
     closeModalSubCat();
     toast('Gasto salvo!');
     await loadGastos();
@@ -1281,14 +1302,14 @@ function renderSubCat(page){
         <div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:#4caf50;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
           <i class="ti ti-circle-check"></i> Pago
         </div>
-        <table><thead><tr><th>Data</th><th>Descrição</th><th style="text-align:right">Valor</th><th>Obs</th><th>Link</th><th></th></tr></thead>
+        <table><thead><tr><th>Data</th><th>Descrição</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
         <tbody>${renderRowsFiltered(lista,'pago')}</tbody></table>
       </div>
       <div class="table-card">
         <div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:#e8b544;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
           <i class="ti ti-clock"></i> A pagar
         </div>
-        <table><thead><tr><th>Data</th><th>Descrição</th><th style="text-align:right">Valor</th><th>Obs</th><th>Link</th><th></th></tr></thead>
+        <table><thead><tr><th>Data</th><th>Descrição</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
         <tbody>${renderRowsFiltered(lista,'apagar')}</tbody></table>
       </div>
     </div>
@@ -1354,7 +1375,7 @@ function renderCat(cat){
         <table>
           <thead><tr>
             <th>Data</th><th>Descrição</th>
-            <th style="text-align:right">Valor</th><th>Obs</th><th>Link</th><th></th>
+            <th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th>
           </tr></thead>
           <tbody>${renderRowsFiltered(lista,'pago')}</tbody>
         </table>
@@ -1366,7 +1387,7 @@ function renderCat(cat){
         <table>
           <thead><tr>
             <th>Data</th><th>Descrição</th>
-            <th style="text-align:right">Valor</th><th>Obs</th><th>Link</th><th></th>
+            <th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th>
           </tr></thead>
           <tbody>${renderRowsFiltered(lista,'apagar')}</tbody>
         </table>
@@ -1395,6 +1416,7 @@ function renderRowsFiltered(list, status){
       <td style="color:#555;white-space:nowrap;font-size:12px">${g.data||'—'}</td>
       <td>${g.descricao||''}</td>
       <td style="text-align:right;font-weight:500">${fmt(g.valor||0)}</td>
+      <td><div class="qty-wrap"><button class="qty-btn" onclick="changeQty(${g.id},-1)">−</button><span class="qty-val">${g.quantidade||1}</span><button class="qty-btn" onclick="changeQty(${g.id},1)">+</button></div></td>
       <td style="color:#555;font-size:12px">${g.obs||''}</td>
       <td style="white-space:nowrap;text-align:center">${g.link?`<a href="${g.link}" target="_blank" title="${g.link}" style="color:#2a78d6;font-size:15px"><i class="ti ti-external-link"></i></a>`:''}</td>
       <td style="white-space:nowrap">
@@ -1413,7 +1435,9 @@ function renderRows(list, hideCat=false){
       <td>${g.descricao||''}</td>
       ${hideCat?'':'<td style="color:#555;font-size:12px">'+(CATS[g.categoria]?.label||g.categoria)+'</td>'}
       <td style="text-align:right;font-weight:500">${fmt(g.valor||0)}</td>
+      <td><div class="qty-wrap"><button class="qty-btn" onclick="changeQty(${g.id},-1)">−</button><span class="qty-val">${g.quantidade||1}</span><button class="qty-btn" onclick="changeQty(${g.id},1)">+</button></div></td>
       <td><span class="badge ${g.status}">${g.status==='pago'?'Pago':g.status==='apagar'?'A pagar':'Cancelado'}</span></td>
+      <td><div class="qty-wrap"><button class="qty-btn" onclick="changeQty(${g.id},-1)">−</button><span class="qty-val">${g.quantidade||1}</span><button class="qty-btn" onclick="changeQty(${g.id},1)">+</button></div></td>
       <td style="color:#555;font-size:12px">${g.obs||''}</td>
       <td style="white-space:nowrap;text-align:center">${g.link?`<a href="${g.link}" target="_blank" title="${g.link}" style="color:#2a78d6;font-size:15px"><i class="ti ti-external-link"></i></a>`:''}</td>
       <td style="white-space:nowrap">
