@@ -1074,7 +1074,7 @@ function renderGeral(){
       <table>
         <thead><tr>
           <th>Data</th><th>Descrição</th><th>Categoria</th>
-          <th style="text-align:right">Valor</th><th>Status</th><th>Obs</th><th></th><th></th>
+          <th style="text-align:right">Valor</th><th>Status</th><th>Obs</th><th>Link</th><th></th>
         </tr></thead>
         <tbody>${renderRows(gastos.filter(g=>g.categoria!=='ganho'))}</tbody>
       </table>
@@ -1134,7 +1134,7 @@ function renderGanhos(){
       <table>
         <thead><tr>
           <th>Data</th><th>Descrição</th>
-          <th style="text-align:right">Valor</th><th>Obs</th><th></th>
+          <th style="text-align:right">Valor</th><th>Obs</th><th>Link</th><th></th>
         </tr></thead>
         <tbody>${renderGanhoRows(lista)}</tbody>
       </table>
@@ -1233,14 +1233,14 @@ function renderSubCat(page){
         <div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:#4caf50;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
           <i class="ti ti-circle-check"></i> Pago
         </div>
-        <table><thead><tr><th>Data</th><th>Descrição</th><th style="text-align:right">Valor</th><th>Obs</th><th></th></tr></thead>
+        <table><thead><tr><th>Data</th><th>Descrição</th><th style="text-align:right">Valor</th><th>Obs</th><th>Link</th><th></th></tr></thead>
         <tbody>${renderRowsFiltered(lista,'pago')}</tbody></table>
       </div>
       <div class="table-card">
         <div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:#e8b544;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
           <i class="ti ti-clock"></i> A pagar
         </div>
-        <table><thead><tr><th>Data</th><th>Descrição</th><th style="text-align:right">Valor</th><th>Obs</th><th></th></tr></thead>
+        <table><thead><tr><th>Data</th><th>Descrição</th><th style="text-align:right">Valor</th><th>Obs</th><th>Link</th><th></th></tr></thead>
         <tbody>${renderRowsFiltered(lista,'apagar')}</tbody></table>
       </div>
     </div>
@@ -1306,7 +1306,7 @@ function renderCat(cat){
         <table>
           <thead><tr>
             <th>Data</th><th>Descrição</th>
-            <th style="text-align:right">Valor</th><th>Obs</th><th></th>
+            <th style="text-align:right">Valor</th><th>Obs</th><th>Link</th><th></th>
           </tr></thead>
           <tbody>${renderRowsFiltered(lista,'pago')}</tbody>
         </table>
@@ -1318,7 +1318,7 @@ function renderCat(cat){
         <table>
           <thead><tr>
             <th>Data</th><th>Descrição</th>
-            <th style="text-align:right">Valor</th><th>Obs</th><th></th>
+            <th style="text-align:right">Valor</th><th>Obs</th><th>Link</th><th></th>
           </tr></thead>
           <tbody>${renderRowsFiltered(lista,'apagar')}</tbody>
         </table>
