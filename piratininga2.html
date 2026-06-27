@@ -318,7 +318,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div id="e-cat-row" class="modal-row">
       <div class="form-group">
         <label>Categoria</label>
-        <select id="e-cat" onclick="populateCatSelect('e-cat')">
+        <select id="e-cat" onclick="populateCatSelect('e-cat')" onchange="populateSubCatSelect('e-cat','e-subcat')">
           <option value="obra">Obra / Reforma</option>
         </select>
       </div>
@@ -326,6 +326,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <label>Data</label>
         <input type="date" id="e-data">
       </div>
+    </div>
+    <div class="form-group" id="e-subcat-row">
+      <label>Subcategoria (opcional)</label>
+      <select id="e-subcat">
+        <option value="">— Nenhuma —</option>
+      </select>
     </div>
     <div id="e-data-row-ganho" class="form-group" style="display:none">
       <label>Data</label>
@@ -713,6 +719,8 @@ function openEdit(id){
     document.getElementById('e-cat-row').style.display='';
     document.getElementById('e-data-row-ganho').style.display='none';
     document.getElementById('e-cat').value = g.categoria||'obra';
+    populateSubCatSelect('e-cat','e-subcat');
+    document.getElementById('e-subcat').value = g.subcategoria||'';
     document.getElementById('e-data').value = g.data||'';
     document.getElementById('e-status-group').style.display='';
     document.getElementById('e-status').value = g.status||'pago';
@@ -736,7 +744,8 @@ async function saveEdit(){
   btn.disabled=true; btn.textContent='Salvando...';
 
   const elink = document.getElementById('e-link').value.trim();
-  let row = {descricao:desc, valor:val, obs, link:elink};
+  const esubcat = document.getElementById('e-subcat') ? document.getElementById('e-subcat').value : '';
+  let row = {descricao:desc, valor:val, obs, link:elink, subcategoria:esubcat};
   if(editingIsGanho){
     row.data = document.getElementById('e-data-ganho').value;
   } else {
@@ -896,6 +905,16 @@ async function loadGastos(){
 }
 
 // ── MODAL ────────────────────────────────────────────────────────
+function populateSubCatSelect(catSelectId, subSelectId){
+  const catKey = document.getElementById(catSelectId).value;
+  const sel = document.getElementById(subSelectId);
+  if(!sel) return;
+  const subs = SUBCATS[catKey] ? Object.keys(SUBCATS[catKey]) : [];
+  sel.innerHTML = '<option value="">— Nenhuma —</option>' + subs.map(sk=>`<option value="${sk}">${SUBCATS[catKey][sk].label}</option>`).join('');
+  const row = document.getElementById('e-subcat-row');
+  if(row) row.style.display = subs.length > 0 ? '' : 'none';
+}
+
 function populateCatSelect(id){
   const sel = document.getElementById(id);
   const cur = sel.value;
