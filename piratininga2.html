@@ -718,6 +718,7 @@ function openEdit(id){
   } else {
     document.getElementById('e-cat-row').style.display='';
     document.getElementById('e-data-row-ganho').style.display='none';
+    populateCatSelect('e-cat');
     document.getElementById('e-cat').value = g.categoria||'obra';
     populateSubCatSelect('e-cat','e-subcat');
     document.getElementById('e-subcat').value = g.subcategoria||'';
