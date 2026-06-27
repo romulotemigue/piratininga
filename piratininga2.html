@@ -1472,14 +1472,15 @@ function renderCat(cat){
   }
 }
 
-function renderRowsFiltered(list, status){
+function renderRowsFiltered(list, status, catKey){
   const filtered = list.filter(g=>g.status===status);
-  if(!filtered.length) return `<tr><td colspan="5" class="empty" style="padding:1.5rem">Nenhum item</td></tr>`;
-  return filtered.map(g=>`
-    <tr>
+  if(!filtered.length) return `<tr><td colspan="7" class="empty" style="padding:1.5rem">Nenhum item</td></tr>`;
+  return filtered.map(g=>{
+    const subLabel = g.subcategoria && SUBCATS[catKey||g.categoria]?.[g.subcategoria]?.label || '';
+    return `<tr>
       <td style="color:#555;white-space:nowrap;font-size:12px">${g.data||'—'}</td>
       <td>${g.descricao||''}</td>
-      <td style="text-align:right;font-weight:500">${fmt((g.valor||0)*(g.quantidade||1))}</td>
+      <td style="color:#555;font-size:11px">${subLabel}</td>
       <td style="text-align:right;font-weight:500">${fmt((g.valor||0)*(g.quantidade||1))}</td>
       <td><div class="qty-wrap"><button class="qty-btn" onclick="changeQty(${g.id},-1)">−</button><span class="qty-val">${g.quantidade||1}</span><button class="qty-btn" onclick="changeQty(${g.id},1)">+</button></div></td>
       <td style="color:#555;font-size:12px">${g.obs||''}</td>
@@ -1488,8 +1489,8 @@ function renderRowsFiltered(list, status){
         <button class="edit-btn" onclick="openEdit(${g.id})"><i class="ti ti-pencil"></i></button>
         <button class="del-btn" onclick="removeGasto(${g.id})"><i class="ti ti-trash"></i></button>
       </td>
-    </tr>
-  `).join('');
+    </tr>`;
+  }).join('');
 }
 
 function renderRows(list, hideCat=false){
