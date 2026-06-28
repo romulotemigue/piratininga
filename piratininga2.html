@@ -122,11 +122,11 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
 .sortable.asc .sort-icon::after{content:'▲'}
 .sortable.desc .sort-icon::after{content:'▼'}
 .sortable:not(.asc):not(.desc) .sort-icon::after{content:'⇅'}
-.qty-wrap{display:flex;align-items:center;gap:4px;white-space:nowrap}
-.qty-btn{background:#2a2a2a;border:none;color:#e8e7e2;width:22px;height:22px;border-radius:4px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;line-height:1}
+.qty-wrap{display:flex;align-items:center;gap:2px;white-space:nowrap}
+.qty-btn{background:#2a2a2a;border:none;color:#e8e7e2;width:16px;height:16px;border-radius:3px;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;line-height:1}
 .qty-btn:hover{background:#3a3a3a}
 .qty-val{font-size:12px;color:#e8e7e2;min-width:20px;text-align:center;font-weight:500}
-.qty-input{font-size:12px;color:#e8e7e2;width:36px;text-align:center;font-weight:500;background:#111;border:1px solid #333;border-radius:4px;padding:1px 4px;-moz-appearance:textfield}
+.qty-input{font-size:11px;color:#e8e7e2;width:26px;text-align:center;font-weight:500;background:#111;border:1px solid #333;border-radius:3px;padding:1px 2px;-moz-appearance:textfield}
 .qty-input::-webkit-outer-spin-button,.qty-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .qty-input:focus{outline:none;border-color:#e8b544}
 .nav-drag{cursor:grab;color:#333;padding:4px 2px 4px 6px;font-size:13px;flex-shrink:0}
@@ -724,7 +724,7 @@ function parseMoney(s){
 function fmtInput(v){
   return Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
-function fmt(v){ return 'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmt(v){ const n=Number(v); return 'R$ '+(n%1===0?n.toLocaleString('pt-BR'):n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})); }
 function fmtShort(v){ return v>=1000?'R$'+Math.round(v/1000)+'k':fmt(v); }
 function fmtDate(d){ if(!d) return '—'; const [y,m,day]=d.split('-'); const ms=['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ']; return `<div style="text-align:center;line-height:1.4"><div style="font-size:13px;font-weight:600;color:#888">${day}</div><div style="font-size:9px;color:#555;letter-spacing:.05em">${ms[parseInt(m)-1]||m}</div><div style="font-size:9px;color:#444">${y}</div></div>`; }
 
@@ -1226,21 +1226,16 @@ function renderGeral(){
 
   document.getElementById('content').innerHTML = `
 
-    <div class="cards-row" style="grid-template-columns:repeat(6,1fr);margin-bottom:1.5rem">
+    <div class="cards-row" style="grid-template-columns:repeat(5,1fr);margin-bottom:1.5rem">
       <div class="card" style="border-left:3px solid #4caf50;background:#0d1a0d">
         <div class="card-label"><i class="ti ti-wallet" style="font-size:13px;color:#4caf50"></i> Saldo restante</div>
         <div class="card-value ${saldo<0?'red':'green'}">${fmt(saldo)}</div>
         <div class="card-sub">${ganhos.length} entradas registradas</div>
       </div>
-      <div class="card" style="border-left:3px solid #ef5350;background:#1a0d0d">
-        <div class="card-label"><i class="ti ti-receipt" style="font-size:13px;color:#ef5350"></i> Total gasto</div>
-        <div class="card-value red">${fmt(total)}</div>
-        <div class="card-sub">${ativos.length} lançamentos</div>
-      </div>
       <div class="card" style="border-left:3px solid #4caf50;background:#0d1a0d">
         <div class="card-label"><i class="ti ti-circle-check" style="font-size:13px;color:#4caf50"></i> Já pago</div>
         <div class="card-value green">${fmt(pago)}</div>
-        <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #1e3a1e;color:#555;font-size:10px">Saldo real: <strong style="color:${saldo<0?'#ef5350':'#4caf50'}">${fmt(saldo)}</strong></div>
+        <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #1e3a1e;color:#555;font-size:10px">${ativos.length} lançamentos</div>
       </div>
       <div class="card" style="border-left:3px solid #42a5f5;background:#0d1520">
         <div class="card-label"><i class="ti ti-alert-circle" style="font-size:13px;color:#42a5f5"></i> Necessários</div>
@@ -1763,17 +1758,17 @@ function renderRowsFiltered(list, status, catKey){
       onDragOver="onRowInternalOver(event)"
       onDrop="onRowInternalDrop(event,${g.id},'${status}','${catKey||''}')"
       style="cursor:default">
-      <td style="padding:8px 4px 8px 10px;width:14px"><span class="drag-handle" title="Arrastar">⠿</span></td>
-      <td style="width:36px;vertical-align:middle">${fmtDate(g.data)}</td>
-      <td style="font-size:12px;max-width:110px">${g.descricao||''}</td>
-      <td style="color:#555;font-size:10px;white-space:nowrap">${subLabel}</td>
-      <td style="text-align:right;font-weight:500;font-size:11px;white-space:nowrap">${fmtShort(val)}</td>
-      <td><div class="qty-wrap"><button class="qty-btn" onclick="changeQty(${g.id},-1)">−</button><input class="qty-input" type="number" min="1" value="${g.quantidade||1}" onchange="setQty(${g.id},this)" onclick="event.stopPropagation()"><button class="qty-btn" onclick="changeQty(${g.id},1)">+</button></div></td>
-      <td style="white-space:nowrap;text-align:center">${g.link?`<a href="${g.link}" target="_blank" title="${g.link}" style="color:#2a78d6;font-size:14px"><i class="ti ti-external-link"></i></a>`:''}</td>
-      <td style="white-space:nowrap;padding-right:10px;min-width:72px">
-        ${g.obs?`<span title="${g.obs}" style="color:#555;font-size:13px;cursor:default"><i class="ti ti-message-circle"></i></span>`:'<span style="display:inline-block;width:19px"></span>'}
-        <button class="edit-btn" style="opacity:1" onclick="openEdit(${g.id})"><i class="ti ti-pencil"></i></button>
-        <button class="del-btn" style="opacity:1" onclick="removeGasto(${g.id})"><i class="ti ti-trash"></i></button>
+      <td style="padding:6px 2px 6px 8px;width:12px"><span class="drag-handle" title="Arrastar">⠿</span></td>
+      <td style="width:32px;vertical-align:middle;padding:4px 4px">${fmtDate(g.data)}</td>
+      <td style="font-size:12px;max-width:100px;padding:4px 4px">${g.descricao||''}</td>
+      <td style="color:#555;font-size:10px;white-space:nowrap;padding:4px 4px">${subLabel}</td>
+      <td style="text-align:right;font-weight:500;font-size:11px;white-space:nowrap;padding:4px 4px">${fmtShort(val)}</td>
+      <td style="padding:4px 2px"><div class="qty-wrap"><button class="qty-btn" onclick="changeQty(${g.id},-1)">−</button><input class="qty-input" type="number" min="1" value="${g.quantidade||1}" onchange="setQty(${g.id},this)" onclick="event.stopPropagation()"><button class="qty-btn" onclick="changeQty(${g.id},1)">+</button></div></td>
+      <td style="white-space:nowrap;text-align:center;padding:4px 2px">${g.link?`<a href="${g.link}" target="_blank" title="${g.link}" style="color:#2a78d6;font-size:13px"><i class="ti ti-external-link"></i></a>`:''}</td>
+      <td style="white-space:nowrap;padding:4px 6px 4px 2px">
+        ${g.obs?`<span title="${g.obs}" style="color:#555;font-size:12px;cursor:default"><i class="ti ti-message-circle"></i></span>`:'<span style="display:inline-block;width:16px"></span>'}
+        <button class="edit-btn" style="opacity:1;padding:2px 4px" onclick="openEdit(${g.id})"><i class="ti ti-pencil"></i></button>
+        <button class="del-btn" style="opacity:1;padding:2px 4px" onclick="removeGasto(${g.id})"><i class="ti ti-trash"></i></button>
       </td>
     </tr>`;
   }).join('');
