@@ -126,6 +126,9 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
 .qty-btn{background:#2a2a2a;border:none;color:#e8e7e2;width:22px;height:22px;border-radius:4px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;line-height:1}
 .qty-btn:hover{background:#3a3a3a}
 .qty-val{font-size:12px;color:#e8e7e2;min-width:20px;text-align:center;font-weight:500}
+.qty-input{font-size:12px;color:#e8e7e2;width:36px;text-align:center;font-weight:500;background:#111;border:1px solid #333;border-radius:4px;padding:1px 4px;-moz-appearance:textfield}
+.qty-input::-webkit-outer-spin-button,.qty-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.qty-input:focus{outline:none;border-color:#e8b544}
 .nav-drag{cursor:grab;color:#333;padding:4px 2px 4px 6px;font-size:13px;flex-shrink:0}
 .nav-drag:active{cursor:grabbing}
 .nav-cat-wrap{transition:opacity .15s}
@@ -1021,6 +1024,22 @@ async function changeQty(id, delta){
   } catch(e){ toast('Erro ao atualizar quantidade.','err'); }
 }
 
+async function setQty(id, input){
+  const newQty = Math.max(1, parseInt(input.value)||1);
+  input.value = newQty;
+  const g = gastos.find(x=>x.id===id);
+  if(!g || g.quantidade===newQty) return;
+  try{
+    await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${id}`,{
+      method:'PATCH',
+      headers:{...HEADERS,'Prefer':'return=representation'},
+      body:JSON.stringify({quantidade:newQty})
+    });
+    g.quantidade = newQty;
+    render();
+  } catch(e){ toast('Erro ao atualizar quantidade.','err'); }
+}
+
 // ── SORT ─────────────────────────────────────────────────────────
 let sortCol = null;
 let sortDir = 'desc';
@@ -1207,17 +1226,42 @@ function renderGeral(){
   document.getElementById('content').innerHTML = `
     <div class="progress-wrap">
       <div class="progress-header">
-        <span class="progress-label">Saldo restante</span>
+        <span class="progress-label">Saldo real <span style="color:#555;font-weight:400">(já pago)</span></span>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <span style="font-size:15px;font-weight:600;color:${saldo<0?'#ef5350':'#4caf50'}">${fmt(saldo)}</span>
-          <span class="progress-pct" style="color:${barColor}">${pct}% gasto</span>
+          <span class="progress-pct" style="color:${pct>90?'#ef5350':pct>70?'#e8b544':'#4caf50'}">${pct}% gasto</span>
         </div>
       </div>
-      <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
-      <div class="progress-amounts">
-        <span>Gasto: ${fmt(total)}</span>
-        <span>Saldo: <strong style="color:${saldo<0?'#ef5350':'#4caf50'}">${fmt(saldo)}</strong></span>
+      <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${pct}%;background:${pct>90?'#ef5350':pct>70?'#e8b544':'#4caf50'}"></div></div>
+      <div class="progress-amounts"><span>Pago: ${fmt(pago)}</span><span>Saldo: <strong style="color:${saldo<0?'#ef5350':'#4caf50'}">${fmt(saldo)}</strong></span></div>
+    </div>
+
+    <div class="progress-wrap" style="margin-top:-4px">
+      ${(()=>{const s2=saldo-necessario;const p2=totalGanhos>0?Math.min(100,Math.round((pago+necessario)/totalGanhos*100)):0;const c2=p2>90?'#ef5350':p2>70?'#e8b544':'#42a5f5';return `
+      <div class="progress-header">
+        <span class="progress-label">Saldo com necessários <span style="color:#555;font-weight:400">(pago + necessários)</span></span>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-size:15px;font-weight:600;color:${s2<0?'#ef5350':'#42a5f5'}">${fmt(s2)}</span>
+          <span class="progress-pct" style="color:${c2}">${p2}% comprometido</span>
+        </div>
       </div>
+      <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${p2}%;background:${c2}"></div></div>
+      <div class="progress-amounts"><span>Pago + Necessários: ${fmt(pago+necessario)}</span><span>Saldo: <strong style="color:${s2<0?'#ef5350':'#42a5f5'}">${fmt(s2)}</strong></span></div>
+      `;})()}
+    </div>
+
+    <div class="progress-wrap" style="margin-top:-4px">
+      ${(()=>{const s3=saldo-necessario-dispensavel;const p3=totalGanhos>0?Math.min(100,Math.round((pago+necessario+dispensavel)/totalGanhos*100)):0;const c3=p3>90?'#ef5350':p3>70?'#e8b544':'#888';return `
+      <div class="progress-header">
+        <span class="progress-label">Saldo comprando tudo <span style="color:#555;font-weight:400">(pago + necessários + dispensáveis)</span></span>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-size:15px;font-weight:600;color:${s3<0?'#ef5350':'#4caf50'}">${fmt(s3)}</span>
+          <span class="progress-pct" style="color:${c3}">${p3}% comprometido</span>
+        </div>
+      </div>
+      <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${p3}%;background:${c3}"></div></div>
+      <div class="progress-amounts"><span>Total comprometido: ${fmt(pago+necessario+dispensavel)}</span><span>Saldo: <strong style="color:${s3<0?'#ef5350':'#4caf50'}">${fmt(s3)}</strong></span></div>
+      `;})()}
     </div>
 
     <div class="cards-row" style="grid-template-columns:repeat(6,1fr)">
@@ -1262,16 +1306,42 @@ function renderGeral(){
       </div>
     </div>
 
-    <div class="charts-row">
+    <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:12px;margin-bottom:1.25rem">
       <div class="chart-card">
-        <div class="chart-title">Total por categoria</div>
-        <div id="bar-legend" class="legend-row"></div>
-        <div style="position:relative;height:200px"><canvas id="barChart"></canvas></div>
+        <div class="chart-title" style="color:#4caf50">● Pagos — por categoria</div>
+        <div id="bar-legend-pago" class="legend-row"></div>
+        <div style="position:relative;height:180px"><canvas id="barChartPago"></canvas></div>
       </div>
       <div class="chart-card">
-        <div class="chart-title">Distribuição</div>
-        <div id="pie-legend" class="legend-row"></div>
-        <div style="position:relative;height:200px"><canvas id="pieChart"></canvas></div>
+        <div class="chart-title" style="color:#4caf50">● Pagos — distribuição</div>
+        <div id="pie-legend-pago" class="legend-row"></div>
+        <div style="position:relative;height:180px"><canvas id="pieChartPago"></canvas></div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:12px;margin-bottom:1.25rem">
+      <div class="chart-card">
+        <div class="chart-title" style="color:#42a5f5">● Pagos + Necessários — por categoria</div>
+        <div id="bar-legend-nec" class="legend-row"></div>
+        <div style="position:relative;height:180px"><canvas id="barChartNec"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title" style="color:#42a5f5">● Pagos + Necessários — distribuição</div>
+        <div id="pie-legend-nec" class="legend-row"></div>
+        <div style="position:relative;height:180px"><canvas id="pieChartNec"></canvas></div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:12px;margin-bottom:1.25rem">
+      <div class="chart-card">
+        <div class="chart-title" style="color:#e8b544">● Tudo — por categoria</div>
+        <div id="bar-legend-tudo" class="legend-row"></div>
+        <div style="position:relative;height:180px"><canvas id="barChartTudo"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title" style="color:#e8b544">● Tudo — distribuição</div>
+        <div id="pie-legend-tudo" class="legend-row"></div>
+        <div style="position:relative;height:180px"><canvas id="pieChartTudo"></canvas></div>
       </div>
     </div>
 
@@ -1286,35 +1356,39 @@ function renderGeral(){
     </div>
   `;
 
-  const values = Object.keys(CATS).map(k=>ativos.filter(g=>g.categoria===k).reduce((s,g)=>s+(g.valor||0),0));
-  const colors = Object.values(CATS).map(c=>c.color);
-  const labels = Object.values(CATS).map(c=>c.label.split('/')[0].trim());
-  const hasData = values.some(v=>v>0);
+  function buildCharts(canvasBarId, canvasPieId, barLegendId, pieLegendId, filterStatuses){
+    const items = gastos.filter(g=>filterStatuses.includes(g.status)&&g.categoria!=='ganho');
+    const values = Object.keys(CATS).map(k=>items.filter(g=>g.categoria===k).reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0));
+    const colors = Object.values(CATS).map(c=>c.color);
+    const labels = Object.values(CATS).map(c=>c.label.split('/')[0].trim());
+    const hasData = values.some(v=>v>0);
 
-  document.getElementById('bar-legend').innerHTML = Object.values(CATS).map((c,i)=>`<span class="legend-item"><span class="legend-dot" style="background:${c.color}"></span>${c.label.split('/')[0].trim()}</span>`).join('');
+    document.getElementById(barLegendId).innerHTML = Object.values(CATS).map((c,i)=>values[i]>0?`<span class="legend-item"><span class="legend-dot" style="background:${c.color}"></span>${c.label.split('/')[0].trim()}</span>`:'').join('');
 
-  barChart = new Chart(document.getElementById('barChart'),{
-    type:'bar',
-    data:{labels,datasets:[{data:values,backgroundColor:colors,borderRadius:4,borderSkipped:false}]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)}}},
-      scales:{x:{grid:{display:false},ticks:{color:'#555',font:{size:10}}},
-              y:{grid:{color:'#222'},ticks:{color:'#555',font:{size:10},callback:v=>fmtShort(v)}}}}
-  });
+    new Chart(document.getElementById(canvasBarId),{
+      type:'bar',
+      data:{labels,datasets:[{data:values,backgroundColor:colors,borderRadius:4,borderSkipped:false}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)}}},
+        scales:{x:{grid:{display:false},ticks:{color:'#555',font:{size:10}}},
+                y:{grid:{color:'#222'},ticks:{color:'#555',font:{size:10},callback:v=>fmtShort(v)}}}}
+    });
 
-  const pd = hasData?values:[1];
-  const pc = hasData?colors:['#2a2a2a'];
-  document.getElementById('pie-legend').innerHTML = hasData
-    ? Object.values(CATS).map((c,i)=>values[i]>0?`<span class="legend-item"><span class="legend-dot" style="background:${c.color}"></span>${c.label.split('/')[0].trim()}</span>`:'').join('')
-    : '<span style="font-size:11px;color:#444">Sem dados</span>';
+    document.getElementById(pieLegendId).innerHTML = hasData
+      ? Object.values(CATS).map((c,i)=>values[i]>0?`<span class="legend-item"><span class="legend-dot" style="background:${c.color}"></span>${c.label.split('/')[0].trim()}</span>`:'').join('')
+      : '<span style="font-size:11px;color:#444">Sem dados</span>';
 
-  pieChart = new Chart(document.getElementById('pieChart'),{
-    type:'doughnut',
-    data:{labels:hasData?Object.values(CATS).map(c=>c.label):['Sem dados'],datasets:[{data:pd,backgroundColor:pc,borderWidth:2,borderColor:'#1a1a1a'}]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>hasData?ctx.label+': '+fmt(ctx.raw):''}}}}
-  });
-}
+    new Chart(document.getElementById(canvasPieId),{
+      type:'doughnut',
+      data:{labels:hasData?Object.values(CATS).map(c=>c.label):['Sem dados'],datasets:[{data:hasData?values:[1],backgroundColor:hasData?colors:['#2a2a2a'],borderWidth:2,borderColor:'#1a1a1a'}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>hasData?ctx.label+': '+fmt(ctx.raw):''}}}}
+    });
+  }
+
+  buildCharts('barChartPago','pieChartPago','bar-legend-pago','pie-legend-pago',['pago']);
+  buildCharts('barChartNec','pieChartNec','bar-legend-nec','pie-legend-nec',['pago','necessario']);
+  buildCharts('barChartTudo','pieChartTudo','bar-legend-tudo','pie-legend-tudo',['pago','necessario','apagar']);
 
 // ── GANHOS PAGE ──────────────────────────────────────────────────
 function renderGanhos(){
