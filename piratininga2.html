@@ -75,7 +75,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500}
 .badge.pago{background:#1a3a25;color:#4caf50}
 .badge.apagar{background:#3a2e0a;color:#e8b544}
-.badge.cancel{background:#2a1515;color:#ef5350}
+.badge.necessario{background:#1a2a3a;color:#42a5f5}
+.badge.necessario{background:#1a2a3a;color:#42a5f5}
 .del-btn{background:none;border:none;cursor:pointer;color:#444;font-size:14px;padding:4px 6px;border-radius:4px}
 .del-btn:hover{color:#ef5350;background:#2a1515}
 .edit-btn{background:none;border:none;cursor:pointer;color:#444;font-size:14px;padding:4px 6px;border-radius:4px}
@@ -236,8 +237,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <label>Status</label>
         <select id="f-status">
           <option value="pago">Pago</option>
-          <option value="apagar">A pagar</option>
-          <option value="cancel">Cancelado</option>
+          <option value="necessario">Necessário</option>
+          <option value="apagar">Dispensável</option>
+          
         </select>
       </div>
     </div>
@@ -368,8 +370,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <label>Status</label>
         <select id="e-status">
           <option value="pago">Pago</option>
-          <option value="apagar">A pagar</option>
-          <option value="cancel">Cancelado</option>
+          <option value="necessario">Necessário</option>
+          <option value="apagar">Dispensável</option>
+          
         </select>
       </div>
     </div>
@@ -438,8 +441,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <label>Status</label>
         <select id="sl-status">
           <option value="pago">Pago</option>
-          <option value="apagar">A pagar</option>
-          <option value="cancel">Cancelado</option>
+          <option value="necessario">Necessário</option>
+          <option value="apagar">Dispensável</option>
+          
         </select>
       </div>
       <div class="form-group">
@@ -1133,7 +1137,8 @@ function renderGeral(){
   const ativos = gastos.filter(g=>g.status==='pago'&&g.categoria!=='ganho');
   const total  = ativos.reduce((s,g)=>s+getVal(g),0);
   const pago   = gastos.filter(g=>g.status==='pago'&&g.categoria!=='ganho').reduce((s,g)=>s+getVal(g),0);
-  const apagar = gastos.filter(g=>g.status==='apagar').reduce((s,g)=>s+getVal(g),0);
+  const dispensavel = gastos.filter(g=>g.status==='apagar'&&g.categoria!=='ganho').reduce((s,g)=>s+getVal(g),0);
+  const necessario  = gastos.filter(g=>g.status==='necessario'&&g.categoria!=='ganho').reduce((s,g)=>s+getVal(g),0);
   const saldo  = totalGanhos - pago;
   const pct    = totalGanhos>0?Math.min(100,Math.round(total/totalGanhos*100)):0;
   const barColor = pct>90?'#ef5350':pct>70?'#e8b544':'#4caf50';
@@ -1154,7 +1159,7 @@ function renderGeral(){
       </div>
     </div>
 
-    <div class="cards-row">
+    <div class="cards-row" style="grid-template-columns:repeat(6,1fr)">
       <div class="card">
         <div class="card-label"><i class="ti ti-wallet" style="font-size:13px;color:#4caf50"></i> Saldo restante</div>
         <div class="card-value ${saldo<0?'red':'green'}">${fmt(saldo)}</div>
@@ -1170,12 +1175,12 @@ function renderGeral(){
         <div class="card-value green">${fmt(pago)}</div>
       </div>
       <div class="card">
-        <div class="card-label"><i class="ti ti-clock" style="font-size:13px;color:#e8b544"></i> A pagar</div>
-        <div class="card-value yellow">${fmt(apagar)}</div>
-        <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #2a2a2a">
-          <span style="color:#555">Saldo se tudo pago:</span><br>
-          <span style="font-size:14px;font-weight:600;color:${(saldo-apagar)<0?'#ef5350':'#4caf50'}">${fmt(saldo-apagar)}</span>
-        </div>
+        <div class="card-label"><i class="ti ti-alert-circle" style="font-size:13px;color:#42a5f5"></i> Necessários</div>
+        <div class="card-value" style="color:#42a5f5">${fmt(necessario)}</div>
+      </div>
+      <div class="card">
+        <div class="card-label"><i class="ti ti-clock" style="font-size:13px;color:#e8b544"></i> Dispensáveis</div>
+        <div class="card-value yellow">${fmt(dispensavel)}</div>
       </div>
       <div class="card">
         <div class="card-label"><i class="ti ti-trending-up" style="font-size:13px;color:#888"></i> Total de ganhos</div>
@@ -1340,7 +1345,8 @@ function renderSubCat(page){
   const getValSub = g => (g.valor||0) * (g.quantidade||1);
   const total = lista.filter(g=>g.status!=='cancel').reduce((s,g)=>s+getValSub(g),0);
   const pago  = lista.filter(g=>g.status==='pago').reduce((s,g)=>s+getValSub(g),0);
-  const apagar= lista.filter(g=>g.status==='apagar').reduce((s,g)=>s+getValSub(g),0);
+  const necessario= lista.filter(g=>g.status==='necessario').reduce((s,g)=>s+getValSub(g),0);
+  const dispensavel= lista.filter(g=>g.status==='apagar').reduce((s,g)=>s+getValSub(g),0);
 
   document.getElementById('content').innerHTML = `
     <div class="cat-total-card" style="border-left:3px solid ${info.color}">
@@ -1353,8 +1359,12 @@ function renderSubCat(page){
         <span class="cat-stat-value" style="color:#4caf50">${fmt(pago)}</span>
       </div>
       <div class="cat-stat">
-        <span class="cat-stat-label">A pagar</span>
-        <span class="cat-stat-value" style="color:#e8b544">${fmt(apagar)}</span>
+        <span class="cat-stat-label">Necessários</span>
+        <span class="cat-stat-value" style="color:#42a5f5">${fmt(necessario)}</span>
+      </div>
+      <div class="cat-stat">
+        <span class="cat-stat-label">Dispensáveis</span>
+        <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
       </div>
       <div style="margin-left:auto">
         <button class="btn-launch" onclick="openModalSubCat('${catKey}','${subKey}')"><i class="ti ti-minus"></i> Lançar aqui</button>
@@ -1369,8 +1379,15 @@ function renderSubCat(page){
         <tbody>${renderRowsFiltered(lista,'pago',catKey)}</tbody></table>
       </div>
       <div class="table-card">
+        <div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:#42a5f5;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
+          <i class="ti ti-alert-circle"></i> Necessários
+        </div>
+        <table><thead><tr><th>Data</th><th>Descrição</th><th>Sub</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
+        <tbody>${renderRowsFiltered(lista,'necessario',catKey)}</tbody></table>
+      </div>
+      <div class="table-card">
         <div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:#e8b544;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
-          <i class="ti ti-clock"></i> A pagar
+          <i class="ti ti-clock"></i> Dispensáveis
         </div>
         <table><thead><tr><th>Data</th><th>Descrição</th><th>Sub</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
         <tbody>${renderRowsFiltered(lista,'apagar',catKey)}</tbody></table>
@@ -1396,7 +1413,8 @@ function renderCat(cat){
   const getValCat = g => (g.valor||0) * (g.quantidade||1);
   const total  = ativos.reduce((s,g)=>s+getValCat(g),0);
   const pago   = lista.filter(g=>g.status==='pago').reduce((s,g)=>s+getValCat(g),0);
-  const apagar = lista.filter(g=>g.status==='apagar').reduce((s,g)=>s+getValCat(g),0);
+  const necessario = lista.filter(g=>g.status==='necessario').reduce((s,g)=>s+getValCat(g),0);
+  const dispensavel = lista.filter(g=>g.status==='apagar').reduce((s,g)=>s+getValCat(g),0);
 
   const byMonth={};
   ativos.forEach(g=>{const m=g.data?g.data.slice(0,7):'s/d';byMonth[m]=(byMonth[m]||0)+(g.valor||0);});
@@ -1414,8 +1432,12 @@ function renderCat(cat){
         <span class="cat-stat-value" style="color:#4caf50">${fmt(pago)}</span>
       </div>
       <div class="cat-stat">
-        <span class="cat-stat-label">A pagar</span>
-        <span class="cat-stat-value" style="color:#e8b544">${fmt(apagar)}</span>
+        <span class="cat-stat-label">Necessários</span>
+        <span class="cat-stat-value" style="color:#42a5f5">${fmt(necessario)}</span>
+      </div>
+      <div class="cat-stat">
+        <span class="cat-stat-label">Dispensáveis</span>
+        <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
       </div>
       <div class="cat-stat">
         <span class="cat-stat-label">Lançamentos</span>
@@ -1432,7 +1454,7 @@ function renderCat(cat){
       <div style="position:relative;height:160px"><canvas id="catChart"></canvas></div>
     </div>`:''}
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
       <div class="table-card">
         <div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:#4caf50;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
           <i class="ti ti-circle-check"></i> Pago
@@ -1446,8 +1468,20 @@ function renderCat(cat){
         </table>
       </div>
       <div class="table-card">
+        <div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:#42a5f5;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
+          <i class="ti ti-alert-circle"></i> Necessários
+        </div>
+        <table>
+          <thead><tr>
+            <th>Data</th><th>Descrição</th><th>Sub</th>
+            <th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th>
+          </tr></thead>
+          <tbody>${renderRowsFiltered(lista,'necessario',cat)}</tbody>
+        </table>
+      </div>
+      <div class="table-card">
         <div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:#e8b544;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
-          <i class="ti ti-clock"></i> A pagar
+          <i class="ti ti-clock"></i> Dispensáveis
         </div>
         <table>
           <thead><tr>
@@ -1503,7 +1537,7 @@ function renderRows(list, hideCat=false){
       ${hideCat?'':'<td style="color:#555;font-size:12px">'+(CATS[g.categoria]?.label||g.categoria)+'</td>'}
       <td style="text-align:right;font-weight:500">${fmt((g.valor||0)*(g.quantidade||1))}</td>
       <td><div class="qty-wrap"><button class="qty-btn" onclick="changeQty(${g.id},-1)">−</button><span class="qty-val">${g.quantidade||1}</span><button class="qty-btn" onclick="changeQty(${g.id},1)">+</button></div></td>
-      <td><span class="badge ${g.status}">${g.status==='pago'?'Pago':g.status==='apagar'?'A pagar':'Cancelado'}</span></td>
+      <td><span class="badge ${g.status}">${g.status==='pago'?'Pago':g.status==='necessario'?'Necessário':g.status==='apagar'?'Dispensável':'—'}</span></td>
       <td style="color:#555;font-size:12px">${g.obs||''}</td>
       <td style="white-space:nowrap;text-align:center">${g.link?`<a href="${g.link}" target="_blank" title="${g.link}" style="color:#2a78d6;font-size:15px"><i class="ti ti-external-link"></i></a>`:''}</td>
       <td style="white-space:nowrap">
