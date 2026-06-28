@@ -1660,17 +1660,48 @@ function saveColOrder(contextKey, order){
 
 function renderColGrid(lista, catKey){
   const order = getColOrder(catKey||'default');
+
+  const BG = {pago:'#0d1a0d', necessario:'#0d1520', apagar:'#1a1500'};
+  const BORDER = {pago:'#1e3a1e', necessario:'#1a2a3a', apagar:'#2a2000'};
+  const BORDER_LEFT = {pago:'#4caf50', necessario:'#42a5f5', apagar:'#e8b544'};
+  const HEAD_BG = {pago:'#0a130a', necessario:'#0a1018', apagar:'#120f00'};
+
   const cols = order.map(status=>{
     const def = COL_DEFS[status];
     if(!def) return '';
-    return `<div class="table-card col-card" data-col-status="${status}" data-drop-status="${status}"
+    const bg = BG[status]||'#111';
+    const border = BORDER[status]||'#2a2a2a';
+    const borderLeft = BORDER_LEFT[status]||def.color;
+    const headBg = HEAD_BG[status]||'#111';
+    return `<div class="col-card" data-col-status="${status}" data-drop-status="${status}"
+      style="background:${bg};border:1px solid ${border};border-left:3px solid ${borderLeft};border-radius:10px;overflow:hidden"
       onDragOver="onColCardOver(event);onDropZoneOver(event)"
       onDragLeave="onColCardLeave(event);onDropZoneLeave(event)"
       onDrop="onColCardDrop(event,'${catKey||''}');onDropZoneDrop(event)">
-      ${tableCardHeader(def.label,def.color,def.icon,status,catKey)}
-      <table>
-        <thead><tr><th></th><th>Data</th><th>Descrição</th><th>Sub</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Link</th><th></th></tr></thead>
-        <tbody>${renderRowsFiltered(lista,status,catKey)}</tbody>
+      <div style="padding:10px 14px;background:${headBg};border-bottom:1px solid ${border};display:flex;align-items:center;gap:6px">
+        <span class="col-drag-handle" draggable="true" title="Arrastar coluna"
+          style="color:#333;cursor:grab;font-size:13px;user-select:none;transition:color .15s"
+          onmouseover="this.style.color='#666'" onmouseout="this.style.color='#333'"
+          ondragstart="onColDragStart(event,'${status}','${catKey||''}')"
+          ondragend="onColDragEnd(event)">⠿</span>
+        <i class="ti ${def.icon}" style="font-size:13px;color:${def.color}"></i>
+        <span style="font-size:10px;font-weight:600;color:${def.color};text-transform:uppercase;letter-spacing:.08em">${def.label}</span>
+        <button onclick="openBulkModal('${status}','${catKey||''}')" title="Mover em massa"
+          style="margin-left:auto;background:none;border:none;color:#444;cursor:pointer;font-size:14px;padding:2px 4px;border-radius:4px;transition:color .15s"
+          onmouseover="this.style.color='${def.color}'" onmouseout="this.style.color='#444'">
+          <i class="ti ti-arrows-transfer-down"></i>
+        </button>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="background:${headBg}">
+          <th style="padding:6px 4px 6px 8px;color:#555;font-weight:500;font-size:10px;border-bottom:1px solid ${border}"></th>
+          <th style="padding:6px 4px;color:#555;font-weight:500;font-size:10px;border-bottom:1px solid ${border}">Data</th>
+          <th style="padding:6px 4px;color:#555;font-weight:500;font-size:10px;border-bottom:1px solid ${border}">Descrição</th>
+          <th style="padding:6px 4px;text-align:right;color:#555;font-weight:500;font-size:10px;border-bottom:1px solid ${border}">Valor</th>
+          <th style="padding:6px 4px;color:#555;font-weight:500;font-size:10px;border-bottom:1px solid ${border}">Qtd</th>
+          <th style="padding:6px 4px;border-bottom:1px solid ${border}"></th>
+        </tr></thead>
+        <tbody>${renderRowsFiltered(lista,status,catKey,border)}</tbody>
       </table>
     </div>`;
   }).join('');
@@ -1740,9 +1771,10 @@ function tableCardHeader(label, color, icon, status, catKey){
   </div>`;
 }
 
-function renderRowsFiltered(list, status, catKey){
+function renderRowsFiltered(list, status, catKey, borderColor){
   const filtered = list.filter(g=>g.status===status);
-  if(!filtered.length) return `<tr><td colspan="8" class="empty" style="padding:1.5rem">Nenhum item</td></tr>`;
+  const rowBorder = borderColor||'#1f1f1f';
+  if(!filtered.length) return `<tr><td colspan="6" style="padding:1.5rem;text-align:center;color:#444;font-size:12px">Nenhum item</td></tr>`;
   const orderKey = 'row_order_'+status+'_'+(catKey||'geral');
   let order = [];
   try{ order = JSON.parse(localStorage.getItem(orderKey)||'[]'); }catch(e){}
@@ -1757,16 +1789,18 @@ function renderRowsFiltered(list, status, catKey){
       onDragEnd="onRowDragEnd(event)"
       onDragOver="onRowInternalOver(event)"
       onDrop="onRowInternalDrop(event,${g.id},'${status}','${catKey||''}')"
-      style="cursor:default">
+      style="cursor:default;border-bottom:1px solid ${rowBorder}">
       <td style="padding:6px 2px 6px 8px;width:12px"><span class="drag-handle" title="Arrastar">⠿</span></td>
-      <td style="width:32px;vertical-align:middle;padding:4px 4px">${fmtDate(g.data)}</td>
-      <td style="font-size:12px;max-width:100px;padding:4px 4px">${g.descricao||''}</td>
-      <td style="color:#555;font-size:10px;white-space:nowrap;padding:4px 4px">${subLabel}</td>
-      <td style="text-align:right;font-weight:500;font-size:11px;white-space:nowrap;padding:4px 4px">${fmtShort(val)}</td>
+      <td style="width:32px;vertical-align:middle;padding:4px">${fmtDate(g.data)}</td>
+      <td style="font-size:12px;padding:4px">
+        <div>${g.descricao||''}</div>
+        ${subLabel?`<div style="font-size:10px;color:#555;margin-top:2px">${subLabel}</div>`:''}
+      </td>
+      <td style="text-align:right;font-weight:500;font-size:11px;white-space:nowrap;padding:4px">${fmtShort(val)}</td>
       <td style="padding:4px 2px"><div class="qty-wrap"><button class="qty-btn" onclick="changeQty(${g.id},-1)">−</button><input class="qty-input" type="number" min="1" value="${g.quantidade||1}" onchange="setQty(${g.id},this)" onclick="event.stopPropagation()"><button class="qty-btn" onclick="changeQty(${g.id},1)">+</button></div></td>
-      <td style="white-space:nowrap;text-align:center;padding:4px 2px">${g.link?`<a href="${g.link}" target="_blank" title="${g.link}" style="color:#2a78d6;font-size:13px"><i class="ti ti-external-link"></i></a>`:''}</td>
-      <td style="white-space:nowrap;padding:4px 6px 4px 2px">
-        ${g.obs?`<span title="${g.obs}" style="color:#555;font-size:12px;cursor:default"><i class="ti ti-message-circle"></i></span>`:'<span style="display:inline-block;width:16px"></span>'}
+      <td style="white-space:nowrap;padding:4px 6px 4px 2px;min-width:90px">
+        <span style="display:inline-block;width:18px;text-align:center">${g.link?`<a href="${g.link}" target="_blank" style="color:#2a78d6;font-size:13px"><i class="ti ti-external-link"></i></a>`:''}</span>
+        <span style="display:inline-block;width:18px;text-align:center">${g.obs?`<span title="${g.obs}" style="color:#555;font-size:12px;cursor:default"><i class="ti ti-message-circle"></i></span>`:''}</span>
         <button class="edit-btn" style="opacity:1;padding:2px 4px" onclick="openEdit(${g.id})"><i class="ti ti-pencil"></i></button>
         <button class="del-btn" style="opacity:1;padding:2px 4px" onclick="removeGasto(${g.id})"><i class="ti ti-trash"></i></button>
       </td>
@@ -1790,9 +1824,9 @@ function renderRowsGeral(list, borderColor){
       </td>
       <td style="text-align:right;font-weight:500;font-size:11px;white-space:nowrap;padding:6px">${fmtShort(val)}</td>
       <td><div class="qty-wrap"><button class="qty-btn" onclick="changeQty(${g.id},-1)">−</button><input class="qty-input" type="number" min="1" value="${g.quantidade||1}" onchange="setQty(${g.id},this)" onclick="event.stopPropagation()"><button class="qty-btn" onclick="changeQty(${g.id},1)">+</button></div></td>
-      <td style="white-space:nowrap;padding-right:8px;min-width:60px">
-        ${g.link?`<a href="${g.link}" target="_blank" style="color:#2a78d6;font-size:13px;margin-right:2px"><i class="ti ti-external-link"></i></a>`:''}
-        ${g.obs?`<span title="${g.obs}" style="color:#555;font-size:13px;cursor:default;margin-right:2px"><i class="ti ti-message-circle"></i></span>`:''}
+      <td style="white-space:nowrap;padding-right:8px;min-width:90px">
+        <span style="display:inline-block;width:18px;text-align:center">${g.link?`<a href="${g.link}" target="_blank" style="color:#2a78d6;font-size:13px"><i class="ti ti-external-link"></i></a>`:''}</span>
+        <span style="display:inline-block;width:18px;text-align:center">${g.obs?`<span title="${g.obs}" style="color:#555;font-size:13px;cursor:default"><i class="ti ti-message-circle"></i></span>`:''}</span>
         <button class="edit-btn" style="opacity:1" onclick="openEdit(${g.id})"><i class="ti ti-pencil"></i></button>
         <button class="del-btn" style="opacity:1" onclick="removeGasto(${g.id})"><i class="ti ti-trash"></i></button>
       </td>
