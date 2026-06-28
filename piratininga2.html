@@ -185,8 +185,26 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
   <div class="sidebar">
     <div class="sidebar-resizer" id="sidebar-resizer"></div>
     <div class="sidebar-brand">
-      <div class="name">Piratininga</div>
-      <div class="sub">controle de gastos</div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div class="name">Piratininga</div>
+          <div class="sub">controle de gastos</div>
+        </div>
+        <div style="display:flex;gap:4px">
+          <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
+            style="background:none;border:1px solid #2a2a2a;border-radius:5px;color:#555;cursor:pointer;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .15s"
+            onmouseover="if(!this.disabled)this.style.color='#e8e7e2';if(!this.disabled)this.style.borderColor='#555'"
+            onmouseout="if(!this.disabled)this.style.color='#888';this.style.borderColor='#2a2a2a'">
+            <i class="ti ti-arrow-back-up"></i>
+          </button>
+          <button id="btn-redo" onclick="historyRedo()" title="Refazer" disabled
+            style="background:none;border:1px solid #2a2a2a;border-radius:5px;color:#555;cursor:pointer;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .15s"
+            onmouseover="if(!this.disabled)this.style.color='#e8e7e2';if(!this.disabled)this.style.borderColor='#555'"
+            onmouseout="if(!this.disabled)this.style.color='#888';this.style.borderColor='#2a2a2a'">
+            <i class="ti ti-arrow-forward-up"></i>
+          </button>
+        </div>
+      </div>
     </div>
     <div class="sidebar-nav">
       <div class="nav-item active" onclick="navigate('geral')" id="nav-geral">
@@ -1013,13 +1031,15 @@ function dragEnd(e){
 async function changeQty(id, delta){
   const g = gastos.find(x=>x.id===id);
   if(!g) return;
-  const newQty = Math.max(1, (g.quantidade||1) + delta);
+  const oldQty = g.quantidade||1;
+  const newQty = Math.max(1, oldQty + delta);
   try{
     await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${id}`,{
       method:'PATCH',
       headers:{...HEADERS,'Prefer':'return=representation'},
       body:JSON.stringify({quantidade:newQty})
     });
+    historyPush({type:'qty',id,from:oldQty,to:newQty});
     g.quantidade = newQty;
     render();
   } catch(e){ toast('Erro ao atualizar quantidade.','err'); }
@@ -1030,12 +1050,14 @@ async function setQty(id, input){
   input.value = newQty;
   const g = gastos.find(x=>x.id===id);
   if(!g || g.quantidade===newQty) return;
+  const oldQty = g.quantidade||1;
   try{
     await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${id}`,{
       method:'PATCH',
       headers:{...HEADERS,'Prefer':'return=representation'},
       body:JSON.stringify({quantidade:newQty})
     });
+    historyPush({type:'qty',id,from:oldQty,to:newQty});
     g.quantidade = newQty;
     render();
   } catch(e){ toast('Erro ao atualizar quantidade.','err'); }
@@ -1227,10 +1249,9 @@ function renderGeral(){
   document.getElementById('content').innerHTML = `
 
     <div class="cards-row" style="grid-template-columns:repeat(5,1fr);margin-bottom:1.5rem">
-      <div class="card" style="border-left:3px solid #4caf50;background:#0d1a0d">
-        <div class="card-label"><i class="ti ti-wallet" style="font-size:13px;color:#4caf50"></i> Saldo restante</div>
-        <div class="card-value ${saldo<0?'red':'green'}">${fmt(saldo)}</div>
-        <div class="card-sub">${ganhos.length} entradas registradas</div>
+      <div class="card" style="border-left:3px solid #e91e8c;background:#1a0d14">
+        <div class="card-label"><i class="ti ti-wallet" style="font-size:13px;color:#e91e8c"></i> Saldo restante real</div>
+        <div class="card-value" style="color:#e91e8c">${fmt(saldo)}</div>
       </div>
       <div class="card" style="border-left:3px solid #4caf50;background:#0d1a0d">
         <div class="card-label"><i class="ti ti-circle-check" style="font-size:13px;color:#4caf50"></i> Já pago</div>
@@ -1241,20 +1262,19 @@ function renderGeral(){
         <div class="card-label"><i class="ti ti-alert-circle" style="font-size:13px;color:#42a5f5"></i> Necessários</div>
         <div class="card-value" style="color:#42a5f5">${fmt(necessario)}</div>
         <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #1a2a3a">
-          <span style="color:#555;font-size:10px">Saldo se usar:</span><br>
+          <span style="color:#555;font-size:10px">Saldo se usar necessários:</span><br>
           <span style="font-size:13px;font-weight:600;color:${(saldo-necessario)<0?'#ef5350':'#42a5f5'}">${fmt(saldo-necessario)}</span>
-        </div>
-        <div class="card-sub" style="margin-top:6px;padding-top:6px;border-top:1px solid #1a2a3a">
-          <span style="color:#555;font-size:10px">Saldo se usar tudo:</span><br>
-          <span style="font-size:13px;font-weight:600;color:${(saldo-necessario-dispensavel)<0?'#ef5350':'#4caf50'}">${fmt(saldo-necessario-dispensavel)}</span>
         </div>
       </div>
       <div class="card" style="border-left:3px solid #e8b544;background:#1a1500">
-        <div class="card-label"><i class="ti ti-clock" style="font-size:13px;color:#e8b544"></i> Dispensáveis</div>
+        <div class="card-label" style="display:flex;align-items:center;justify-content:space-between">
+          <span><i class="ti ti-clock" style="font-size:13px;color:#e8b544"></i> Dispensáveis</span>
+          <button onclick="openBulkModal('apagar','')" title="Mover todos em massa" style="background:none;border:none;color:#555;cursor:pointer;font-size:13px;padding:0 2px;transition:color .15s" onmouseover="this.style.color='#e8b544'" onmouseout="this.style.color='#555'"><i class="ti ti-arrows-transfer-down"></i></button>
+        </div>
         <div class="card-value yellow">${fmt(dispensavel)}</div>
         <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #2a2000">
-          <span style="color:#555;font-size:10px">Saldo se usar:</span><br>
-          <span style="font-size:13px;font-weight:600;color:${(saldo-dispensavel)<0?'#ef5350':'#e8b544'}">${fmt(saldo-dispensavel)}</span>
+          <span style="color:#555;font-size:10px">Saldo comprando necessários e dispensáveis:</span><br>
+          <span style="font-size:13px;font-weight:600;color:${(saldo-necessario-dispensavel)<0?'#ef5350':'#4caf50'}">${fmt(saldo-necessario-dispensavel)}</span>
         </div>
       </div>
       <div class="card" style="border-left:3px solid #555">
@@ -1947,6 +1967,77 @@ function subDragEnd(e){
   });
 }
 
+// ── HISTÓRICO UNDO/REDO ──────────────────────────────────────────
+const historyStack = [];
+let historyIndex = -1;
+
+function historyPush(action){
+  // remove anything ahead of current index
+  historyStack.splice(historyIndex+1);
+  historyStack.push(action);
+  historyIndex = historyStack.length-1;
+  historyUpdateButtons();
+}
+
+function historyUpdateButtons(){
+  const u = document.getElementById('btn-undo');
+  const r = document.getElementById('btn-redo');
+  if(u){ u.disabled = historyIndex < 0; u.style.color = historyIndex>=0?'#888':'#333'; }
+  if(r){ r.disabled = historyIndex >= historyStack.length-1; r.style.color = historyIndex<historyStack.length-1?'#888':'#333'; }
+}
+
+async function historyUndo(){
+  if(historyIndex < 0) return;
+  const action = historyStack[historyIndex];
+  historyIndex--;
+  await applyHistoryAction(action, true);
+  historyUpdateButtons();
+}
+
+async function historyRedo(){
+  if(historyIndex >= historyStack.length-1) return;
+  historyIndex++;
+  const action = historyStack[historyIndex];
+  await applyHistoryAction(action, false);
+  historyUpdateButtons();
+}
+
+async function applyHistoryAction(action, isUndo){
+  try{
+    if(action.type==='status'){
+      const newStatus = isUndo ? action.from : action.to;
+      const res = await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${action.id}`,{
+        method:'PATCH', headers:{...HEADERS,'Prefer':'return=representation'},
+        body:JSON.stringify({status:newStatus})
+      });
+      if(!res.ok) throw new Error();
+      const g = gastos.find(x=>x.id===action.id);
+      if(g) g.status = newStatus;
+    } else if(action.type==='qty'){
+      const newQty = isUndo ? action.from : action.to;
+      const res = await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${action.id}`,{
+        method:'PATCH', headers:{...HEADERS,'Prefer':'return=representation'},
+        body:JSON.stringify({quantidade:newQty})
+      });
+      if(!res.ok) throw new Error();
+      const g = gastos.find(x=>x.id===action.id);
+      if(g) g.quantidade = newQty;
+    } else if(action.type==='bulk'){
+      const ids = isUndo ? action.ids : action.ids;
+      const targetStatus = isUndo ? action.from : action.to;
+      await Promise.all(ids.map(id=>{
+        const g = gastos.find(x=>x.id===id);
+        return fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${id}`,{
+          method:'PATCH', headers:{...HEADERS,'Prefer':'return=representation'},
+          body:JSON.stringify({status:targetStatus})
+        }).then(r=>{ if(g) g.status=targetStatus; });
+      }));
+    }
+    toast(isUndo?'Desfeito!':'Refeito!');
+    render();
+  } catch(e){ toast('Erro ao '+(isUndo?'desfazer':'refazer')+'.','err'); }
+}
+
 // ── DRAG & DROP STATUS ────────────────────────────────────────────
 let dragRowId = null;
 let dragRowInternalId = null;
@@ -2028,6 +2119,7 @@ async function onDropZoneDrop(e){
   if(!id || !newStatus) return;
   const gasto = gastos.find(g=>g.id===id);
   if(!gasto || gasto.status===newStatus) return;
+  const oldStatus = gasto.status;
   try{
     const res = await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${id}`,{
       method:'PATCH',
@@ -2035,6 +2127,7 @@ async function onDropZoneDrop(e){
       body:JSON.stringify({status:newStatus})
     });
     if(!res.ok) throw new Error(await res.text());
+    historyPush({type:'status',id,from:oldStatus,to:newStatus});
     gasto.status = newStatus;
     toast('Status atualizado!');
     render();
@@ -2120,6 +2213,8 @@ function bulkToggleAll(checked){
 async function bulkMoveAll(newStatus){
   const lista = gastos.filter(g=>g.status===bulkStatus && (bulkCatKey?g.categoria===bulkCatKey:g.categoria!=='ganho'));
   if(!lista.length){ toast('Nenhum item para mover.'); return; }
+  const fromStatus = bulkStatus;
+  const ids = lista.map(g=>g.id);
   try{
     await Promise.all(lista.map(g=>
       fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${g.id}`,{
@@ -2127,6 +2222,7 @@ async function bulkMoveAll(newStatus){
         body:JSON.stringify({status:newStatus})
       }).then(r=>{ if(!r.ok) throw new Error(); g.status=newStatus; })
     ));
+    historyPush({type:'bulk',ids,from:fromStatus,to:newStatus});
     toast(`${lista.length} item(ns) movidos para ${STATUS_META[newStatus]?.label||newStatus}!`);
     closeBulkModal();
     render();
@@ -2137,6 +2233,7 @@ async function bulkMoveSelected(newStatus){
   const checks = [...document.querySelectorAll('.bulk-item-check:checked')];
   if(!checks.length){ toast('Nenhum item selecionado.'); return; }
   const ids = checks.map(cb=>parseInt(cb.dataset.id));
+  const fromStatus = bulkStatus;
   try{
     await Promise.all(ids.map(id=>{
       const g = gastos.find(x=>x.id===id);
@@ -2145,6 +2242,7 @@ async function bulkMoveSelected(newStatus){
         body:JSON.stringify({status:newStatus})
       }).then(r=>{ if(!r.ok) throw new Error(); if(g) g.status=newStatus; });
     }));
+    historyPush({type:'bulk',ids,from:fromStatus,to:newStatus});
     toast(`${ids.length} item(ns) movidos para ${STATUS_META[newStatus]?.label||newStatus}!`);
     closeBulkModal();
     render();
