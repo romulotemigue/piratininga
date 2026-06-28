@@ -1633,6 +1633,9 @@ function renderSubCat(page){
   document.getElementById('content').innerHTML = `
     ${renderContextBars(catKey, subKey)}
     <div class="cat-total-card" style="border-left:3px solid ${info.color}">
+      <div class="cat-stat">
+        <span class="cat-stat-label">Total</span>
+        <span class="cat-stat-value" style="color:${info.color}">${fmt(total)}</span>
       </div>
       <div class="cat-stat">
         <span class="cat-stat-label">Pago</span>
