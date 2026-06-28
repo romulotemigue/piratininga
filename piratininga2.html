@@ -1225,47 +1225,8 @@ function renderGeral(){
   const barColor = pct>90?'#ef5350':pct>70?'#e8b544':'#4caf50';
 
   document.getElementById('content').innerHTML = `
-    <div class="progress-wrap">
-      <div class="progress-header">
-        <span class="progress-label">Saldo real <span style="color:#555;font-weight:400">(já pago)</span></span>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <span style="font-size:15px;font-weight:600;color:${saldo<0?'#ef5350':'#4caf50'}">${fmt(saldo)}</span>
-          <span class="progress-pct" style="color:${pct>90?'#ef5350':pct>70?'#e8b544':'#4caf50'}">${pct}% gasto</span>
-        </div>
-      </div>
-      <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${pct}%;background:${pct>90?'#ef5350':pct>70?'#e8b544':'#4caf50'}"></div></div>
-      <div class="progress-amounts"><span>Pago: ${fmt(pago)}</span><span>Saldo: <strong style="color:${saldo<0?'#ef5350':'#4caf50'}">${fmt(saldo)}</strong></span></div>
-    </div>
 
-    <div class="progress-wrap" style="margin-top:-4px">
-      ${(()=>{const s2=saldo-necessario;const p2=totalGanhos>0?Math.min(100,Math.round((pago+necessario)/totalGanhos*100)):0;const c2=p2>90?'#ef5350':p2>70?'#e8b544':'#42a5f5';return `
-      <div class="progress-header">
-        <span class="progress-label">Saldo com necessários <span style="color:#555;font-weight:400">(pago + necessários)</span></span>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <span style="font-size:15px;font-weight:600;color:${s2<0?'#ef5350':'#42a5f5'}">${fmt(s2)}</span>
-          <span class="progress-pct" style="color:${c2}">${p2}% comprometido</span>
-        </div>
-      </div>
-      <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${p2}%;background:${c2}"></div></div>
-      <div class="progress-amounts"><span>Pago + Necessários: ${fmt(pago+necessario)}</span><span>Saldo: <strong style="color:${s2<0?'#ef5350':'#42a5f5'}">${fmt(s2)}</strong></span></div>
-      `;})()}
-    </div>
-
-    <div class="progress-wrap" style="margin-top:-4px">
-      ${(()=>{const s3=saldo-necessario-dispensavel;const p3=totalGanhos>0?Math.min(100,Math.round((pago+necessario+dispensavel)/totalGanhos*100)):0;const c3=p3>90?'#ef5350':p3>70?'#e8b544':'#888';return `
-      <div class="progress-header">
-        <span class="progress-label">Saldo comprando tudo <span style="color:#555;font-weight:400">(pago + necessários + dispensáveis)</span></span>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <span style="font-size:15px;font-weight:600;color:${s3<0?'#ef5350':'#4caf50'}">${fmt(s3)}</span>
-          <span class="progress-pct" style="color:${c3}">${p3}% comprometido</span>
-        </div>
-      </div>
-      <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${p3}%;background:${c3}"></div></div>
-      <div class="progress-amounts"><span>Total comprometido: ${fmt(pago+necessario+dispensavel)}</span><span>Saldo: <strong style="color:${s3<0?'#ef5350':'#4caf50'}">${fmt(s3)}</strong></span></div>
-      `;})()}
-    </div>
-
-    <div class="cards-row" style="grid-template-columns:repeat(6,1fr)">
+    <div class="cards-row" style="grid-template-columns:repeat(6,1fr);margin-bottom:1.5rem">
       <div class="card">
         <div class="card-label"><i class="ti ti-wallet" style="font-size:13px;color:#4caf50"></i> Saldo restante</div>
         <div class="card-value ${saldo<0?'red':'green'}">${fmt(saldo)}</div>
@@ -1307,44 +1268,81 @@ function renderGeral(){
       </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:12px;margin-bottom:1.25rem">
-      <div class="chart-card">
-        <div class="chart-title" style="color:#4caf50">● Pagos — por categoria</div>
-        <div id="bar-legend-pago" class="legend-row"></div>
-        <div style="position:relative;height:180px"><canvas id="barChartPago"></canvas></div>
+    <!-- BLOCO 1: PAGO -->
+    <div style="background:#111;border:1px solid #1e3a1e;border-left:3px solid #4caf50;border-radius:10px;padding:1.25rem;margin-bottom:1rem">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem">
+        <span style="width:8px;height:8px;border-radius:50%;background:#4caf50;display:inline-block"></span>
+        <span style="font-size:11px;font-weight:600;color:#4caf50;text-transform:uppercase;letter-spacing:.08em">Saldo real — já pago</span>
+        <span style="margin-left:auto;font-size:15px;font-weight:600;color:${saldo<0?'#ef5350':'#4caf50'}">${fmt(saldo)}</span>
+        <span style="font-size:11px;color:${pct>90?'#ef5350':pct>70?'#e8b544':'#4caf50'}">${pct}% gasto</span>
       </div>
-      <div class="chart-card">
-        <div class="chart-title" style="color:#4caf50">● Pagos — distribuição</div>
-        <div id="pie-legend-pago" class="legend-row"></div>
-        <div style="position:relative;height:180px"><canvas id="pieChartPago"></canvas></div>
-      </div>
-    </div>
-
-    <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:12px;margin-bottom:1.25rem">
-      <div class="chart-card">
-        <div class="chart-title" style="color:#42a5f5">● Pagos + Necessários — por categoria</div>
-        <div id="bar-legend-nec" class="legend-row"></div>
-        <div style="position:relative;height:180px"><canvas id="barChartNec"></canvas></div>
-      </div>
-      <div class="chart-card">
-        <div class="chart-title" style="color:#42a5f5">● Pagos + Necessários — distribuição</div>
-        <div id="pie-legend-nec" class="legend-row"></div>
-        <div style="position:relative;height:180px"><canvas id="pieChartNec"></canvas></div>
+      <div class="progress-bar-bg" style="margin-bottom:6px"><div class="progress-bar-fill" style="width:${pct}%;background:${pct>90?'#ef5350':pct>70?'#e8b544':'#4caf50'}"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:1rem"><span>Pago: ${fmt(pago)}</span><span>Saldo: <strong style="color:${saldo<0?'#ef5350':'#4caf50'}">${fmt(saldo)}</strong></span></div>
+      <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:12px">
+        <div class="chart-card" style="background:#0d1a0d;border-color:#1e3a1e">
+          <div class="chart-title" style="color:#4caf50">Por categoria</div>
+          <div id="bar-legend-pago" class="legend-row"></div>
+          <div style="position:relative;height:160px"><canvas id="barChartPago"></canvas></div>
+        </div>
+        <div class="chart-card" style="background:#0d1a0d;border-color:#1e3a1e">
+          <div class="chart-title" style="color:#4caf50">Distribuição</div>
+          <div id="pie-legend-pago" class="legend-row"></div>
+          <div style="position:relative;height:160px"><canvas id="pieChartPago"></canvas></div>
+        </div>
       </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:12px;margin-bottom:1.25rem">
-      <div class="chart-card">
-        <div class="chart-title" style="color:#e8b544">● Tudo — por categoria</div>
-        <div id="bar-legend-tudo" class="legend-row"></div>
-        <div style="position:relative;height:180px"><canvas id="barChartTudo"></canvas></div>
+    <!-- BLOCO 2: PAGO + NECESSÁRIOS -->
+    ${(()=>{const s2=saldo-necessario;const p2=totalGanhos>0?Math.min(100,Math.round((pago+necessario)/totalGanhos*100)):0;const c2=p2>90?'#ef5350':p2>70?'#e8b544':'#42a5f5';return `
+    <div style="background:#111;border:1px solid #1a2a3a;border-left:3px solid #42a5f5;border-radius:10px;padding:1.25rem;margin-bottom:1rem">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem">
+        <span style="width:8px;height:8px;border-radius:50%;background:#42a5f5;display:inline-block"></span>
+        <span style="font-size:11px;font-weight:600;color:#42a5f5;text-transform:uppercase;letter-spacing:.08em">Saldo com necessários — pago + necessários</span>
+        <span style="margin-left:auto;font-size:15px;font-weight:600;color:${s2<0?'#ef5350':'#42a5f5'}">${fmt(s2)}</span>
+        <span style="font-size:11px;color:${c2}">${p2}% comprometido</span>
       </div>
-      <div class="chart-card">
-        <div class="chart-title" style="color:#e8b544">● Tudo — distribuição</div>
-        <div id="pie-legend-tudo" class="legend-row"></div>
-        <div style="position:relative;height:180px"><canvas id="pieChartTudo"></canvas></div>
+      <div class="progress-bar-bg" style="margin-bottom:6px"><div class="progress-bar-fill" style="width:${p2}%;background:${c2}"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:1rem"><span>Pago + Necessários: ${fmt(pago+necessario)}</span><span>Saldo: <strong style="color:${s2<0?'#ef5350':'#42a5f5'}">${fmt(s2)}</strong></span></div>
+      <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:12px">
+        <div class="chart-card" style="background:#0d1520;border-color:#1a2a3a">
+          <div class="chart-title" style="color:#42a5f5">Por categoria</div>
+          <div id="bar-legend-nec" class="legend-row"></div>
+          <div style="position:relative;height:160px"><canvas id="barChartNec"></canvas></div>
+        </div>
+        <div class="chart-card" style="background:#0d1520;border-color:#1a2a3a">
+          <div class="chart-title" style="color:#42a5f5">Distribuição</div>
+          <div id="pie-legend-nec" class="legend-row"></div>
+          <div style="position:relative;height:160px"><canvas id="pieChartNec"></canvas></div>
+        </div>
       </div>
     </div>
+    `;})()} 
+
+    <!-- BLOCO 3: TUDO -->
+    ${(()=>{const s3=saldo-necessario-dispensavel;const p3=totalGanhos>0?Math.min(100,Math.round((pago+necessario+dispensavel)/totalGanhos*100)):0;const c3=p3>90?'#ef5350':p3>70?'#e8b544':'#888';return `
+    <div style="background:#111;border:1px solid #2a2000;border-left:3px solid #e8b544;border-radius:10px;padding:1.25rem;margin-bottom:1.25rem">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem">
+        <span style="width:8px;height:8px;border-radius:50%;background:#e8b544;display:inline-block"></span>
+        <span style="font-size:11px;font-weight:600;color:#e8b544;text-transform:uppercase;letter-spacing:.08em">Saldo comprando tudo — pago + necessários + dispensáveis</span>
+        <span style="margin-left:auto;font-size:15px;font-weight:600;color:${s3<0?'#ef5350':'#4caf50'}">${fmt(s3)}</span>
+        <span style="font-size:11px;color:${c3}">${p3}% comprometido</span>
+      </div>
+      <div class="progress-bar-bg" style="margin-bottom:6px"><div class="progress-bar-fill" style="width:${p3}%;background:${c3}"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:1rem"><span>Total: ${fmt(pago+necessario+dispensavel)}</span><span>Saldo: <strong style="color:${s3<0?'#ef5350':'#4caf50'}">${fmt(s3)}</strong></span></div>
+      <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:12px">
+        <div class="chart-card" style="background:#1a1500;border-color:#2a2000">
+          <div class="chart-title" style="color:#e8b544">Por categoria</div>
+          <div id="bar-legend-tudo" class="legend-row"></div>
+          <div style="position:relative;height:160px"><canvas id="barChartTudo"></canvas></div>
+        </div>
+        <div class="chart-card" style="background:#1a1500;border-color:#2a2000">
+          <div class="chart-title" style="color:#e8b544">Distribuição</div>
+          <div id="pie-legend-tudo" class="legend-row"></div>
+          <div style="position:relative;height:160px"><canvas id="pieChartTudo"></canvas></div>
+        </div>
+      </div>
+    </div>
+    `;})()} 
 
     <div class="table-card">
       <table>
