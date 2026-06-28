@@ -213,7 +213,10 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       <div class="divider"></div>
       <div style="display:flex;align-items:center;justify-content:space-between;padding:.75rem 1.25rem .25rem">
         <span style="font-size:10px;color:#444;text-transform:uppercase;letter-spacing:.08em">Categorias</span>
-        <button onclick="openModalAddCat()" title="Nova categoria" style="background:none;border:none;color:#555;cursor:pointer;font-size:16px;padding:0 2px;line-height:1" onmouseover="this.style.color='#e8b544'" onmouseout="this.style.color='#555'"><i class="ti ti-plus"></i></button>
+        <div style="display:flex;gap:4px;align-items:center">
+          <button onclick="toggleAllExpand()" id="btn-expand-all" title="Expandir/recolher todos" style="background:none;border:none;color:#555;cursor:pointer;font-size:13px;padding:0 2px;line-height:1" onmouseover="this.style.color='#e8b544'" onmouseout="this.style.color='#555'"><i class="ti ti-chevrons-down"></i></button>
+          <button onclick="openModalAddCat()" title="Nova categoria" style="background:none;border:none;color:#555;cursor:pointer;font-size:16px;padding:0 2px;line-height:1" onmouseover="this.style.color='#e8b544'" onmouseout="this.style.color='#555'"><i class="ti ti-plus"></i></button>
+        </div>
       </div>
       <div id="cat-nav-list"></div>
       <div class="divider"></div>
@@ -634,6 +637,18 @@ function toggleExpand(k, e){
   }
 }
 
+function toggleAllExpand(){
+  const expanded = JSON.parse(localStorage.getItem('pirati_expanded')||'{}');
+  const keys = Object.keys(CATS).filter(k=>SUBCATS[k]&&Object.keys(SUBCATS[k]).length>0);
+  const allOpen = keys.every(k=>expanded[k]);
+  const newState = !allOpen;
+  keys.forEach(k=>{ expanded[k]=newState; });
+  localStorage.setItem('pirati_expanded', JSON.stringify(expanded));
+  // update icon
+  const btn = document.getElementById('btn-expand-all');
+  if(btn) btn.innerHTML = newState?'<i class="ti ti-chevrons-up"></i>':'<i class="ti ti-chevrons-down"></i>';
+  renderCatNav();
+}
 
 
 function toggleCatMenu(k, e){
