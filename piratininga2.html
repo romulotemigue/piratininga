@@ -81,6 +81,9 @@ tr.dragging-row td{background:#1a1a1a}
 .table-card.drop-target-dispensavel{box-shadow:0 0 0 2px #e8b544;background:#1e1a00}
 .table-card.drop-target-pago{box-shadow:0 0 0 2px #4caf50;background:#0a1f0a}
 .table-card{transition:box-shadow .15s,background .15s}
+.subcat-row.sub-drag-over{background:#222;border-left:2px solid #e8b544}
+.subcat-row.sub-dragging{opacity:.4}
+tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
 .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500}
 .badge.pago{background:#1a3a25;color:#4caf50}
 .badge.apagar{background:#3a2e0a;color:#e8b544}
@@ -425,6 +428,48 @@ tr.dragging-row td{background:#1a1a1a}
   </div>
 </div>
 
+<!-- BULK MOVE MODAL -->
+<div class="modal-overlay" id="modal-bulk-overlay">
+  <div class="modal" style="min-width:420px;max-width:520px">
+    <div class="modal-header">
+      <span class="modal-title" id="bulk-modal-title">Mover itens</span>
+      <button class="modal-close" onclick="closeBulkModal()">×</button>
+    </div>
+    <div id="bulk-mode-select" style="padding:1rem 0">
+      <p style="font-size:13px;color:#888;margin-bottom:1.25rem">O que você quer fazer?</p>
+      <div style="display:flex;gap:10px">
+        <button onclick="setBulkMode('all')" style="flex:1;padding:14px;background:#1e1e1e;border:1px solid #333;border-radius:8px;color:#e8e7e2;font-size:13px;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor='#e8b544'" onmouseout="this.style.borderColor='#333'">
+          <div style="font-size:20px;margin-bottom:6px">⚡</div>
+          <div style="font-weight:600">Mover todos</div>
+          <div style="font-size:11px;color:#555;margin-top:4px">Move todos os itens desta coluna de uma vez</div>
+        </button>
+        <button onclick="setBulkMode('select')" style="flex:1;padding:14px;background:#1e1e1e;border:1px solid #333;border-radius:8px;color:#e8e7e2;font-size:13px;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor='#e8b544'" onmouseout="this.style.borderColor='#333'">
+          <div style="font-size:20px;margin-bottom:6px">☑️</div>
+          <div style="font-weight:600">Selecionar</div>
+          <div style="font-size:11px;color:#555;margin-top:4px">Escolha quais itens mover</div>
+        </button>
+      </div>
+    </div>
+    <div id="bulk-mode-all" style="display:none;padding:1rem 0">
+      <p style="font-size:12px;color:#888;margin-bottom:1rem">Mover <strong id="bulk-all-count" style="color:#e8e7e2"></strong> para:</p>
+      <div id="bulk-dest-buttons-all" style="display:flex;flex-direction:column;gap:8px"></div>
+      <button onclick="setBulkMode(null)" style="margin-top:1rem;background:none;border:none;color:#555;font-size:12px;cursor:pointer">← Voltar</button>
+    </div>
+    <div id="bulk-mode-select-list" style="display:none;padding:1rem 0">
+      <div id="bulk-select-items" style="max-height:280px;overflow-y:auto;margin-bottom:1rem"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <label style="font-size:12px;color:#555;cursor:pointer;display:flex;align-items:center;gap:6px">
+          <input type="checkbox" id="bulk-check-all" onchange="bulkToggleAll(this.checked)" style="accent-color:#e8b544"> Selecionar todos
+        </label>
+        <span id="bulk-selected-count" style="font-size:12px;color:#888">0 selecionados</span>
+      </div>
+      <p style="font-size:12px;color:#888;margin:1rem 0 .5rem">Mover selecionados para:</p>
+      <div id="bulk-dest-buttons-select" style="display:flex;flex-direction:column;gap:8px"></div>
+      <button onclick="setBulkMode(null)" style="margin-top:1rem;background:none;border:none;color:#555;font-size:12px;cursor:pointer">← Voltar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-subcat-launch-overlay">
   <div class="modal">
     <div class="modal-header">
@@ -506,8 +551,14 @@ function renderCatNav(){
     const hasSubs = SUBCATS[k] && Object.keys(SUBCATS[k]).length>0;
     const isOpen = !!expanded[k];
     const subs = hasSubs ? Object.keys(SUBCATS[k]).map(sk=>`
-      <div class="subcat-row">
-        <div class="nav-item" style="padding-left:2.5rem;font-size:12px;color:#666;flex:1" onclick="navigate('${k}__${sk}')" id="nav-${k}__${sk}">
+      <div class="subcat-row" id="subcat-row-${k}-${sk}" draggable="true"
+        ondragstart="subDragStart('${k}','${sk}',event)"
+        ondragover="subDragOver('${k}','${sk}',event)"
+        ondragleave="subDragLeave('${k}','${sk}',event)"
+        ondrop="subDragDrop('${k}','${sk}',event)"
+        ondragend="subDragEnd(event)">
+        <span style="color:#333;cursor:grab;font-size:12px;padding:0 4px 0 1.5rem;user-select:none" title="Arrastar">⠿</span>
+        <div class="nav-item" style="padding-left:0;font-size:12px;color:#666;flex:1" onclick="navigate('${k}__${sk}')" id="nav-${k}__${sk}">
           ↳ ${SUBCATS[k][sk].label}
         </div>
         <button class="subcat-dots-btn" style="background:none;border:none;color:#444;cursor:pointer;padding:4px 6px;font-size:13px;opacity:0;transition:opacity .15s" onclick="toggleSubCatMenu('subcat-menu-${k}-${sk}',event)"><i class="ti ti-dots-vertical"></i></button>
@@ -1393,23 +1444,17 @@ function renderSubCat(page){
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="table-card" data-drop-status="pago" onDragOver="onDropZoneOver(event)" onDragLeave="onDropZoneLeave(event)" onDrop="onDropZoneDrop(event)">
-        <div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:#4caf50;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
-          <i class="ti ti-circle-check"></i> Pago
-        </div>
+        ${tableCardHeader('Pago','#4caf50','ti-circle-check','pago',catKey)}
         <table><thead><tr><th></th><th>Data</th><th>Descrição</th><th>Sub</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
         <tbody>${renderRowsFiltered(lista,'pago',catKey)}</tbody></table>
       </div>
       <div class="table-card" data-drop-status="necessario" onDragOver="onDropZoneOver(event)" onDragLeave="onDropZoneLeave(event)" onDrop="onDropZoneDrop(event)">
-        <div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:#42a5f5;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
-          <i class="ti ti-alert-circle"></i> Necessários
-        </div>
+        ${tableCardHeader('Necessários','#42a5f5','ti-alert-circle','necessario',catKey)}
         <table><thead><tr><th></th><th>Data</th><th>Descrição</th><th>Sub</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
         <tbody>${renderRowsFiltered(lista,'necessario',catKey)}</tbody></table>
       </div>
       <div class="table-card" data-drop-status="apagar" onDragOver="onDropZoneOver(event)" onDragLeave="onDropZoneLeave(event)" onDrop="onDropZoneDrop(event)">
-        <div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:#e8b544;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
-          <i class="ti ti-clock"></i> Dispensáveis
-        </div>
+        ${tableCardHeader('Dispensáveis','#e8b544','ti-clock','apagar',catKey)}
         <table><thead><tr><th></th><th>Data</th><th>Descrição</th><th>Sub</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
         <tbody>${renderRowsFiltered(lista,'apagar',catKey)}</tbody></table>
       </div>
@@ -1477,38 +1522,23 @@ function renderCat(cat){
 
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
       <div class="table-card" data-drop-status="pago" onDragOver="onDropZoneOver(event)" onDragLeave="onDropZoneLeave(event)" onDrop="onDropZoneDrop(event)">
-        <div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:#4caf50;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
-          <i class="ti ti-circle-check"></i> Pago
-        </div>
+        ${tableCardHeader('Pago','#4caf50','ti-circle-check','pago',cat)}
         <table>
-          <thead><tr>
-            <th></th><th>Data</th><th>Descrição</th><th>Sub</th>
-            <th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th>
-          </tr></thead>
+          <thead><tr><th></th><th>Data</th><th>Descrição</th><th>Sub</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
           <tbody>${renderRowsFiltered(lista,'pago',cat)}</tbody>
         </table>
       </div>
       <div class="table-card" data-drop-status="necessario" onDragOver="onDropZoneOver(event)" onDragLeave="onDropZoneLeave(event)" onDrop="onDropZoneDrop(event)">
-        <div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:#42a5f5;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
-          <i class="ti ti-alert-circle"></i> Necessários
-        </div>
+        ${tableCardHeader('Necessários','#42a5f5','ti-alert-circle','necessario',cat)}
         <table>
-          <thead><tr>
-            <th></th><th>Data</th><th>Descrição</th><th>Sub</th>
-            <th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th>
-          </tr></thead>
+          <thead><tr><th></th><th>Data</th><th>Descrição</th><th>Sub</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
           <tbody>${renderRowsFiltered(lista,'necessario',cat)}</tbody>
         </table>
       </div>
       <div class="table-card" data-drop-status="apagar" onDragOver="onDropZoneOver(event)" onDragLeave="onDropZoneLeave(event)" onDrop="onDropZoneDrop(event)">
-        <div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:#e8b544;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
-          <i class="ti ti-clock"></i> Dispensáveis
-        </div>
+        ${tableCardHeader('Dispensáveis','#e8b544','ti-clock','apagar',cat)}
         <table>
-          <thead><tr>
-            <th></th><th>Data</th><th>Descrição</th><th>Sub</th>
-            <th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th>
-          </tr></thead>
+          <thead><tr><th></th><th>Data</th><th>Descrição</th><th>Sub</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
           <tbody>${renderRowsFiltered(lista,'apagar',cat)}</tbody>
         </table>
       </div>
@@ -1528,13 +1558,34 @@ function renderCat(cat){
   }
 }
 
+function tableCardHeader(label, color, icon, status, catKey){
+  const statusLabels = {'pago':'Pago','necessario':'Necessários','apagar':'Dispensáveis'};
+  const allStatuses = Object.keys(statusLabels);
+  return `<div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:${color};text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
+    <i class="ti ${icon}"></i> ${label}
+    <button onclick="openBulkModal('${status}','${catKey||''}')" title="Mover em massa" style="margin-left:auto;background:none;border:none;color:#444;cursor:pointer;font-size:15px;padding:2px 4px;border-radius:4px;transition:color .15s" onmouseover="this.style.color='#e8b544'" onmouseout="this.style.color='#444'"><i class="ti ti-arrows-transfer-down"></i></button>
+  </div>`;
+}
+
 function renderRowsFiltered(list, status, catKey){
   const filtered = list.filter(g=>g.status===status);
-  if(!filtered.length) return `<tr><td colspan="8" class="empty" style="padding:1.5rem">Nenhum item</td></tr>`;
-  return filtered.map(g=>{
+  if(!filtered.length) return `<tr><td colspan="9" class="empty" style="padding:1.5rem">Nenhum item</td></tr>`;
+  // use local order if set
+  const orderKey = 'row_order_'+status+'_'+(catKey||'geral');
+  let order = [];
+  try{ order = JSON.parse(localStorage.getItem(orderKey)||'[]'); }catch(e){}
+  const sorted = order.length
+    ? [...filtered].sort((a,b)=>{ const ai=order.indexOf(a.id); const bi=order.indexOf(b.id); return (ai===-1?9999:ai)-(bi===-1?9999:bi); })
+    : filtered;
+  return sorted.map((g,idx)=>{
     const subLabel = g.subcategoria && SUBCATS[catKey||g.categoria]?.[g.subcategoria]?.label || '';
-    return `<tr draggable="true" data-id="${g.id}" onDragStart="onRowDragStart(event,${g.id})" onDragEnd="onRowDragEnd(event)" style="cursor:default">
-      <td style="padding:10px 6px 10px 14px;width:18px"><span class="drag-handle" title="Arrastar para outro status">⠿</span></td>
+    return `<tr draggable="true" data-id="${g.id}" data-status="${status}" data-catkey="${catKey||''}"
+      onDragStart="onRowDragStart(event,${g.id})"
+      onDragEnd="onRowDragEnd(event)"
+      onDragOver="onRowInternalOver(event)"
+      onDrop="onRowInternalDrop(event,${g.id},'${status}','${catKey||''}')"
+      style="cursor:default">
+      <td style="padding:10px 6px 10px 14px;width:18px"><span class="drag-handle" title="Arrastar">⠿</span></td>
       <td style="color:#555;white-space:nowrap;font-size:12px">${g.data||'—'}</td>
       <td>${g.descricao||''}</td>
       <td style="color:#555;font-size:11px">${subLabel}</td>
@@ -1605,26 +1656,121 @@ function saveOrc(v){
 // ── INIT ─────────────────────────────────────────────────────────
 document.getElementById('topbar-date').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
 document.getElementById('f-data').value = new Date().toISOString().split('T')[0];
+// ── DRAG & DROP SUBCATEGORIAS (SIDEBAR) ──────────────────────────
+let subDragKey = null;
+let subDragCat = null;
+
+function subDragStart(catKey, sk, e){
+  e.stopPropagation(); // não acionar drag da categoria pai
+  subDragKey = sk;
+  subDragCat = catKey;
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(()=>{
+    const el = document.getElementById('subcat-row-'+catKey+'-'+sk);
+    if(el) el.classList.add('sub-dragging');
+  },0);
+}
+
+function subDragOver(catKey, sk, e){
+  e.preventDefault();
+  e.stopPropagation();
+  if(sk===subDragKey) return;
+  document.querySelectorAll('.subcat-row').forEach(el=>el.classList.remove('sub-drag-over'));
+  const el = document.getElementById('subcat-row-'+catKey+'-'+sk);
+  if(el) el.classList.add('sub-drag-over');
+}
+
+function subDragLeave(catKey, sk, e){
+  const el = document.getElementById('subcat-row-'+catKey+'-'+sk);
+  if(el) el.classList.remove('sub-drag-over');
+}
+
+function subDragDrop(catKey, sk, e){
+  e.preventDefault();
+  e.stopPropagation();
+  if(sk===subDragKey || catKey!==subDragCat) return;
+  const subs = SUBCATS[catKey];
+  if(!subs) return;
+  const keys = Object.keys(subs);
+  const fromIdx = keys.indexOf(subDragKey);
+  const toIdx = keys.indexOf(sk);
+  if(fromIdx===-1||toIdx===-1) return;
+  const entries = Object.entries(subs);
+  const [moved] = entries.splice(fromIdx, 1);
+  entries.splice(toIdx, 0, moved);
+  SUBCATS[catKey] = Object.fromEntries(entries);
+  saveSubCats();
+  renderCatNav();
+  subDragKey = null;
+  subDragCat = null;
+}
+
+function subDragEnd(e){
+  e.stopPropagation();
+  subDragKey = null;
+  subDragCat = null;
+  document.querySelectorAll('.subcat-row').forEach(el=>{
+    el.classList.remove('sub-dragging','sub-drag-over');
+  });
+}
+
 ensureSubCats();
 renderCatNav();
 loadGastos();
 
 // ── DRAG & DROP STATUS ────────────────────────────────────────────
 let dragRowId = null;
+let dragRowInternalId = null;
 
 function onRowDragStart(e, id){
   dragRowId = id;
+  dragRowInternalId = id;
   e.dataTransfer.effectAllowed = 'move';
   e.dataTransfer.setData('text/plain', id);
-  setTimeout(()=>{ if(e.target.closest('tr')) e.target.closest('tr').classList.add('dragging-row'); }, 0);
+  setTimeout(()=>{ const tr=e.target.closest('tr'); if(tr) tr.classList.add('dragging-row'); }, 0);
 }
 
 function onRowDragEnd(e){
   document.querySelectorAll('tr.dragging-row').forEach(r=>r.classList.remove('dragging-row'));
+  document.querySelectorAll('tr.row-drag-over').forEach(r=>r.classList.remove('row-drag-over'));
   document.querySelectorAll('.table-card').forEach(c=>{
     c.classList.remove('drop-target-pago','drop-target-necessario','drop-target-dispensavel');
   });
   dragRowId = null;
+}
+
+function onRowInternalOver(e){
+  e.preventDefault();
+  e.stopPropagation();
+  const tr = e.currentTarget;
+  const targetId = parseInt(tr.dataset.id);
+  if(targetId === dragRowInternalId) return;
+  document.querySelectorAll('tr.row-drag-over').forEach(r=>r.classList.remove('row-drag-over'));
+  tr.classList.add('row-drag-over');
+}
+
+function onRowInternalDrop(e, targetId, status, catKey){
+  const fromId = dragRowInternalId;
+  if(!fromId || fromId === targetId) return;
+  // check same status column
+  const fromTr = document.querySelector(`tr[data-id="${fromId}"]`);
+  if(!fromTr || fromTr.dataset.status !== status) return; // different column → let onDropZoneDrop handle
+  e.stopPropagation();
+  const orderKey = 'row_order_'+status+'_'+(catKey||'geral');
+  const filtered = gastos.filter(g=>g.status===status && (catKey?g.categoria===catKey:true));
+  let order = [];
+  try{ order = JSON.parse(localStorage.getItem(orderKey)||'[]'); }catch(ex){}
+  let ids = order.length ? [...order] : filtered.map(g=>g.id);
+  // ensure all current ids are present
+  filtered.forEach(g=>{ if(!ids.includes(g.id)) ids.push(g.id); });
+  ids = ids.filter(id=>filtered.find(g=>g.id===id));
+  const fromIdx = ids.indexOf(fromId);
+  const toIdx = ids.indexOf(targetId);
+  if(fromIdx===-1||toIdx===-1) return;
+  ids.splice(fromIdx,1);
+  ids.splice(toIdx,0,fromId);
+  localStorage.setItem(orderKey, JSON.stringify(ids));
+  render();
 }
 
 function onDropZoneOver(e){
@@ -1666,6 +1812,114 @@ async function onDropZoneDrop(e){
   } catch(err){
     toast('Erro ao atualizar: '+err.message,'err');
   }
+}
+
+// ── BULK MOVE ────────────────────────────────────────────────────
+let bulkStatus = null;
+let bulkCatKey = null;
+
+const STATUS_META = {
+  pago:      {label:'Pago',        color:'#4caf50'},
+  necessario:{label:'Necessários', color:'#42a5f5'},
+  apagar:    {label:'Dispensáveis',color:'#e8b544'},
+};
+
+function openBulkModal(status, catKey){
+  bulkStatus = status;
+  bulkCatKey = catKey || null;
+  const meta = STATUS_META[status];
+  document.getElementById('bulk-modal-title').textContent = 'Mover itens de ' + (meta?.label||status);
+  document.getElementById('bulk-mode-select').style.display = '';
+  document.getElementById('bulk-mode-all').style.display = 'none';
+  document.getElementById('bulk-mode-select-list').style.display = 'none';
+  document.getElementById('modal-bulk-overlay').classList.add('open');
+}
+
+function closeBulkModal(){
+  document.getElementById('modal-bulk-overlay').classList.remove('open');
+  bulkStatus = null; bulkCatKey = null;
+}
+document.getElementById('modal-bulk-overlay').addEventListener('click',function(e){ if(e.target===this) closeBulkModal(); });
+
+function buildDestButtons(containerId, excludeStatus, onClickFn){
+  const container = document.getElementById(containerId);
+  container.innerHTML = Object.entries(STATUS_META)
+    .filter(([k])=>k!==excludeStatus)
+    .map(([k,m])=>`<button onclick="${onClickFn}('${k}')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:7px;color:#e8e7e2;font-size:13px;cursor:pointer;width:100%;transition:all .15s" onmouseover="this.style.borderColor='${m.color}'" onmouseout="this.style.borderColor='#2a2a2a'">
+      <span style="width:10px;height:10px;border-radius:50%;background:${m.color};display:inline-block"></span>
+      ${m.label}
+    </button>`).join('');
+}
+
+function setBulkMode(mode){
+  document.getElementById('bulk-mode-select').style.display = mode===null?'':'none';
+  document.getElementById('bulk-mode-all').style.display = mode==='all'?'':'none';
+  document.getElementById('bulk-mode-select-list').style.display = mode==='select'?'':'none';
+
+  if(mode==='all'){
+    const lista = gastos.filter(g=>g.status===bulkStatus && (bulkCatKey?g.categoria===bulkCatKey:g.categoria!=='ganho'));
+    document.getElementById('bulk-all-count').textContent = lista.length + ' item(ns)';
+    buildDestButtons('bulk-dest-buttons-all', bulkStatus, 'bulkMoveAll');
+  }
+  if(mode==='select'){
+    const lista = gastos.filter(g=>g.status===bulkStatus && (bulkCatKey?g.categoria===bulkCatKey:g.categoria!=='ganho'));
+    document.getElementById('bulk-select-items').innerHTML = lista.map(g=>`
+      <label style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid #1f1f1f;cursor:pointer;font-size:13px">
+        <input type="checkbox" class="bulk-item-check" data-id="${g.id}" style="accent-color:#e8b544">
+        <span style="flex:1">${g.descricao||'—'}</span>
+        <span style="color:#555;font-size:12px">${fmt((g.valor||0)*(g.quantidade||1))}</span>
+      </label>`).join('');
+    document.getElementById('bulk-check-all').checked = false;
+    document.getElementById('bulk-selected-count').textContent = '0 selecionados';
+    document.querySelectorAll('.bulk-item-check').forEach(cb=>{
+      cb.addEventListener('change', updateBulkCount);
+    });
+    buildDestButtons('bulk-dest-buttons-select', bulkStatus, 'bulkMoveSelected');
+  }
+}
+
+function updateBulkCount(){
+  const count = document.querySelectorAll('.bulk-item-check:checked').length;
+  document.getElementById('bulk-selected-count').textContent = count + ' selecionados';
+}
+
+function bulkToggleAll(checked){
+  document.querySelectorAll('.bulk-item-check').forEach(cb=>{ cb.checked=checked; });
+  updateBulkCount();
+}
+
+async function bulkMoveAll(newStatus){
+  const lista = gastos.filter(g=>g.status===bulkStatus && (bulkCatKey?g.categoria===bulkCatKey:g.categoria!=='ganho'));
+  if(!lista.length){ toast('Nenhum item para mover.'); return; }
+  try{
+    await Promise.all(lista.map(g=>
+      fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${g.id}`,{
+        method:'PATCH', headers:{...HEADERS,'Prefer':'return=representation'},
+        body:JSON.stringify({status:newStatus})
+      }).then(r=>{ if(!r.ok) throw new Error(); g.status=newStatus; })
+    ));
+    toast(`${lista.length} item(ns) movidos para ${STATUS_META[newStatus]?.label||newStatus}!`);
+    closeBulkModal();
+    render();
+  } catch(err){ toast('Erro ao mover itens.','err'); }
+}
+
+async function bulkMoveSelected(newStatus){
+  const checks = [...document.querySelectorAll('.bulk-item-check:checked')];
+  if(!checks.length){ toast('Nenhum item selecionado.'); return; }
+  const ids = checks.map(cb=>parseInt(cb.dataset.id));
+  try{
+    await Promise.all(ids.map(id=>{
+      const g = gastos.find(x=>x.id===id);
+      return fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${id}`,{
+        method:'PATCH', headers:{...HEADERS,'Prefer':'return=representation'},
+        body:JSON.stringify({status:newStatus})
+      }).then(r=>{ if(!r.ok) throw new Error(); if(g) g.status=newStatus; });
+    }));
+    toast(`${ids.length} item(ns) movidos para ${STATUS_META[newStatus]?.label||newStatus}!`);
+    closeBulkModal();
+    render();
+  } catch(err){ toast('Erro ao mover itens.','err'); }
 }
 </script>
 </div>
