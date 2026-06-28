@@ -84,6 +84,7 @@ tr.dragging-row td{background:#1a1a1a}
 .subcat-row.sub-drag-over{background:#222;border-left:2px solid #e8b544}
 .subcat-row.sub-dragging{opacity:.4}
 tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
+.col-card.col-drag-over{box-shadow:0 0 0 2px #e8b544;opacity:0.8}
 .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500}
 .badge.pago{background:#1a3a25;color:#4caf50}
 .badge.apagar{background:#3a2e0a;color:#e8b544}
@@ -1442,23 +1443,7 @@ function renderSubCat(page){
         <button class="btn-launch" onclick="openModalSubCat('${catKey}','${subKey}')"><i class="ti ti-minus"></i> Lançar aqui</button>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div class="table-card" data-drop-status="pago" onDragOver="onDropZoneOver(event)" onDragLeave="onDropZoneLeave(event)" onDrop="onDropZoneDrop(event)">
-        ${tableCardHeader('Pago','#4caf50','ti-circle-check','pago',catKey)}
-        <table><thead><tr><th></th><th>Data</th><th>Descrição</th><th>Sub</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
-        <tbody>${renderRowsFiltered(lista,'pago',catKey)}</tbody></table>
-      </div>
-      <div class="table-card" data-drop-status="necessario" onDragOver="onDropZoneOver(event)" onDragLeave="onDropZoneLeave(event)" onDrop="onDropZoneDrop(event)">
-        ${tableCardHeader('Necessários','#42a5f5','ti-alert-circle','necessario',catKey)}
-        <table><thead><tr><th></th><th>Data</th><th>Descrição</th><th>Sub</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
-        <tbody>${renderRowsFiltered(lista,'necessario',catKey)}</tbody></table>
-      </div>
-      <div class="table-card" data-drop-status="apagar" onDragOver="onDropZoneOver(event)" onDragLeave="onDropZoneLeave(event)" onDrop="onDropZoneDrop(event)">
-        ${tableCardHeader('Dispensáveis','#e8b544','ti-clock','apagar',catKey)}
-        <table><thead><tr><th></th><th>Data</th><th>Descrição</th><th>Sub</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
-        <tbody>${renderRowsFiltered(lista,'apagar',catKey)}</tbody></table>
-      </div>
-    </div>
+    ${renderColGrid(lista, catKey)}
   `;
 }
 
@@ -1520,29 +1505,7 @@ function renderCat(cat){
       <div style="position:relative;height:160px"><canvas id="catChart"></canvas></div>
     </div>`:''}
 
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
-      <div class="table-card" data-drop-status="pago" onDragOver="onDropZoneOver(event)" onDragLeave="onDropZoneLeave(event)" onDrop="onDropZoneDrop(event)">
-        ${tableCardHeader('Pago','#4caf50','ti-circle-check','pago',cat)}
-        <table>
-          <thead><tr><th></th><th>Data</th><th>Descrição</th><th>Sub</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
-          <tbody>${renderRowsFiltered(lista,'pago',cat)}</tbody>
-        </table>
-      </div>
-      <div class="table-card" data-drop-status="necessario" onDragOver="onDropZoneOver(event)" onDragLeave="onDropZoneLeave(event)" onDrop="onDropZoneDrop(event)">
-        ${tableCardHeader('Necessários','#42a5f5','ti-alert-circle','necessario',cat)}
-        <table>
-          <thead><tr><th></th><th>Data</th><th>Descrição</th><th>Sub</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
-          <tbody>${renderRowsFiltered(lista,'necessario',cat)}</tbody>
-        </table>
-      </div>
-      <div class="table-card" data-drop-status="apagar" onDragOver="onDropZoneOver(event)" onDragLeave="onDropZoneLeave(event)" onDrop="onDropZoneDrop(event)">
-        ${tableCardHeader('Dispensáveis','#e8b544','ti-clock','apagar',cat)}
-        <table>
-          <thead><tr><th></th><th>Data</th><th>Descrição</th><th>Sub</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
-          <tbody>${renderRowsFiltered(lista,'apagar',cat)}</tbody>
-        </table>
-      </div>
-    </div>
+    ${renderColGrid(lista, cat)}
   `;
 
   if(months.length>=2){
@@ -1558,10 +1521,99 @@ function renderCat(cat){
   }
 }
 
+// ── COLUMN ORDER & GRID ──────────────────────────────────────────
+const COL_DEFS = {
+  pago:      {label:'Pago',        color:'#4caf50', icon:'ti-circle-check'},
+  necessario:{label:'Necessários', color:'#42a5f5', icon:'ti-alert-circle'},
+  apagar:    {label:'Dispensáveis',color:'#e8b544', icon:'ti-clock'},
+};
+const DEFAULT_COL_ORDER = ['pago','necessario','apagar'];
+
+function getColOrder(contextKey){
+  try{ return JSON.parse(localStorage.getItem('col_order_'+(contextKey||'default'))||'null') || [...DEFAULT_COL_ORDER]; }
+  catch(e){ return [...DEFAULT_COL_ORDER]; }
+}
+function saveColOrder(contextKey, order){
+  localStorage.setItem('col_order_'+(contextKey||'default'), JSON.stringify(order));
+}
+
+function renderColGrid(lista, catKey){
+  const order = getColOrder(catKey||'default');
+  const cols = order.map(status=>{
+    const def = COL_DEFS[status];
+    if(!def) return '';
+    return `<div class="table-card col-card" data-col-status="${status}" data-drop-status="${status}"
+      onDragOver="onColCardOver(event);onDropZoneOver(event)"
+      onDragLeave="onColCardLeave(event);onDropZoneLeave(event)"
+      onDrop="onColCardDrop(event,'${catKey||''}');onDropZoneDrop(event)">
+      ${tableCardHeader(def.label,def.color,def.icon,status,catKey)}
+      <table>
+        <thead><tr><th></th><th>Data</th><th>Descrição</th><th>Sub</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
+        <tbody>${renderRowsFiltered(lista,status,catKey)}</tbody>
+      </table>
+    </div>`;
+  }).join('');
+  return `<div class="col-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">${cols}</div>`;
+}
+
+let colDragStatus = null;
+let colDragCatKey = null;
+
+function onColDragStart(e, status, catKey){
+  e.stopPropagation();
+  colDragStatus = status;
+  colDragCatKey = catKey||null;
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(()=>{
+    const card = e.target.closest('.col-card');
+    if(card) card.style.opacity='0.5';
+  },0);
+}
+
+function onColDragEnd(e){
+  document.querySelectorAll('.col-card').forEach(c=>{ c.style.opacity=''; c.classList.remove('col-drag-over'); });
+  colDragStatus = null;
+  colDragCatKey = null;
+}
+
+function onColCardOver(e){
+  e.preventDefault();
+  e.stopPropagation();
+  const card = e.currentTarget;
+  const targetStatus = card.dataset.colStatus;
+  if(targetStatus === colDragStatus) return;
+  document.querySelectorAll('.col-card').forEach(c=>c.classList.remove('col-drag-over'));
+  card.classList.add('col-drag-over');
+}
+
+function onColCardLeave(e){
+  if(!e.currentTarget.contains(e.relatedTarget)){
+    e.currentTarget.classList.remove('col-drag-over');
+  }
+}
+
+function onColCardDrop(e, catKey){
+  e.stopPropagation();
+  const targetStatus = e.currentTarget.dataset.colStatus;
+  if(!colDragStatus || colDragStatus === targetStatus) return;
+  const order = getColOrder(catKey||'default');
+  const fromIdx = order.indexOf(colDragStatus);
+  const toIdx = order.indexOf(targetStatus);
+  if(fromIdx===-1||toIdx===-1) return;
+  order.splice(fromIdx,1);
+  order.splice(toIdx,0,colDragStatus);
+  saveColOrder(catKey||'default', order);
+  render();
+}
+
 function tableCardHeader(label, color, icon, status, catKey){
-  const statusLabels = {'pago':'Pago','necessario':'Necessários','apagar':'Dispensáveis'};
-  const allStatuses = Object.keys(statusLabels);
   return `<div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:${color};text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
+    <span class="col-drag-handle" data-col="${status}" data-catkey="${catKey||''}" draggable="true"
+      title="Arrastar coluna"
+      style="color:#333;cursor:grab;font-size:14px;padding:0 4px 0 0;user-select:none;transition:color .15s"
+      onmouseover="this.style.color='#666'" onmouseout="this.style.color='#333'"
+      ondragstart="onColDragStart(event,'${status}','${catKey||''}')"
+      ondragend="onColDragEnd(event)">⠿</span>
     <i class="ti ${icon}"></i> ${label}
     <button onclick="openBulkModal('${status}','${catKey||''}')" title="Mover em massa" style="margin-left:auto;background:none;border:none;color:#444;cursor:pointer;font-size:15px;padding:2px 4px;border-radius:4px;transition:color .15s" onmouseover="this.style.color='#e8b544'" onmouseout="this.style.color='#444'"><i class="ti ti-arrows-transfer-down"></i></button>
   </div>`;
