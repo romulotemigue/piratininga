@@ -1570,7 +1570,7 @@ function renderContextBars(activeCatKey, activeSubKey){
   const allItems = gastos.filter(g=>g.categoria!=='ganho');
   const totalGanhos = gastos.filter(g=>g.categoria==='ganho').reduce((s,g)=>s+(g.valor||0),0);
 
-  function barHtml(label, color, bgColor, borderColor, items, extraLabel){
+  function barHtml(label, color, bgColor, borderColor, items, extraLabel, showSaldo){
     const pago = items.filter(g=>g.status==='pago').reduce((s,g)=>s+getVal(g),0);
     const nec  = items.filter(g=>g.status==='necessario').reduce((s,g)=>s+getVal(g),0);
     const disp = items.filter(g=>g.status==='apagar').reduce((s,g)=>s+getVal(g),0);
@@ -1582,10 +1582,10 @@ function renderContextBars(activeCatKey, activeSubKey){
         <span style="font-size:10px;font-weight:600;color:${color};text-transform:uppercase;letter-spacing:.08em">${label}</span>
         ${extraLabel?`<span style="font-size:10px;color:#555">${extraLabel}</span>`:''}
         <div style="margin-left:auto;display:flex;gap:16px;align-items:center">
-          <span style="font-size:10px;color:#e91e8c">saldo ${fmt(totalGanhos-pago)}</span>
+          ${showSaldo?`<span style="font-size:10px;color:#e91e8c">saldo ${fmt(totalGanhos-pago)}</span>`:''}
           <span style="font-size:10px;color:#42a5f5">● ${fmt(nec)}</span>
           <span style="font-size:10px;color:#e8b544">○ ${fmt(disp)}</span>
-          <span style="font-size:11px;font-weight:600;color:${pctColor}">${pct}%</span>
+          <span style="font-size:11px;font-weight:600;color:${pctColor}">${pct}%${pct>100?' ⚠':''}</span>
         </div>
       </div>
       <div style="background:#2a2a2a;border-radius:20px;height:5px;overflow:hidden;display:flex;gap:1px">
@@ -1597,13 +1597,13 @@ function renderContextBars(activeCatKey, activeSubKey){
   }
 
   // Barra 1 — visão geral (todos)
-  let html = barHtml('Visão geral — todas as categorias','#888','#161616','#2a2a2a',allItems);
+  let html = barHtml('Visão geral — todas as categorias','#888','#161616','#2a2a2a',allItems,'',true);
 
   // Barra 2 — categoria ativa
   if(activeCatKey){
     const catInfo = CATS[activeCatKey];
     const catItems = allItems.filter(g=>g.categoria===activeCatKey);
-    html += barHtml(`${catInfo?.icon||''} ${catInfo?.label||activeCatKey}`, catInfo?.color||'#888','#1a1a1a',catInfo?.color?catInfo.color+'33':'#2a2a2a', catItems, 'categoria');
+    html += barHtml(`${catInfo?.icon||''} ${catInfo?.label||activeCatKey}`, catInfo?.color||'#888','#1a1a1a',catInfo?.color?catInfo.color+'33':'#2a2a2a', catItems, 'categoria', false);
   }
 
   // Barra 3 — subcategoria ativa
@@ -1612,7 +1612,7 @@ function renderContextBars(activeCatKey, activeSubKey){
     const catInfo = CATS[activeCatKey];
     const subItems = allItems.filter(g=>g.categoria===activeCatKey&&g.subcategoria===activeSubKey);
     const subColor = catInfo?.color||'#888';
-    html += barHtml(`↳ ${subLabel}`, subColor, '#111', subColor+'55', subItems, 'subcategoria');
+    html += barHtml(`↳ ${subLabel}`, subColor, '#111', subColor+'55', subItems, 'subcategoria', false);
   }
 
   return html;
