@@ -1258,7 +1258,7 @@ function renderGeral(){
   const dispensavel = gastos.filter(g=>g.status==='apagar'&&g.categoria!=='ganho').reduce((s,g)=>s+getVal(g),0);
   const necessario  = gastos.filter(g=>g.status==='necessario'&&g.categoria!=='ganho').reduce((s,g)=>s+getVal(g),0);
   const saldo  = totalGanhos - pago;
-  const pct    = totalGanhos>0?Math.min(100,Math.round(total/totalGanhos*100)):0;
+  const pct    = totalGanhos>0?Math.round(total/totalGanhos*100):0;
   const barColor = pct>90?'#ef5350':pct>70?'#e8b544':'#4caf50';
 
   document.getElementById('content').innerHTML = `
@@ -1305,7 +1305,7 @@ function renderGeral(){
         <span style="width:8px;height:8px;border-radius:50%;background:#4caf50;display:inline-block"></span>
         <span style="font-size:11px;font-weight:600;color:#4caf50;text-transform:uppercase;letter-spacing:.08em">Saldo real — já pago</span>
         <span style="margin-left:auto;font-size:15px;font-weight:600;color:${saldo<0?'#ef5350':'#4caf50'}">${fmt(saldo)}</span>
-        <span style="font-size:11px;color:${pct>90?'#ef5350':pct>70?'#e8b544':'#4caf50'}">${pct}% gasto</span>
+        <span style="font-size:11px;color:${pct>100?'#ef5350':pct>90?'#ef5350':pct>70?'#e8b544':'#4caf50'}">${pct}%${pct>100?' ⚠ estourou':'  gasto'}</span>
       </div>
       <div class="progress-bar-bg" style="margin-bottom:6px"><div class="progress-bar-fill" style="width:${pct}%;background:${pct>90?'#ef5350':pct>70?'#e8b544':'#4caf50'}"></div></div>
       <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:1rem"><span>Pago: ${fmt(pago)}</span><span>Saldo: <strong style="color:${saldo<0?'#ef5350':'#4caf50'}">${fmt(saldo)}</strong></span></div>
@@ -1324,13 +1324,13 @@ function renderGeral(){
     </div>
 
     <!-- BLOCO 2: PAGO + NECESSÁRIOS -->
-    ${(()=>{const s2=saldo-necessario;const p2=totalGanhos>0?Math.min(100,Math.round((pago+necessario)/totalGanhos*100)):0;const c2=p2>90?'#ef5350':p2>70?'#e8b544':'#42a5f5';return `
+    ${(()=>{const s2=saldo-necessario;const p2=totalGanhos>0?Math.round((pago+necessario)/totalGanhos*100):0;const c2=p2>90?'#ef5350':p2>70?'#e8b544':'#42a5f5';return `
     <div style="background:#111;border:1px solid #1a2a3a;border-left:3px solid #42a5f5;border-radius:10px;padding:1.25rem;margin-bottom:1rem">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem">
         <span style="width:8px;height:8px;border-radius:50%;background:#42a5f5;display:inline-block"></span>
         <span style="font-size:11px;font-weight:600;color:#42a5f5;text-transform:uppercase;letter-spacing:.08em">Saldo com necessários — pago + necessários</span>
         <span style="margin-left:auto;font-size:15px;font-weight:600;color:${s2<0?'#ef5350':'#42a5f5'}">${fmt(s2)}</span>
-        <span style="font-size:11px;color:${c2}">${p2}% comprometido</span>
+        <span style="font-size:11px;color:${c2}">${p2}%${p2>100?' ⚠ estourou':' comprometido'}</span>
       </div>
       <div class="progress-bar-bg" style="margin-bottom:6px"><div class="progress-bar-fill" style="width:${p2}%;background:${c2}"></div></div>
       <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:1rem"><span>Pago + Necessários: ${fmt(pago+necessario)}</span><span>Saldo: <strong style="color:${s2<0?'#ef5350':'#42a5f5'}">${fmt(s2)}</strong></span></div>
@@ -1350,13 +1350,13 @@ function renderGeral(){
     `;})()} 
 
     <!-- BLOCO 3: TUDO -->
-    ${(()=>{const s3=saldo-necessario-dispensavel;const p3=totalGanhos>0?Math.min(100,Math.round((pago+necessario+dispensavel)/totalGanhos*100)):0;const c3=p3>90?'#ef5350':p3>70?'#e8b544':'#888';return `
+    ${(()=>{const s3=saldo-necessario-dispensavel;const p3=totalGanhos>0?Math.round((pago+necessario+dispensavel)/totalGanhos*100):0;const c3=p3>90?'#ef5350':p3>70?'#e8b544':'#888';return `
     <div style="background:#111;border:1px solid #2a2000;border-left:3px solid #e8b544;border-radius:10px;padding:1.25rem;margin-bottom:1.25rem">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem">
         <span style="width:8px;height:8px;border-radius:50%;background:#e8b544;display:inline-block"></span>
         <span style="font-size:11px;font-weight:600;color:#e8b544;text-transform:uppercase;letter-spacing:.08em">Saldo comprando tudo — pago + necessários + dispensáveis</span>
         <span style="margin-left:auto;font-size:15px;font-weight:600;color:${s3<0?'#ef5350':'#4caf50'}">${fmt(s3)}</span>
-        <span style="font-size:11px;color:${c3}">${p3}% comprometido</span>
+        <span style="font-size:11px;color:${c3}">${p3}%${p3>100?' ⚠ estourou':' comprometido'}</span>
       </div>
       <div class="progress-bar-bg" style="margin-bottom:6px"><div class="progress-bar-fill" style="width:${p3}%;background:${c3}"></div></div>
       <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:1rem"><span>Total: ${fmt(pago+necessario+dispensavel)}</span><span>Saldo: <strong style="color:${s3<0?'#ef5350':'#4caf50'}">${fmt(s3)}</strong></span></div>
@@ -1575,7 +1575,7 @@ function renderContextBars(activeCatKey, activeSubKey){
     const nec  = items.filter(g=>g.status==='necessario').reduce((s,g)=>s+getVal(g),0);
     const disp = items.filter(g=>g.status==='apagar').reduce((s,g)=>s+getVal(g),0);
     const total = pago+nec+disp;
-    const pct = totalGanhos>0?Math.min(100,Math.round(total/totalGanhos*100)):0;
+    const pct = totalGanhos>0?Math.round(total/totalGanhos*100):0;
     const pctColor = pct>90?'#ef5350':pct>70?'#e8b544':color;
     return `<div style="background:${bgColor};border:1px solid ${borderColor};border-left:3px solid ${color};border-radius:8px;padding:.75rem 1rem;margin-bottom:.5rem">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
