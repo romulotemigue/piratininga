@@ -72,6 +72,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .table-card td{padding:10px 14px;border-bottom:1px solid #1f1f1f;color:#ccc}
 .table-card tr:last-child td{border-bottom:none}
 .table-card tr:hover td{background:#1f1f1f}
+.drag-handle{color:#333;cursor:grab;font-size:14px;padding:0 6px 0 0;transition:color .15s;user-select:none}
+.drag-handle:hover{color:#666}
+tr.dragging-row{opacity:.4}
+tr.dragging-row td{background:#1a1a1a}
+.table-card.drop-target-necessario{box-shadow:0 0 0 2px #42a5f5;background:#0d1a2a}
+.table-card.drop-target-necessario .table-card-header{background:#0d1a2a}
+.table-card.drop-target-dispensavel{box-shadow:0 0 0 2px #e8b544;background:#1e1a00}
+.table-card.drop-target-pago{box-shadow:0 0 0 2px #4caf50;background:#0a1f0a}
+.table-card{transition:box-shadow .15s,background .15s}
 .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500}
 .badge.pago{background:#1a3a25;color:#4caf50}
 .badge.apagar{background:#3a2e0a;color:#e8b544}
@@ -1383,25 +1392,25 @@ function renderSubCat(page){
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div class="table-card">
+      <div class="table-card" data-drop-status="pago" onDragOver="onDropZoneOver(event)" onDragLeave="onDropZoneLeave(event)" onDrop="onDropZoneDrop(event)">
         <div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:#4caf50;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
           <i class="ti ti-circle-check"></i> Pago
         </div>
-        <table><thead><tr><th>Data</th><th>Descrição</th><th>Sub</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
+        <table><thead><tr><th></th><th>Data</th><th>Descrição</th><th>Sub</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
         <tbody>${renderRowsFiltered(lista,'pago',catKey)}</tbody></table>
       </div>
-      <div class="table-card">
+      <div class="table-card" data-drop-status="necessario" onDragOver="onDropZoneOver(event)" onDragLeave="onDropZoneLeave(event)" onDrop="onDropZoneDrop(event)">
         <div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:#42a5f5;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
           <i class="ti ti-alert-circle"></i> Necessários
         </div>
-        <table><thead><tr><th>Data</th><th>Descrição</th><th>Sub</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
+        <table><thead><tr><th></th><th>Data</th><th>Descrição</th><th>Sub</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
         <tbody>${renderRowsFiltered(lista,'necessario',catKey)}</tbody></table>
       </div>
-      <div class="table-card">
+      <div class="table-card" data-drop-status="apagar" onDragOver="onDropZoneOver(event)" onDragLeave="onDropZoneLeave(event)" onDrop="onDropZoneDrop(event)">
         <div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:#e8b544;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
           <i class="ti ti-clock"></i> Dispensáveis
         </div>
-        <table><thead><tr><th>Data</th><th>Descrição</th><th>Sub</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
+        <table><thead><tr><th></th><th>Data</th><th>Descrição</th><th>Sub</th><th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th></tr></thead>
         <tbody>${renderRowsFiltered(lista,'apagar',catKey)}</tbody></table>
       </div>
     </div>
@@ -1467,37 +1476,37 @@ function renderCat(cat){
     </div>`:''}
 
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
-      <div class="table-card">
+      <div class="table-card" data-drop-status="pago" onDragOver="onDropZoneOver(event)" onDragLeave="onDropZoneLeave(event)" onDrop="onDropZoneDrop(event)">
         <div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:#4caf50;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
           <i class="ti ti-circle-check"></i> Pago
         </div>
         <table>
           <thead><tr>
-            <th>Data</th><th>Descrição</th><th>Sub</th>
+            <th></th><th>Data</th><th>Descrição</th><th>Sub</th>
             <th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th>
           </tr></thead>
           <tbody>${renderRowsFiltered(lista,'pago',cat)}</tbody>
         </table>
       </div>
-      <div class="table-card">
+      <div class="table-card" data-drop-status="necessario" onDragOver="onDropZoneOver(event)" onDragLeave="onDropZoneLeave(event)" onDrop="onDropZoneDrop(event)">
         <div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:#42a5f5;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
           <i class="ti ti-alert-circle"></i> Necessários
         </div>
         <table>
           <thead><tr>
-            <th>Data</th><th>Descrição</th><th>Sub</th>
+            <th></th><th>Data</th><th>Descrição</th><th>Sub</th>
             <th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th>
           </tr></thead>
           <tbody>${renderRowsFiltered(lista,'necessario',cat)}</tbody>
         </table>
       </div>
-      <div class="table-card">
+      <div class="table-card" data-drop-status="apagar" onDragOver="onDropZoneOver(event)" onDragLeave="onDropZoneLeave(event)" onDrop="onDropZoneDrop(event)">
         <div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:#e8b544;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
           <i class="ti ti-clock"></i> Dispensáveis
         </div>
         <table>
           <thead><tr>
-            <th>Data</th><th>Descrição</th><th>Sub</th>
+            <th></th><th>Data</th><th>Descrição</th><th>Sub</th>
             <th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th>
           </tr></thead>
           <tbody>${renderRowsFiltered(lista,'apagar',cat)}</tbody>
@@ -1521,10 +1530,11 @@ function renderCat(cat){
 
 function renderRowsFiltered(list, status, catKey){
   const filtered = list.filter(g=>g.status===status);
-  if(!filtered.length) return `<tr><td colspan="7" class="empty" style="padding:1.5rem">Nenhum item</td></tr>`;
+  if(!filtered.length) return `<tr><td colspan="8" class="empty" style="padding:1.5rem">Nenhum item</td></tr>`;
   return filtered.map(g=>{
     const subLabel = g.subcategoria && SUBCATS[catKey||g.categoria]?.[g.subcategoria]?.label || '';
-    return `<tr>
+    return `<tr draggable="true" data-id="${g.id}" onDragStart="onRowDragStart(event,${g.id})" onDragEnd="onRowDragEnd(event)" style="cursor:default">
+      <td style="padding:10px 6px 10px 14px;width:18px"><span class="drag-handle" title="Arrastar para outro status">⠿</span></td>
       <td style="color:#555;white-space:nowrap;font-size:12px">${g.data||'—'}</td>
       <td>${g.descricao||''}</td>
       <td style="color:#555;font-size:11px">${subLabel}</td>
@@ -1598,6 +1608,65 @@ document.getElementById('f-data').value = new Date().toISOString().split('T')[0]
 ensureSubCats();
 renderCatNav();
 loadGastos();
+
+// ── DRAG & DROP STATUS ────────────────────────────────────────────
+let dragRowId = null;
+
+function onRowDragStart(e, id){
+  dragRowId = id;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', id);
+  setTimeout(()=>{ if(e.target.closest('tr')) e.target.closest('tr').classList.add('dragging-row'); }, 0);
+}
+
+function onRowDragEnd(e){
+  document.querySelectorAll('tr.dragging-row').forEach(r=>r.classList.remove('dragging-row'));
+  document.querySelectorAll('.table-card').forEach(c=>{
+    c.classList.remove('drop-target-pago','drop-target-necessario','drop-target-dispensavel');
+  });
+  dragRowId = null;
+}
+
+function onDropZoneOver(e){
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const card = e.currentTarget;
+  const status = card.dataset.dropStatus;
+  card.classList.remove('drop-target-pago','drop-target-necessario','drop-target-dispensavel');
+  if(status==='pago') card.classList.add('drop-target-pago');
+  else if(status==='necessario') card.classList.add('drop-target-necessario');
+  else if(status==='apagar') card.classList.add('drop-target-dispensavel');
+}
+
+function onDropZoneLeave(e){
+  if(!e.currentTarget.contains(e.relatedTarget)){
+    e.currentTarget.classList.remove('drop-target-pago','drop-target-necessario','drop-target-dispensavel');
+  }
+}
+
+async function onDropZoneDrop(e){
+  e.preventDefault();
+  const card = e.currentTarget;
+  card.classList.remove('drop-target-pago','drop-target-necessario','drop-target-dispensavel');
+  const newStatus = card.dataset.dropStatus;
+  const id = dragRowId || parseInt(e.dataTransfer.getData('text/plain'));
+  if(!id || !newStatus) return;
+  const gasto = gastos.find(g=>g.id===id);
+  if(!gasto || gasto.status===newStatus) return;
+  try{
+    const res = await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${id}`,{
+      method:'PATCH',
+      headers:{...HEADERS,'Prefer':'return=representation'},
+      body:JSON.stringify({status:newStatus})
+    });
+    if(!res.ok) throw new Error(await res.text());
+    gasto.status = newStatus;
+    toast('Status atualizado!');
+    render();
+  } catch(err){
+    toast('Erro ao atualizar: '+err.message,'err');
+  }
+}
 </script>
 </div>
 </body>
