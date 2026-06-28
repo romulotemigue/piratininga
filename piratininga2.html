@@ -1646,9 +1646,6 @@ function renderSubCat(page){
         <span class="cat-stat-label">Dispensáveis</span>
         <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
       </div>
-      <div style="margin-left:auto">
-        <button class="btn-launch" onclick="openModalSubCat('${catKey}','${subKey}')"><i class="ti ti-minus"></i> Lançar aqui</button>
-      </div>
     </div>
     ${renderColGrid(lista, catKey)}
   `;
@@ -1701,9 +1698,6 @@ function renderCat(cat){
       <div class="cat-stat">
         <span class="cat-stat-label">Lançamentos</span>
         <span class="cat-stat-value" style="color:#888">${ativos.length}</span>
-      </div>
-      <div style="margin-left:auto">
-        <button class="btn-launch" onclick="openModal('${cat}')"><i class="ti ti-plus"></i> Lançar aqui</button>
       </div>
     </div>
 
