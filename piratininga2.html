@@ -256,7 +256,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
     <div class="modal-row">
       <div class="form-group">
         <label>Categoria</label>
-        <select id="f-cat" onclick="populateCatSelect('f-cat')">
+        <select id="f-cat" onchange="populateSubCatSelect('f-cat','f-subcat')">
           <option value="obra">Obra / Reforma</option>
         </select>
       </div>
@@ -264,6 +264,12 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <label>Data</label>
         <input type="date" id="f-data">
       </div>
+    </div>
+    <div class="form-group" id="f-subcat-group" style="display:none">
+      <label>Subcategoria (opcional)</label>
+      <select id="f-subcat">
+        <option value="">— Nenhuma —</option>
+      </select>
     </div>
     <div class="modal-row">
       <div class="form-group">
@@ -1155,8 +1161,12 @@ function populateSubCatSelect(catSelectId, subSelectId){
   if(!sel) return;
   const subs = SUBCATS[catKey] ? Object.keys(SUBCATS[catKey]) : [];
   sel.innerHTML = '<option value="">— Nenhuma —</option>' + subs.map(sk=>`<option value="${sk}">${SUBCATS[catKey][sk].label}</option>`).join('');
+  // show/hide for edit modal
   const row = document.getElementById('e-subcat-row');
   if(row) row.style.display = subs.length > 0 ? '' : 'none';
+  // show/hide for main modal
+  const group = document.getElementById('f-subcat-group');
+  if(group) group.style.display = subs.length > 0 ? '' : 'none';
 }
 
 function populateCatSelect(id){
@@ -1164,9 +1174,12 @@ function populateCatSelect(id){
   const cur = sel.value;
   sel.innerHTML = Object.keys(CATS).map(k=>`<option value="${k}"${k===cur?' selected':''}>${CATS[k].label}</option>`).join('');
 }
-function openModal(cat){
+
+function openModal(cat, subcat){
   populateCatSelect('f-cat');
   if(cat) document.getElementById('f-cat').value = cat;
+  populateSubCatSelect('f-cat','f-subcat');
+  if(subcat) document.getElementById('f-subcat').value = subcat;
   document.getElementById('modal-overlay').classList.add('open');
   setTimeout(()=>document.getElementById('f-desc').focus(),100);
 }
@@ -1185,7 +1198,7 @@ async function addGasto(){
   const btn = document.getElementById('btn-confirm');
   btn.disabled = true; btn.textContent = 'Salvando...';
   try{
-    const subcat = document.getElementById('modal-overlay').dataset.subcat||'';
+    const subcat = document.getElementById('f-subcat')?.value || document.getElementById('modal-overlay').dataset.subcat||'';
     const link = document.getElementById('f-link').value.trim();
     await sbInsert({descricao:desc,categoria:cat,data,valor:val,status:st,obs,orcamento,subcategoria:subcat,link,quantidade:1});
     delete document.getElementById('modal-overlay').dataset.subcat;
@@ -1648,6 +1661,14 @@ function renderSubCat(page){
       <div class="cat-stat">
         <span class="cat-stat-label">Dispensáveis</span>
         <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
+      </div>
+      <div style="margin-left:auto">
+        <button onclick="openModal('${catKey}','${subKey}')"
+          style="background:transparent;border:1px solid ${info.color};color:${info.color};padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
+          onmouseover="this.style.background='${info.color}';this.style.color='#111'"
+          onmouseout="this.style.background='transparent';this.style.color='${info.color}'">
+          + lançar em ${subLabel}
+        </button>
       </div>
     </div>
     ${renderColGrid(lista, catKey)}
