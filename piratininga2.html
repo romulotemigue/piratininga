@@ -271,6 +271,11 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <option value="">— Nenhuma —</option>
       </select>
     </div>
+    <div id="f-create-subcat-group" style="display:none">
+      <button type="button" onclick="openCreateSubcatFromModal()" style="background:none;border:1px dashed #444;color:#555;padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;width:100%;transition:all .15s" onmouseover="this.style.borderColor='#e8b544';this.style.color='#e8b544'" onmouseout="this.style.borderColor='#444';this.style.color='#555'">
+        <i class="ti ti-plus"></i> criar subcategoria para esta categoria
+      </button>
+    </div>
     <div class="modal-row">
       <div class="form-group">
         <label>Valor (R$)</label>
@@ -1167,6 +1172,15 @@ function populateSubCatSelect(catSelectId, subSelectId){
   // show/hide for main modal
   const group = document.getElementById('f-subcat-group');
   if(group) group.style.display = subs.length > 0 ? '' : 'none';
+  // show/hide create subcat button
+  const createBtn = document.getElementById('f-create-subcat-group');
+  if(createBtn) createBtn.style.display = subs.length === 0 ? '' : 'none';
+}
+
+function openCreateSubcatFromModal(){
+  const cat = document.getElementById('f-cat').value;
+  closeModal();
+  openModalAddSubCat(cat);
 }
 
 function populateCatSelect(id){
@@ -1178,8 +1192,11 @@ function populateCatSelect(id){
 function openModal(cat, subcat){
   populateCatSelect('f-cat');
   if(cat) document.getElementById('f-cat').value = cat;
-  populateSubCatSelect('f-cat','f-subcat');
-  if(subcat) document.getElementById('f-subcat').value = subcat;
+  // populate subs AFTER category is set
+  setTimeout(()=>{
+    populateSubCatSelect('f-cat','f-subcat');
+    if(subcat) document.getElementById('f-subcat').value = subcat;
+  }, 0);
   document.getElementById('modal-overlay').classList.add('open');
   setTimeout(()=>document.getElementById('f-desc').focus(),100);
 }
