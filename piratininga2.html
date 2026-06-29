@@ -260,7 +260,15 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       </select>
     </div>
     <div class="form-group" id="f-subcat-group" style="display:none">
-      <label>Subcategoria (opcional)</label>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <label style="margin-bottom:0">Subcategoria (opcional)</label>
+        <button type="button" onclick="toggleInlineSubcat()" id="f-toggle-new-sub"
+          style="background:#1a1200;border:1px solid #e8b544;color:#e8b544;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;transition:all .15s"
+          onmouseover="this.style.background='#e8b544';this.style.color='#111'"
+          onmouseout="this.style.background='#1a1200';this.style.color='#e8b544'">
+          + nova sub
+        </button>
+      </div>
       <select id="f-subcat">
         <option value="">— Nenhuma —</option>
       </select>
@@ -1174,15 +1182,30 @@ function populateSubCatSelect(catSelectId, subSelectId){
   if(!sel) return;
   const subs = SUBCATS[catKey] ? Object.keys(SUBCATS[catKey]) : [];
   sel.innerHTML = '<option value="">— Nenhuma —</option>' + subs.map(sk=>`<option value="${sk}">${SUBCATS[catKey][sk].label}</option>`).join('');
-  // show/hide for edit modal
+  // edit modal
   const row = document.getElementById('e-subcat-row');
   if(row) row.style.display = subs.length > 0 ? '' : 'none';
-  // show/hide for main modal
+  // main modal - show subcat select when has subs
   const group = document.getElementById('f-subcat-group');
   if(group) group.style.display = subs.length > 0 ? '' : 'none';
-  // show/hide create subcat button
-  const createBtn = document.getElementById('f-create-subcat-group');
-  if(createBtn) createBtn.style.display = subs.length === 0 ? '' : 'none';
+  // show inline create when NO subs (always visible as + nova sub button when has subs)
+  const createGroup = document.getElementById('f-create-subcat-group');
+  if(createGroup) createGroup.style.display = subs.length === 0 ? '' : 'none';
+  // reset toggle button text
+  const toggleBtn = document.getElementById('f-toggle-new-sub');
+  if(toggleBtn){ toggleBtn.textContent = '+ nova sub'; }
+  // clear new sub input
+  const newSubInput = document.getElementById('f-new-subcat-nome');
+  if(newSubInput) newSubInput.value = '';
+}
+
+function toggleInlineSubcat(){
+  const createGroup = document.getElementById('f-create-subcat-group');
+  const toggleBtn = document.getElementById('f-toggle-new-sub');
+  const isVisible = createGroup.style.display !== 'none';
+  createGroup.style.display = isVisible ? 'none' : '';
+  toggleBtn.textContent = isVisible ? '+ nova sub' : '× cancelar';
+  if(!isVisible) setTimeout(()=>document.getElementById('f-new-subcat-nome').focus(), 50);
 }
 
 function openCreateSubcatFromModal(){
