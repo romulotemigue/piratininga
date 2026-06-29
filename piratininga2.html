@@ -253,33 +253,25 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       <label>Descrição</label>
       <input type="text" id="f-desc" spellcheck="true" lang="pt-BR" placeholder="Ex: Piso porcelanato sala">
     </div>
-    <div class="modal-row">
-      <div class="form-group">
-        <label>Categoria</label>
-        <div style="display:flex;gap:6px;align-items:center">
-          <select id="f-cat" onchange="populateSubCatSelect('f-cat','f-subcat')" style="flex:1">
-            <option value="obra">Obra / Reforma</option>
-          </select>
-          <span id="f-create-subcat-group" style="display:none">
-            <button type="button" onclick="openCreateSubcatFromModal()"
-              style="background:#1a1200;border:1px solid #e8b544;color:#e8b544;padding:0 10px;height:34px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .15s"
-              onmouseover="this.style.background='#e8b544';this.style.color='#111'"
-              onmouseout="this.style.background='#1a1200';this.style.color='#e8b544'">
-              + nova sub
-            </button>
-          </span>
-        </div>
-      </div>
-      <div class="form-group">
-        <label>Data</label>
-        <input type="date" id="f-data">
-      </div>
+    <div class="form-group">
+      <label>Categoria</label>
+      <select id="f-cat" onchange="populateSubCatSelect('f-cat','f-subcat')">
+        <option value="obra">Obra / Reforma</option>
+      </select>
     </div>
     <div class="form-group" id="f-subcat-group" style="display:none">
       <label>Subcategoria (opcional)</label>
       <select id="f-subcat">
         <option value="">— Nenhuma —</option>
       </select>
+    </div>
+    <div id="f-create-subcat-group" style="display:none;margin-bottom:12px">
+      <button type="button" onclick="openCreateSubcatFromModal()"
+        style="background:#1a1200;border:1px solid #e8b544;color:#e8b544;padding:6px 14px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s"
+        onmouseover="this.style.background='#e8b544';this.style.color='#111'"
+        onmouseout="this.style.background='#1a1200';this.style.color='#e8b544'">
+        + criar subcategoria
+      </button>
     </div>
     <div class="modal-row">
       <div class="form-group">
@@ -292,7 +284,6 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
           <option value="pago">Pago</option>
           <option value="necessario">Necessário</option>
           <option value="apagar">Dispensável</option>
-          
         </select>
       </div>
     </div>
