@@ -266,12 +266,18 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       </select>
     </div>
     <div id="f-create-subcat-group" style="display:none;margin-bottom:12px">
-      <button type="button" onclick="openCreateSubcatFromModal()"
-        style="background:#1a1200;border:1px solid #e8b544;color:#e8b544;padding:6px 14px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s"
-        onmouseover="this.style.background='#e8b544';this.style.color='#111'"
-        onmouseout="this.style.background='#1a1200';this.style.color='#e8b544'">
-        + criar subcategoria
-      </button>
+      <label style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">Nova subcategoria</label>
+      <div style="display:flex;gap:6px">
+        <input type="text" id="f-new-subcat-nome" placeholder="Ex: Sala, Quarto, Cozinha..."
+          style="flex:1;background:#1a1200;border:1px solid #e8b544;border-radius:6px;padding:6px 10px;color:#e8e7e2;font-size:13px;outline:none"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();createSubcatInline()}"
+          onfocus="this.style.borderColor='#e8b544'" onblur="this.style.borderColor='#e8b544'">
+        <button type="button" onclick="createSubcatInline()"
+          style="background:#e8b544;border:none;color:#111;padding:6px 14px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s"
+          onmouseover="this.style.background='#d4a43e'" onmouseout="this.style.background='#e8b544'">
+          criar
+        </button>
+      </div>
     </div>
     <div class="modal-row">
       <div class="form-group">
@@ -1181,6 +1187,23 @@ function openCreateSubcatFromModal(){
   const cat = document.getElementById('f-cat').value;
   closeModal();
   openModalAddSubCat(cat);
+}
+
+function createSubcatInline(){
+  const nome = document.getElementById('f-new-subcat-nome').value.trim();
+  if(!nome){ document.getElementById('f-new-subcat-nome').focus(); return; }
+  const cat = document.getElementById('f-cat').value;
+  const key = nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');
+  if(!SUBCATS[cat]) SUBCATS[cat] = {};
+  SUBCATS[cat][key] = {label:nome};
+  saveSubCats();
+  // refresh subcat select and select the new one
+  populateSubCatSelect('f-cat','f-subcat');
+  document.getElementById('f-subcat').value = key;
+  // hide create field, clear it
+  document.getElementById('f-new-subcat-nome').value = '';
+  renderCatNav();
+  toast('Subcategoria "'+nome+'" criada!');
 }
 
 function populateCatSelect(id){
