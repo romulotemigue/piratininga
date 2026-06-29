@@ -2018,6 +2018,8 @@ function saveOrc(v){
 (function(){
   const resizer = document.getElementById('sidebar-resizer');
   const sidebar = resizer.parentElement;
+  const savedW = localStorage.getItem('sidebar_width');
+  if(savedW) sidebar.style.width = savedW+'px';
   let startX, startW;
   resizer.addEventListener('mousedown', e=>{
     startX = e.clientX;
@@ -2033,6 +2035,7 @@ function saveOrc(v){
       resizer.classList.remove('dragging');
       document.body.style.cursor='';
       document.body.style.userSelect='';
+      localStorage.setItem('sidebar_width', sidebar.offsetWidth);
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
     }
