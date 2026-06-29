@@ -619,7 +619,7 @@ function renderCatNav(){
       <div class="nav-item-wrap" id="nav-wrap-${k}">
         <span class="nav-drag" draggable="false" title="Arrastar">⠿</span>
         <button id="chev-${k}" style="background:none;border:none;color:${hasSubs?'#555':'transparent'};cursor:${hasSubs?'pointer':'default'};padding:4px 2px;font-size:11px;transition:transform .2s;transform:rotate(${isOpen?90:0}deg)" onclick="if(${hasSubs}) toggleExpand('${k}',event)"><i class="ti ti-chevron-right"></i></button>
-        <div class="nav-item" onclick="navigate('${k}')" id="nav-${k}" style="padding-left:2px;flex:1">
+        <div class="nav-item" onclick="navigate('${k}')" ondblclick="toggleExpand('${k}',event)" id="nav-${k}" style="padding-left:2px;flex:1">
           ${CATS[k].icon} ${CATS[k].label}
         </div>
         <button class="nav-dots" onclick="toggleCatMenu('${k}',event)" title="Opções"><i class="ti ti-dots-vertical"></i></button>
