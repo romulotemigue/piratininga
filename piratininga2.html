@@ -1723,6 +1723,14 @@ function renderCat(cat){
         <span class="cat-stat-label">Lançamentos</span>
         <span class="cat-stat-value" style="color:#888">${ativos.length}</span>
       </div>
+      <div style="margin-left:auto">
+        <button onclick="openModal('${cat}')"
+          style="background:transparent;border:1px solid ${info.color};color:${info.color};padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
+          onmouseover="this.style.background='${info.color}';this.style.color='#111'"
+          onmouseout="this.style.background='transparent';this.style.color='${info.color}'">
+          + lançar em ${info.label}
+        </button>
+      </div>
     </div>
 
     ${months.length>=2?`
