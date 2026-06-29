@@ -279,13 +279,17 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <input type="text" id="f-valor" placeholder="0,00" oninput="maskMoney(this)" inputmode="numeric">
       </div>
       <div class="form-group">
-        <label>Status</label>
-        <select id="f-status">
-          <option value="pago">Pago</option>
-          <option value="necessario">Necessário</option>
-          <option value="apagar">Dispensável</option>
-        </select>
+        <label>Data</label>
+        <input type="date" id="f-data">
       </div>
+    </div>
+    <div class="form-group">
+      <label>Status</label>
+      <select id="f-status">
+        <option value="pago">Pago</option>
+        <option value="necessario">Necessário</option>
+        <option value="apagar">Dispensável</option>
+      </select>
     </div>
     <div class="form-group">
       <label>Observação (opcional)</label>
