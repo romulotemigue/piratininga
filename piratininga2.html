@@ -255,7 +255,17 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
     </div>
     <div class="modal-row">
       <div class="form-group">
-        <label>Categoria</label>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <label style="margin-bottom:0">Categoria</label>
+          <span id="f-create-subcat-group" style="display:none">
+            <button type="button" onclick="openCreateSubcatFromModal()"
+              style="background:#1a1200;border:1px solid #e8b544;color:#e8b544;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
+              onmouseover="this.style.background='#e8b544';this.style.color='#111'"
+              onmouseout="this.style.background='#1a1200';this.style.color='#e8b544'">
+              + nova sub
+            </button>
+          </span>
+        </div>
         <select id="f-cat" onchange="populateSubCatSelect('f-cat','f-subcat')">
           <option value="obra">Obra / Reforma</option>
         </select>
@@ -270,11 +280,6 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       <select id="f-subcat">
         <option value="">— Nenhuma —</option>
       </select>
-    </div>
-    <div id="f-create-subcat-group" style="display:none">
-      <button type="button" onclick="openCreateSubcatFromModal()" style="background:none;border:1px dashed #444;color:#555;padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;width:100%;transition:all .15s" onmouseover="this.style.borderColor='#e8b544';this.style.color='#e8b544'" onmouseout="this.style.borderColor='#444';this.style.color='#555'">
-        <i class="ti ti-plus"></i> criar subcategoria para esta categoria
-      </button>
     </div>
     <div class="modal-row">
       <div class="form-group">
