@@ -255,7 +255,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
     </div>
     <div class="form-group">
       <label>Categoria</label>
-      <select id="f-cat" onchange="populateSubCatSelect('f-cat','f-subcat')">
+      <select id="f-cat" onchange="populateSubCatSelect('f-cat','f-subcat');checkM2Section(this.value)">
         <option value="obra">Obra / Reforma</option>
       </select>
     </div>
@@ -319,6 +319,47 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <option value="apagar">Dispensável</option>
       </select>
     </div>
+
+    <!-- CALCULADORA M² -->
+    <div id="f-m2-section" style="display:none;background:#111;border:1px solid #2a2a2a;border-left:3px solid #42a5f5;border-radius:8px;padding:12px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:10px;font-weight:600;color:#42a5f5;text-transform:uppercase;letter-spacing:.08em">📐 Calculadora por m²</span>
+        <span id="f-m2-total-label" style="font-size:12px;font-weight:600;color:#e8b544"></span>
+      </div>
+      <div class="modal-row" style="margin-bottom:8px">
+        <div class="form-group" style="margin-bottom:0">
+          <label>Área (m²)</label>
+          <input type="number" id="f-m2-area" min="0" step="0.01" placeholder="Ex: 20" oninput="calcM2()" style="background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:6px 10px;color:#e8e7e2;font-size:13px;width:100%;outline:none">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Material (R$/m²)</label>
+          <input type="number" id="f-m2-material" min="0" step="0.01" placeholder="Ex: 85" oninput="calcM2()" style="background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:6px 10px;color:#e8e7e2;font-size:13px;width:100%;outline:none">
+        </div>
+      </div>
+      <div class="modal-row" style="margin-bottom:8px">
+        <div class="form-group" style="margin-bottom:0">
+          <label>Mão de obra</label>
+          <select id="f-m2-mo-tipo" onchange="calcM2()" style="background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:6px 10px;color:#e8e7e2;font-size:13px;width:100%">
+            <option value="m2">Por m² (R$/m²)</option>
+            <option value="fixo">Valor fixo (R$)</option>
+            <option value="none">Sem mão de obra</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label id="f-m2-mo-label">Valor m.o. (R$/m²)</label>
+          <input type="number" id="f-m2-mo-valor" min="0" step="0.01" placeholder="Ex: 50" oninput="calcM2()" style="background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:6px 10px;color:#e8e7e2;font-size:13px;width:100%;outline:none">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding-top:8px;border-top:1px solid #2a2a2a;font-size:11px;text-align:center">
+        <div><div style="color:#555">Material</div><div id="f-m2-sub-mat" style="color:#e8e7e2;font-weight:600">R$ 0</div></div>
+        <div><div style="color:#555">Mão de obra</div><div id="f-m2-sub-mo" style="color:#e8e7e2;font-weight:600">R$ 0</div></div>
+        <div><div style="color:#42a5f5">Total</div><div id="f-m2-sub-total" style="color:#42a5f5;font-weight:700">R$ 0</div></div>
+      </div>
+      <button type="button" onclick="applyM2()" style="margin-top:10px;width:100%;background:#42a5f5;border:none;color:#111;padding:7px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;transition:background .15s" onmouseover="this.style.background='#2196f3'" onmouseout="this.style.background='#42a5f5'">
+        Aplicar valor calculado →
+      </button>
+    </div>
+
     <div class="form-group">
       <label>Observação (opcional)</label>
       <input type="text" id="f-obs" spellcheck="true" lang="pt-BR" placeholder="Fornecedor, nota, detalhe...">
@@ -1265,13 +1306,71 @@ function populateCatSelect(id){
   sel.innerHTML = Object.keys(CATS).map(k=>`<option value="${k}"${k===cur?' selected':''}>${CATS[k].label}</option>`).join('');
 }
 
+const M2_CATS = ['revestimentos-piso','revestimentos-paredes','obra','marmoraria'];
+
+function checkM2Section(catKey){
+  const section = document.getElementById('f-m2-section');
+  if(!section) return;
+  // check if catKey matches any m2 category key
+  const key = catKey||'';
+  const isM2 = Object.keys(CATS).some(k=>{
+    const label = CATS[k].label.toLowerCase();
+    return k===key && (label.includes('revestimento')||label.includes('obra')||label.includes('marmoraria'));
+  });
+  section.style.display = isM2 ? '' : 'none';
+  if(isM2){ calcM2(); }
+}
+
+function calcM2(){
+  const area = parseFloat(document.getElementById('f-m2-area').value)||0;
+  const mat  = parseFloat(document.getElementById('f-m2-material').value)||0;
+  const moTipo = document.getElementById('f-m2-mo-tipo').value;
+  const moVal  = parseFloat(document.getElementById('f-m2-mo-valor').value)||0;
+  // update label
+  document.getElementById('f-m2-mo-label').textContent = moTipo==='fixo'?'Valor fixo (R$)':moTipo==='none'?'—':'Valor m.o. (R$/m²)';
+  document.getElementById('f-m2-mo-valor').disabled = moTipo==='none';
+  const totalMat = area * mat;
+  const totalMo  = moTipo==='m2' ? area*moVal : moTipo==='fixo' ? moVal : 0;
+  const total = totalMat + totalMo;
+  document.getElementById('f-m2-sub-mat').textContent = fmt(totalMat);
+  document.getElementById('f-m2-sub-mo').textContent  = fmt(totalMo);
+  document.getElementById('f-m2-sub-total').textContent = fmt(total);
+  document.getElementById('f-m2-total-label').textContent = total>0?fmt(total):'';
+}
+
+function applyM2(){
+  const area = parseFloat(document.getElementById('f-m2-area').value)||0;
+  const mat  = parseFloat(document.getElementById('f-m2-material').value)||0;
+  const moTipo = document.getElementById('f-m2-mo-tipo').value;
+  const moVal  = parseFloat(document.getElementById('f-m2-mo-valor').value)||0;
+  const totalMat = area * mat;
+  const totalMo  = moTipo==='m2' ? area*moVal : moTipo==='fixo' ? moVal : 0;
+  const total = totalMat + totalMo;
+  if(total<=0){ toast('Preencha os campos para calcular.'); return; }
+  // apply to valor field
+  const valorEl = document.getElementById('f-valor');
+  if(valorEl){
+    valorEl.value = total.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  }
+  // add summary to obs if empty
+  const obsEl = document.getElementById('f-obs');
+  if(obsEl && !obsEl.value){
+    const parts = [];
+    if(area) parts.push(`${area}m²`);
+    if(mat) parts.push(`material R$${mat}/m²`);
+    if(moTipo!=='none'&&moVal) parts.push(`m.o. ${moTipo==='fixo'?'R$'+moVal:'R$'+moVal+'/m²'}`);
+    obsEl.value = parts.join(' · ');
+  }
+  toast('Valor aplicado!');
+}
+
 function openModal(cat, subcat){
   populateCatSelect('f-cat');
   if(cat) document.getElementById('f-cat').value = cat;
-  // populate subs AFTER category is set
   setTimeout(()=>{
     populateSubCatSelect('f-cat','f-subcat');
     if(subcat) document.getElementById('f-subcat').value = subcat;
+    checkM2Section(document.getElementById('f-cat').value);
   }, 0);
   document.getElementById('modal-overlay').classList.add('open');
   setTimeout(()=>document.getElementById('f-desc').focus(),100);
