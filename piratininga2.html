@@ -260,18 +260,17 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       </select>
     </div>
     <div class="form-group" id="f-subcat-group" style="display:none">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-        <label style="margin-bottom:0">Subcategoria (opcional)</label>
-        <button type="button" onclick="toggleInlineSubcat()" id="f-toggle-new-sub"
-          style="background:#1a1200;border:1px solid #e8b544;color:#e8b544;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;transition:all .15s"
-          onmouseover="this.style.background='#e8b544';this.style.color='#111'"
-          onmouseout="this.style.background='#1a1200';this.style.color='#e8b544'">
-          + nova sub
-        </button>
-      </div>
+      <label>Subcategoria (opcional)</label>
       <select id="f-subcat">
         <option value="">— Nenhuma —</option>
       </select>
+      <div style="margin-top:6px">
+        <button type="button" onclick="toggleInlineSubcat()"
+          style="background:none;border:none;color:#555;font-size:11px;cursor:pointer;padding:0;transition:color .15s"
+          onmouseover="this.style.color='#e8b544'" onmouseout="this.style.color='#555'">
+          + criar nova subcategoria
+        </button>
+      </div>
     </div>
     <div id="f-create-subcat-group" style="display:none;margin-bottom:12px">
       <label style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">Nova subcategoria</label>
@@ -282,6 +281,20 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
           onfocus="this.style.borderColor='#e8b544'" onblur="this.style.borderColor='#e8b544'">
         <button type="button" onclick="createSubcatInline()"
           style="background:#e8b544;border:none;color:#111;padding:6px 14px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s"
+          onmouseover="this.style.background='#d4a43e'" onmouseout="this.style.background='#e8b544'">
+          criar
+        </button>
+      </div>
+    </div>
+    <div id="f-new-subcat-inline" style="display:none;margin-bottom:12px">
+      <label style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">Nova subcategoria</label>
+      <div style="display:flex;gap:6px">
+        <input type="text" id="f-new-subcat-nome2" placeholder="Ex: Sala, Quarto, Cozinha..."
+          style="flex:1;background:#1a1200;border:1px solid #e8b544;border-radius:6px;padding:6px 10px;color:#e8e7e2;font-size:13px;outline:none"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();createSubcatInline2()}"
+          onfocus="this.style.borderColor='#e8b544'" onblur="this.style.borderColor='#e8b544'">
+        <button type="button" onclick="createSubcatInline2()"
+          style="background:#e8b544;border:none;color:#111;padding:6px 14px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap"
           onmouseover="this.style.background='#d4a43e'" onmouseout="this.style.background='#e8b544'">
           criar
         </button>
@@ -1185,27 +1198,41 @@ function populateSubCatSelect(catSelectId, subSelectId){
   // edit modal
   const row = document.getElementById('e-subcat-row');
   if(row) row.style.display = subs.length > 0 ? '' : 'none';
-  // main modal - show subcat select when has subs
+  // main modal - show select when has subs
   const group = document.getElementById('f-subcat-group');
   if(group) group.style.display = subs.length > 0 ? '' : 'none';
-  // show inline create when NO subs (always visible as + nova sub button when has subs)
+  // show inline create field when NO subs
   const createGroup = document.getElementById('f-create-subcat-group');
   if(createGroup) createGroup.style.display = subs.length === 0 ? '' : 'none';
-  // reset toggle button text
-  const toggleBtn = document.getElementById('f-toggle-new-sub');
-  if(toggleBtn){ toggleBtn.textContent = '+ nova sub'; }
-  // clear new sub input
-  const newSubInput = document.getElementById('f-new-subcat-nome');
-  if(newSubInput) newSubInput.value = '';
+  // show + nova sub inline when HAS subs (but hidden by default until clicked)
+  const newInline = document.getElementById('f-new-subcat-inline');
+  if(newInline) newInline.style.display = 'none';
+  // reset inputs
+  const i1 = document.getElementById('f-new-subcat-nome'); if(i1) i1.value='';
+  const i2 = document.getElementById('f-new-subcat-nome2'); if(i2) i2.value='';
 }
 
 function toggleInlineSubcat(){
-  const createGroup = document.getElementById('f-create-subcat-group');
-  const toggleBtn = document.getElementById('f-toggle-new-sub');
-  const isVisible = createGroup.style.display !== 'none';
-  createGroup.style.display = isVisible ? 'none' : '';
-  toggleBtn.textContent = isVisible ? '+ nova sub' : '× cancelar';
-  if(!isVisible) setTimeout(()=>document.getElementById('f-new-subcat-nome').focus(), 50);
+  const el = document.getElementById('f-new-subcat-inline');
+  const isVisible = el.style.display !== 'none';
+  el.style.display = isVisible ? 'none' : '';
+  if(!isVisible) setTimeout(()=>document.getElementById('f-new-subcat-nome2').focus(), 50);
+}
+
+function createSubcatInline2(){
+  const nome = document.getElementById('f-new-subcat-nome2').value.trim();
+  if(!nome){ document.getElementById('f-new-subcat-nome2').focus(); return; }
+  const cat = document.getElementById('f-cat').value;
+  const key = nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');
+  if(!SUBCATS[cat]) SUBCATS[cat] = {};
+  SUBCATS[cat][key] = {label:nome};
+  saveSubCats();
+  populateSubCatSelect('f-cat','f-subcat');
+  document.getElementById('f-subcat').value = key;
+  document.getElementById('f-new-subcat-nome2').value = '';
+  document.getElementById('f-new-subcat-inline').style.display = 'none';
+  renderCatNav();
+  toast('Subcategoria "'+nome+'" criada!');
 }
 
 function openCreateSubcatFromModal(){
