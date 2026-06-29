@@ -599,9 +599,11 @@ function renderCatNav(){
         ondragleave="subDragLeave('${k}','${sk}',event)"
         ondrop="subDragDrop('${k}','${sk}',event)"
         ondragend="subDragEnd(event)">
-        <span style="color:#333;cursor:grab;font-size:12px;padding:0 4px 0 1.5rem;user-select:none" title="Arrastar">⠿</span>
-        <div class="nav-item" style="padding-left:0;font-size:12px;color:#666;flex:1" onclick="navigate('${k}__${sk}')" id="nav-${k}__${sk}">
-          ↳ ${SUBCATS[k][sk].label}
+        <span style="color:#2a2a2a;cursor:grab;font-size:11px;padding:0 4px 0 1rem;user-select:none" title="Arrastar">⠿</span>
+        <div class="nav-item" style="padding-left:0;font-size:11px;color:#555;flex:1;border-left:2px solid #2a2a2a;padding-left:8px;margin:2px 0;border-radius:0" onclick="navigate('${k}__${sk}')" id="nav-${k}__${sk}"
+          onmouseover="this.style.borderColor='${CATS[k]?.color||'#e8b544'}';this.style.color='#999'"
+          onmouseout="this.style.borderColor='#2a2a2a';this.style.color='#555'">
+          ${SUBCATS[k][sk].label}
         </div>
         <button class="subcat-dots-btn" style="background:none;border:none;color:#444;cursor:pointer;padding:4px 6px;font-size:13px;opacity:0;transition:opacity .15s" onclick="toggleSubCatMenu('subcat-menu-${k}-${sk}',event)"><i class="ti ti-dots-vertical"></i></button>
         <div class="subcat-menu" id="subcat-menu-${k}-${sk}">
@@ -619,8 +621,8 @@ function renderCatNav(){
       <div class="nav-item-wrap" id="nav-wrap-${k}">
         <span class="nav-drag" draggable="false" title="Arrastar">⠿</span>
         <button id="chev-${k}" style="background:none;border:none;color:${hasSubs?'#555':'transparent'};cursor:${hasSubs?'pointer':'default'};padding:4px 2px;font-size:11px;transition:transform .2s;transform:rotate(${isOpen?90:0}deg)" onclick="if(${hasSubs}) toggleExpand('${k}',event)"><i class="ti ti-chevron-right"></i></button>
-        <div class="nav-item" onclick="navigate('${k}')" ondblclick="toggleExpand('${k}',event)" id="nav-${k}" style="padding-left:2px;flex:1">
-          ${CATS[k].icon} ${CATS[k].label}
+        <div class="nav-item" onclick="navigate('${k}')" ondblclick="toggleExpand('${k}',event)" id="nav-${k}" style="padding-left:2px;flex:1;display:flex;align-items:center;gap:6px">
+          <span style="width:6px;height:6px;border-radius:50%;background:${CATS[k].color};display:inline-block;flex-shrink:0"></span>${CATS[k].icon} ${CATS[k].label}
         </div>
         <button class="nav-dots" onclick="toggleCatMenu('${k}',event)" title="Opções"><i class="ti ti-dots-vertical"></i></button>
         <div class="cat-menu" id="cat-menu-${k}">
