@@ -1749,12 +1749,13 @@ function renderGanhos(){
   const total = lista.reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
   const dispTotal = lista.filter(g=>g.subcategoria==='disponivel'||!g.subcategoria).reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
   const aReceberTotal = lista.filter(g=>g.subcategoria==='areceber').reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
+  const dirTotal = lista.filter(g=>g.subcategoria==='direcionado').reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
+  const compTotal = lista.filter(g=>g.subcategoria==='comprometido').reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
 
-  const blocos = Object.entries(GANHO_TIPOS).map(([tipo, meta])=>{
+  function blocoHtml(tipo, meta){
     const items = lista.filter(g=>(g.subcategoria===tipo)||(tipo==='disponivel'&&!g.subcategoria));
-    if(!items.length) return '';
     const subtotal = items.reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
-    const rows = items.map(g=>`
+    const rows = items.length ? items.map(g=>`
       <tr style="border-bottom:1px solid ${meta.border}">
         <td style="width:32px;vertical-align:middle;padding:6px 4px">${fmtDate(g.data)}</td>
         <td style="font-size:12px;padding:6px 4px">
@@ -1768,27 +1769,28 @@ function renderGanhos(){
           <button class="edit-btn" style="opacity:1" onclick="openEdit(${g.id})"><i class="ti ti-pencil"></i></button>
           <button class="del-btn" style="opacity:1" onclick="removeGasto(${g.id})"><i class="ti ti-trash"></i></button>
         </td>
-      </tr>`).join('');
-    return `
-      <div style="background:${meta.bg};border:1px solid ${meta.border};border-left:3px solid ${meta.color};border-radius:10px;overflow:hidden;margin-bottom:12px">
-        <div style="padding:10px 14px;background:${meta.bg};border-bottom:1px solid ${meta.border};display:flex;align-items:center;gap:8px">
-          <span style="font-size:14px">${meta.emoji}</span>
-          <span style="font-size:11px;font-weight:600;color:${meta.color};text-transform:uppercase;letter-spacing:.08em">${meta.label}</span>
-          <span style="font-size:10px;color:#555">${meta.desc}</span>
-          <span style="margin-left:auto;font-size:14px;font-weight:700;color:${meta.color}">${fmt(subtotal)}</span>
-        </div>
-        <table style="width:100%;border-collapse:collapse;font-size:12px">
-          <thead><tr style="background:${meta.bg}">
-            <th style="padding:6px 4px;color:#555;font-weight:500;font-size:10px;border-bottom:1px solid ${meta.border}">Data</th>
-            <th style="padding:6px 4px;color:#555;font-weight:500;font-size:10px;border-bottom:1px solid ${meta.border}">Descrição</th>
-            <th style="padding:6px 4px;color:#555;font-weight:500;font-size:10px;text-align:right;border-bottom:1px solid ${meta.border}">Valor</th>
-            <th style="padding:6px 4px;color:#555;font-weight:500;font-size:10px;border-bottom:1px solid ${meta.border}">Qtd</th>
-            <th style="padding:6px 4px;border-bottom:1px solid ${meta.border}"></th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>`;
-  }).join('');
+      </tr>`).join('')
+    : `<tr><td colspan="5" style="padding:1.5rem;text-align:center;color:#444;font-size:12px">Nenhum item</td></tr>`;
+
+    return `<div style="background:${meta.bg};border:1px solid ${meta.border};border-left:3px solid ${meta.color};border-radius:10px;overflow:hidden">
+      <div style="padding:10px 14px;border-bottom:1px solid ${meta.border};display:flex;align-items:center;gap:8px">
+        <span style="font-size:13px">${meta.emoji}</span>
+        <span style="font-size:10px;font-weight:600;color:${meta.color};text-transform:uppercase;letter-spacing:.08em">${meta.label}</span>
+        <span style="font-size:10px;color:#555">${meta.desc}</span>
+        <span style="margin-left:auto;font-size:13px;font-weight:700;color:${meta.color}">${fmt(subtotal)}</span>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr>
+          <th style="padding:6px 4px;color:#555;font-weight:500;font-size:10px;border-bottom:1px solid ${meta.border}">Data</th>
+          <th style="padding:6px 4px;color:#555;font-weight:500;font-size:10px;border-bottom:1px solid ${meta.border}">Descrição</th>
+          <th style="padding:6px 4px;color:#555;font-weight:500;font-size:10px;text-align:right;border-bottom:1px solid ${meta.border}">Valor</th>
+          <th style="padding:6px 4px;color:#555;font-weight:500;font-size:10px;border-bottom:1px solid ${meta.border}">Qtd</th>
+          <th style="padding:6px 4px;border-bottom:1px solid ${meta.border}"></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }
 
   document.getElementById('content').innerHTML = `
     <div style="background:#111;border:1px solid #2a2a2a;border-radius:10px;padding:1rem;margin-bottom:1.25rem;display:flex;gap:2rem;align-items:center;flex-wrap:wrap">
@@ -1797,18 +1799,33 @@ function renderGanhos(){
         <div style="font-size:22px;font-weight:700;color:#4caf50">${fmt(total)}</div>
       </div>
       <div style="border-left:1px solid #2a2a2a;padding-left:2rem">
-        <div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">🟢 Disponível agora</div>
-        <div style="font-size:18px;font-weight:700;color:#4caf50">${fmt(dispTotal)}</div>
+        <div style="font-size:10px;color:#555;margin-bottom:2px">🟢 Disponível</div>
+        <div style="font-size:16px;font-weight:700;color:#4caf50">${fmt(dispTotal)}</div>
       </div>
       <div style="border-left:1px solid #2a2a2a;padding-left:2rem">
-        <div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">🔵 A receber</div>
-        <div style="font-size:18px;font-weight:700;color:#42a5f5">${fmt(aReceberTotal)}</div>
+        <div style="font-size:10px;color:#555;margin-bottom:2px">🔵 A receber</div>
+        <div style="font-size:16px;font-weight:700;color:#42a5f5">${fmt(aReceberTotal)}</div>
+      </div>
+      <div style="border-left:1px solid #2a2a2a;padding-left:2rem">
+        <div style="font-size:10px;color:#555;margin-bottom:2px">🟡 Direcionado</div>
+        <div style="font-size:16px;font-weight:700;color:#e8b544">${fmt(dirTotal)}</div>
+      </div>
+      <div style="border-left:1px solid #2a2a2a;padding-left:2rem">
+        <div style="font-size:10px;color:#555;margin-bottom:2px">⚫ Comprometido</div>
+        <div style="font-size:16px;font-weight:700;color:#666">${fmt(compTotal)}</div>
       </div>
       <div style="margin-left:auto">
         <button class="btn-ganho" onclick="openModalGanho()"><i class="ti ti-plus"></i> Lançar ganho</button>
       </div>
     </div>
-    ${blocos}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      ${blocoHtml('disponivel', GANHO_TIPOS.disponivel)}
+      ${blocoHtml('areceber', GANHO_TIPOS.areceber)}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      ${blocoHtml('direcionado', GANHO_TIPOS.direcionado)}
+      ${blocoHtml('comprometido', GANHO_TIPOS.comprometido)}
+    </div>
   `;
 }
 
