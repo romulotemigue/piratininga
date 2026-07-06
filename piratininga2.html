@@ -1801,7 +1801,7 @@ function renderGanhos(){
 
   const jaGasto = gastos.filter(g=>g.status==='pago'&&g.categoria!=='ganho').reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
   const necessarios = gastos.filter(g=>g.status==='necessario'&&g.categoria!=='ganho').reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
-  const dispensaveis = gastos.filter(g=>g.status==='apagar'&&g.categoria!=='ganho').reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
+  const dispensavel = gastos.filter(g=>g.status==='apagar'&&g.categoria!=='ganho').reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
   const saldoReal = dispTotal - jaGasto - necessarios;
   const saldoProjetado = (dispTotal - jaGasto) + aReceberTotal - necessarios;
   const saldoTudo = saldoReal - dispensaveis;
