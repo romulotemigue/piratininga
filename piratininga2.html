@@ -1223,7 +1223,8 @@ async function loadGastos(){
     gastos = await sbFetch();
     await migrateSubcats(gastos);
     renderCatNav();
-    render();
+    const initialPage = location.hash ? location.hash.slice(1) : 'geral';
+    navigate(initialPage, true);
   } catch(e){
     console.error(e);
     document.getElementById('content').innerHTML = '<div class="loading" style="color:#ef5350">Erro ao conectar ao banco de dados.<br><small>'+e.message+'</small></div>';
@@ -1418,8 +1419,11 @@ async function removeGasto(id){
 }
 
 // ── NAVIGATE ─────────────────────────────────────────────────────
-function navigate(page){
+function navigate(page, skipHistory){
   currentPage = page;
+  if(!skipHistory){
+    history.pushState({page}, '', '#'+page);
+  }
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   const activeEl = document.getElementById('nav-'+page);
   if(activeEl) activeEl.classList.add('active');
@@ -1441,6 +1445,11 @@ function navigate(page){
   if(catChart){catChart.destroy();catChart=null;}
   render();
 }
+
+window.addEventListener('popstate', (e)=>{
+  const page = e.state?.page || (location.hash ? location.hash.slice(1) : 'geral');
+  navigate(page, true);
+});
 
 function render(){
   // Always destroy charts before rendering
@@ -2540,6 +2549,15 @@ async function bulkMoveSelected(newStatus){
 ensureSubCats();
 renderCatNav();
 loadGastos();
+
+// ── SUPABASE KEEP-ALIVE ───────────────────────────────────────────
+// Pings Supabase silently every 4 hours to prevent auto-pause
+function supabasePing(){
+  fetch(`${SB_URL}/rest/v1/${TABLE}?limit=1`, { headers: HEADERS })
+    .catch(()=>{}); // silently ignore errors
+}
+supabasePing(); // ping on load
+setInterval(supabasePing, 4 * 60 * 60 * 1000); // then every 4 hours
 </script>
 </div>
 </body>
