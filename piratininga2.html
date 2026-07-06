@@ -487,6 +487,15 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       <label>Data</label>
       <input type="date" id="e-data-ganho">
     </div>
+    <div id="e-tipo-ganho-row" class="form-group" style="display:none">
+      <label>Tipo do ganho</label>
+      <select id="e-tipo-ganho">
+        <option value="disponivel">🟢 Disponível — já está na minha conta</option>
+        <option value="areceber">🔵 A receber — garantido mas ainda não caiu</option>
+        <option value="direcionado">🟡 Direcionado — vai receber mas tem destino certo</option>
+        <option value="comprometido">⚫ Comprometido — já foi usado/reservado</option>
+      </select>
+    </div>
     <div class="modal-row">
       <div class="form-group">
         <label>Valor (R$)</label>
@@ -498,7 +507,6 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
           <option value="pago">Pago</option>
           <option value="necessario">Necessário</option>
           <option value="apagar">Dispensável</option>
-          
         </select>
       </div>
     </div>
@@ -930,10 +938,13 @@ function openEdit(id){
     document.getElementById('e-data-row-ganho').style.display='';
     document.getElementById('e-data-ganho').value = g.data||'';
     document.getElementById('e-status-group').style.display='none';
+    document.getElementById('e-tipo-ganho-row').style.display='';
+    document.getElementById('e-tipo-ganho').value = g.subcategoria||'disponivel';
     document.getElementById('btn-confirm-edit').style.background='#4caf50';
   } else {
     document.getElementById('e-cat-row').style.display='';
     document.getElementById('e-data-row-ganho').style.display='none';
+    document.getElementById('e-tipo-ganho-row').style.display='none';
     populateCatSelect('e-cat');
     document.getElementById('e-cat').value = g.categoria||'obra';
     populateSubCatSelect('e-cat','e-subcat');
@@ -965,6 +976,7 @@ async function saveEdit(){
   let row = {descricao:desc, valor:val, obs, link:elink, subcategoria:esubcat};
   if(editingIsGanho){
     row.data = document.getElementById('e-data-ganho').value;
+    row.subcategoria = document.getElementById('e-tipo-ganho').value;
   } else {
     row.categoria = document.getElementById('e-cat').value;
     row.data = document.getElementById('e-data').value;
@@ -1228,10 +1240,38 @@ async function migrateSubcats(gastosList){
   }
 }
 
+function autoClassifyGanhoTipo(descricao){
+  const d = (descricao||'').toLowerCase();
+  // Direcionado — vai pra compra do imóvel, não passa pela conta
+  if(d.includes('financiamento')||d.includes('fgts')||d.includes('subsidio')||d.includes('subsídio')) return 'direcionado';
+  // A receber — venda pendente, promessa
+  if(d.includes('a receber')||d.includes('venda')||d.includes('itaú')||d.includes('itau')||d.includes('promessa')) return 'areceber';
+  // Comprometido — reservado
+  if(d.includes('comprometido')||d.includes('reservado')) return 'comprometido';
+  // Default: disponível
+  return 'disponivel';
+}
+
+async function migrateGanhoTipos(gastosList){
+  const semTipo = gastosList.filter(g=>g.categoria==='ganho'&&!g.subcategoria);
+  for(const g of semTipo){
+    const tipo = autoClassifyGanhoTipo(g.descricao);
+    try{
+      await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${g.id}`,{
+        method:'PATCH',
+        headers:{...HEADERS},
+        body:JSON.stringify({subcategoria:tipo})
+      });
+      g.subcategoria = tipo;
+    }catch(e){ console.warn('Ganho tipo migration failed',g.id,e); }
+  }
+}
+
 async function loadGastos(){
   try{
     gastos = await sbFetch();
     await migrateSubcats(gastos);
+    await migrateGanhoTipos(gastos);
     renderCatNav();
     const initialPage = location.hash ? location.hash.slice(1) : 'geral';
     navigate(initialPage, true);
