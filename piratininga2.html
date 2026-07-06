@@ -714,7 +714,11 @@ function renderCatNav(){
       </div>
     `).join('') : '';
 
+    const imovelStyle = isImovel ? `background:${info.color}18;border:1px solid ${info.color}44;border-left:3px solid ${info.color};border-radius:8px;margin:4px 6px;` : '';
+    const imovelNavStyle = isImovel ? `color:${info.color};font-weight:600;font-size:12px;` : '';
+
     return `<div class="nav-cat-wrap" id="cat-wrap-${k}" draggable="true"
+      style="${imovelStyle}"
       ondragstart="dragStart('${k}',event)"
       ondragover="dragOver('${k}',event)"
       ondragleave="dragLeave('${k}',event)"
@@ -723,7 +727,7 @@ function renderCatNav(){
       <div class="nav-item-wrap" id="nav-wrap-${k}">
         <span class="nav-drag" draggable="false" title="Arrastar">⠿</span>
         <button id="chev-${k}" style="background:none;border:none;color:${hasSubs?'#555':'transparent'};cursor:${hasSubs?'pointer':'default'};padding:4px 2px;font-size:11px;transition:transform .2s;transform:rotate(${isOpen?90:0}deg)" onclick="if(${hasSubs}) toggleExpand('${k}',event)"><i class="ti ti-chevron-right"></i></button>
-        <div class="nav-item" onclick="navigate('${k}')" ondblclick="toggleExpand('${k}',event)" id="nav-${k}" style="padding-left:2px;flex:1;display:flex;align-items:center;gap:6px">
+        <div class="nav-item" onclick="navigate('${k}')" ondblclick="toggleExpand('${k}',event)" id="nav-${k}" style="padding-left:2px;flex:1;display:flex;align-items:center;gap:6px;${imovelNavStyle}">
           <span style="width:6px;height:6px;border-radius:50%;background:${info.color};display:inline-block;flex-shrink:0"></span>${info.icon||''} ${info.label}
         </div>
         ${!isImovel?`<button class="nav-dots" onclick="toggleCatMenu('${k}',event)" title="Opções"><i class="ti ti-dots-vertical"></i></button>
