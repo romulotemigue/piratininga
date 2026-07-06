@@ -1515,14 +1515,17 @@ function render(){
 function renderGeral(){
   const ganhos  = gastos.filter(g=>g.categoria==='ganho');
   const totalGanhos = ganhos.reduce((s,g)=>s+(g.valor||0),0);
+  // Só disponível conta como base real — direcionado/a receber não passa pela conta
+  const dispGanhos = ganhos.filter(g=>g.subcategoria==='disponivel'||!g.subcategoria).reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
+  const aReceberGanhos = ganhos.filter(g=>g.subcategoria==='areceber').reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
   const getVal = g => (g.valor||0) * (g.quantidade||1);
   const ativos = gastos.filter(g=>g.status==='pago'&&g.categoria!=='ganho');
   const total  = ativos.reduce((s,g)=>s+getVal(g),0);
   const pago   = gastos.filter(g=>g.status==='pago'&&g.categoria!=='ganho').reduce((s,g)=>s+getVal(g),0);
   const dispensavel = gastos.filter(g=>g.status==='apagar'&&g.categoria!=='ganho').reduce((s,g)=>s+getVal(g),0);
   const necessario  = gastos.filter(g=>g.status==='necessario'&&g.categoria!=='ganho').reduce((s,g)=>s+getVal(g),0);
-  const saldo  = totalGanhos - pago;
-  const pct    = totalGanhos>0?Math.round(total/totalGanhos*100):0;
+  const saldo  = dispGanhos - pago;
+  const pct    = dispGanhos>0?Math.round(total/dispGanhos*100):0;
   const barColor = pct>90?'#ef5350':pct>70?'#e8b544':'#4caf50';
 
   document.getElementById('content').innerHTML = `
@@ -1531,6 +1534,10 @@ function renderGeral(){
       <div class="card" style="border-left:3px solid #e91e8c;background:#1a0d14">
         <div class="card-label"><i class="ti ti-wallet" style="font-size:13px;color:#e91e8c"></i> Saldo restante real</div>
         <div class="card-value" style="color:#e91e8c">${fmt(saldo)}</div>
+        <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #2a1a22">
+          <span style="color:#555;font-size:10px">Projetado (+ a receber):</span><br>
+          <span style="font-size:13px;font-weight:600;color:${(saldo+aReceberGanhos)<0?'#ef5350':'#42a5f5'}">${fmt(saldo+aReceberGanhos)}</span>
+        </div>
       </div>
       <div class="card" style="border-left:3px solid #4caf50;background:#0d1a0d">
         <div class="card-label"><i class="ti ti-circle-check" style="font-size:13px;color:#4caf50"></i> Já pago</div>
@@ -1559,7 +1566,7 @@ function renderGeral(){
       <div class="card" style="border-left:3px solid #555">
         <div class="card-label"><i class="ti ti-trending-up" style="font-size:13px;color:#888"></i> Total de ganhos</div>
         <div class="card-value muted">${fmt(totalGanhos)}</div>
-        <div class="card-sub">${ganhos.length} entradas</div>
+        <div class="card-sub" style="font-size:10px;color:#555">🟢 Disponível: ${fmt(dispGanhos)}</div>
       </div>
     </div>
 
@@ -1588,7 +1595,7 @@ function renderGeral(){
     </div>
 
     <!-- BLOCO 2: PAGO + NECESSÁRIOS -->
-    ${(()=>{const s2=saldo-necessario;const p2=totalGanhos>0?Math.round((pago+necessario)/totalGanhos*100):0;const c2=p2>90?'#ef5350':p2>70?'#e8b544':'#42a5f5';return `
+    ${(()=>{const s2=saldo-necessario;const p2=dispGanhos>0?Math.round((pago+necessario)/dispGanhos*100):0;const c2=p2>90?'#ef5350':p2>70?'#e8b544':'#42a5f5';return `
     <div style="background:#111;border:1px solid #1a2a3a;border-left:3px solid #42a5f5;border-radius:10px;padding:1.25rem;margin-bottom:1rem">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem">
         <span style="width:8px;height:8px;border-radius:50%;background:#42a5f5;display:inline-block"></span>
@@ -1614,7 +1621,7 @@ function renderGeral(){
     `;})()} 
 
     <!-- BLOCO 3: TUDO -->
-    ${(()=>{const s3=saldo-necessario-dispensavel;const p3=totalGanhos>0?Math.round((pago+necessario+dispensavel)/totalGanhos*100):0;const c3=p3>90?'#ef5350':p3>70?'#e8b544':'#888';return `
+    ${(()=>{const s3=saldo-necessario-dispensavel;const p3=dispGanhos>0?Math.round((pago+necessario+dispensavel)/dispGanhos*100):0;const c3=p3>90?'#ef5350':p3>70?'#e8b544':'#888';return `
     <div style="background:#111;border:1px solid #2a2000;border-left:3px solid #e8b544;border-radius:10px;padding:1.25rem;margin-bottom:1.25rem">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem">
         <span style="width:8px;height:8px;border-radius:50%;background:#e8b544;display:inline-block"></span>
@@ -1792,30 +1799,58 @@ function renderGanhos(){
     </div>`;
   }
 
+  const jaGasto = gastos.filter(g=>g.status==='pago'&&g.categoria!=='ganho').reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
+  const necessarios = gastos.filter(g=>g.status==='necessario'&&g.categoria!=='ganho').reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
+  const dispensaveis = gastos.filter(g=>g.status==='apagar'&&g.categoria!=='ganho').reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
+  const saldoReal = dispTotal - jaGasto - necessarios;
+  const saldoProjetado = saldoReal + aReceberTotal;
+  const saldoTudo = saldoReal - dispensaveis;
+
   document.getElementById('content').innerHTML = `
-    <div style="background:#111;border:1px solid #2a2a2a;border-radius:10px;padding:1rem;margin-bottom:1.25rem;display:flex;gap:2rem;align-items:center;flex-wrap:wrap">
-      <div>
-        <div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Total registrado</div>
-        <div style="font-size:22px;font-weight:700;color:#4caf50">${fmt(total)}</div>
+    <div style="background:#111;border:1px solid #2a2a2a;border-radius:10px;padding:1rem;margin-bottom:1.25rem">
+      <div style="display:flex;gap:2rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem">
+        <div>
+          <div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Total registrado</div>
+          <div style="font-size:18px;font-weight:700;color:#888">${fmt(total)}</div>
+        </div>
+        <div style="border-left:1px solid #2a2a2a;padding-left:2rem">
+          <div style="font-size:10px;color:#555;margin-bottom:2px">🟢 Disponível</div>
+          <div style="font-size:16px;font-weight:700;color:#4caf50">${fmt(dispTotal)}</div>
+        </div>
+        <div style="border-left:1px solid #2a2a2a;padding-left:2rem">
+          <div style="font-size:10px;color:#555;margin-bottom:2px">🔵 A receber</div>
+          <div style="font-size:16px;font-weight:700;color:#42a5f5">${fmt(aReceberTotal)}</div>
+        </div>
+        <div style="border-left:1px solid #2a2a2a;padding-left:2rem">
+          <div style="font-size:10px;color:#555;margin-bottom:2px">🟡 Direcionado</div>
+          <div style="font-size:16px;font-weight:700;color:#e8b544">${fmt(dirTotal)}</div>
+        </div>
+        <div style="border-left:1px solid #2a2a2a;padding-left:2rem">
+          <div style="font-size:10px;color:#555;margin-bottom:2px">⚫ Comprometido</div>
+          <div style="font-size:16px;font-weight:700;color:#666">${fmt(compTotal)}</div>
+        </div>
+        <div style="margin-left:auto">
+          <button class="btn-ganho" onclick="openModalGanho()"><i class="ti ti-plus"></i> Lançar ganho</button>
+        </div>
       </div>
-      <div style="border-left:1px solid #2a2a2a;padding-left:2rem">
-        <div style="font-size:10px;color:#555;margin-bottom:2px">🟢 Disponível</div>
-        <div style="font-size:16px;font-weight:700;color:#4caf50">${fmt(dispTotal)}</div>
-      </div>
-      <div style="border-left:1px solid #2a2a2a;padding-left:2rem">
-        <div style="font-size:10px;color:#555;margin-bottom:2px">🔵 A receber</div>
-        <div style="font-size:16px;font-weight:700;color:#42a5f5">${fmt(aReceberTotal)}</div>
-      </div>
-      <div style="border-left:1px solid #2a2a2a;padding-left:2rem">
-        <div style="font-size:10px;color:#555;margin-bottom:2px">🟡 Direcionado</div>
-        <div style="font-size:16px;font-weight:700;color:#e8b544">${fmt(dirTotal)}</div>
-      </div>
-      <div style="border-left:1px solid #2a2a2a;padding-left:2rem">
-        <div style="font-size:10px;color:#555;margin-bottom:2px">⚫ Comprometido</div>
-        <div style="font-size:16px;font-weight:700;color:#666">${fmt(compTotal)}</div>
-      </div>
-      <div style="margin-left:auto">
-        <button class="btn-ganho" onclick="openModalGanho()"><i class="ti ti-plus"></i> Lançar ganho</button>
+      <div style="background:#0d1a0d;border:1px solid #1e3a1e;border-left:3px solid #e91e8c;border-radius:8px;padding:14px 18px">
+        <div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap">
+          <div>
+            <div style="font-size:10px;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em">Saldo real na conta</div>
+            <div style="font-size:28px;font-weight:800;color:${saldoReal<0?'#ef5350':'#e91e8c'}">${fmt(saldoReal)}</div>
+            <div style="font-size:10px;color:#555;margin-top:4px">Disponível (${fmt(dispTotal)}) − Já pago (${fmt(jaGasto)}) − Necessários (${fmt(necessarios)})</div>
+          </div>
+          <div style="border-left:1px solid #2a2a2a;padding-left:16px;margin-left:8px">
+            <div style="font-size:10px;color:#42a5f5;margin-bottom:4px">🔵 Projetado (+ a receber)</div>
+            <div style="font-size:18px;font-weight:700;color:${saldoProjetado<0?'#ef5350':'#42a5f5'}">${fmt(saldoProjetado)}</div>
+            <div style="font-size:10px;color:#444;margin-top:2px">+ A receber (${fmt(aReceberTotal)})</div>
+          </div>
+          <div style="border-left:1px solid #2a2a2a;padding-left:16px;margin-left:8px">
+            <div style="font-size:10px;color:#555;margin-bottom:4px">Se usar dispensáveis</div>
+            <div style="font-size:18px;font-weight:700;color:${saldoTudo<0?'#ef5350':'#888'}">${fmt(saldoTudo)}</div>
+            <div style="font-size:10px;color:#444;margin-top:2px">− Dispensáveis (${fmt(dispensaveis)})</div>
+          </div>
+        </div>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
