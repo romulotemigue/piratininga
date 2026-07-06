@@ -220,6 +220,15 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       </div>
       <div id="cat-nav-list"></div>
       <div class="divider"></div>
+      <div class="nav-item" onclick="navigate('venda-imovel')" id="nav-venda-imovel" style="display:flex;align-items:center;gap:8px">
+        <span style="width:6px;height:6px;border-radius:50%;background:#4caf50;display:inline-block;flex-shrink:0"></span>
+        <i class="ti ti-home-dollar"></i> Venda do Imóvel
+      </div>
+      <div class="nav-item" onclick="navigate('compra-imovel')" id="nav-compra-imovel" style="display:flex;align-items:center;gap:8px">
+        <span style="width:6px;height:6px;border-radius:50%;background:#42a5f5;display:inline-block;flex-shrink:0"></span>
+        <i class="ti ti-home-move"></i> Compra do Imóvel
+      </div>
+      <div class="divider"></div>
       <div class="nav-item" onclick="navigate('ganhos')" id="nav-ganhos">
         <i class="ti ti-trending-up"></i> Ganhos
       </div>
@@ -1354,7 +1363,8 @@ function createSubcatInline(){
 function populateCatSelect(id){
   const sel = document.getElementById(id);
   const cur = sel.value;
-  sel.innerHTML = Object.keys(CATS).map(k=>`<option value="${k}"${k===cur?' selected':''}>${CATS[k].label}</option>`).join('');
+  const allCats = {...CATS, ...Object.fromEntries(Object.entries(IMOVEL_CATS).map(([k,v])=>[k,{label:v.label,color:v.color,icon:v.icon}]))};
+  sel.innerHTML = Object.keys(allCats).map(k=>`<option value="${k}"${k===cur?' selected':''}>${allCats[k].label}</option>`).join('');
 }
 
 const M2_CATS = ['revestimentos-piso','revestimentos-paredes','obra','marmoraria'];
@@ -1487,7 +1497,7 @@ function navigate(page, skipHistory){
     render();
     return;
   }
-  const fixedTitles={geral:'Visão Geral',ganhos:'Ganhos'};
+  const fixedTitles={geral:'Visão Geral',ganhos:'Ganhos','venda-imovel':'Venda do Imóvel','compra-imovel':'Compra do Imóvel'};
   const title = fixedTitles[page] || (CATS[page]?.label) || page;
   document.getElementById('topbar-title').textContent = title;
   if(barChart){barChart.destroy();barChart=null;}
@@ -1507,8 +1517,67 @@ function render(){
   barChart=null; pieChart=null; catChart=null;
   if(currentPage==='geral') renderGeral();
   else if(currentPage==='ganhos') renderGanhos();
+  else if(currentPage==='venda-imovel') renderImovelCat('venda-imovel');
+  else if(currentPage==='compra-imovel') renderImovelCat('compra-imovel');
   else if(currentPage.includes('__')) renderSubCat(currentPage);
   else renderCat(currentPage);
+}
+
+// ── IMÓVEL CATS ──────────────────────────────────────────────────
+const IMOVEL_CATS = {
+  'venda-imovel': { label:'Venda do Imóvel', color:'#4caf50', icon:'🏠' },
+  'compra-imovel': { label:'Compra do Imóvel', color:'#42a5f5', icon:'🔑' },
+};
+
+function renderImovelCat(catKey){
+  const info = IMOVEL_CATS[catKey];
+  const lista = gastos.filter(g=>g.categoria===catKey);
+  const getVal = g=>(g.valor||0)*(g.quantidade||1);
+  const pago = lista.filter(g=>g.status==='pago').reduce((s,g)=>s+getVal(g),0);
+  const necessario = lista.filter(g=>g.status==='necessario').reduce((s,g)=>s+getVal(g),0);
+  const dispensavel = lista.filter(g=>g.status==='apagar').reduce((s,g)=>s+getVal(g),0);
+  const total = pago+necessario+dispensavel;
+
+  document.getElementById('content').innerHTML = `
+    <div class="cat-total-card" style="border-left:3px solid ${info.color}">
+      <div class="cat-stat">
+        <span class="cat-stat-label">Total</span>
+        <span class="cat-stat-value" style="color:${info.color}">${fmt(total)}</span>
+      </div>
+      <div class="cat-stat">
+        <span class="cat-stat-label">Já pago</span>
+        <span class="cat-stat-value" style="color:#4caf50">${fmt(pago)}</span>
+      </div>
+      <div class="cat-stat">
+        <span class="cat-stat-label">Necessários</span>
+        <span class="cat-stat-value" style="color:#42a5f5">${fmt(necessario)}</span>
+      </div>
+      <div class="cat-stat">
+        <span class="cat-stat-label">Dispensáveis</span>
+        <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
+      </div>
+      <div style="margin-left:auto">
+        <button onclick="openModalImovel('${catKey}')"
+          style="background:transparent;border:1px solid ${info.color};color:${info.color};padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s"
+          onmouseover="this.style.background='${info.color}';this.style.color='#111'"
+          onmouseout="this.style.background='transparent';this.style.color='${info.color}'">
+          + lançar em ${info.label}
+        </button>
+      </div>
+    </div>
+    ${renderColGrid(lista, catKey)}
+  `;
+}
+
+function openModalImovel(catKey){
+  populateCatSelect('f-cat');
+  document.getElementById('f-cat').value = catKey;
+  setTimeout(()=>{
+    populateSubCatSelect('f-cat','f-subcat');
+    checkM2Section(catKey);
+  },0);
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('f-desc').focus(),100);
 }
 
 // ── GERAL ────────────────────────────────────────────────────────
