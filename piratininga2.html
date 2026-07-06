@@ -382,6 +382,15 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       <label>Descrição</label>
       <input type="text" id="g-desc" spellcheck="true" lang="pt-BR" placeholder="Ex: Venda do apartamento">
     </div>
+    <div class="form-group">
+      <label>Tipo</label>
+      <select id="g-tipo">
+        <option value="disponivel">🟢 Disponível — já está na minha conta</option>
+        <option value="areceber">🔵 A receber — garantido mas ainda não caiu</option>
+        <option value="direcionado">🟡 Direcionado — vai receber mas tem destino certo</option>
+        <option value="comprometido">⚫ Comprometido — já foi usado/reservado</option>
+      </select>
+    </div>
     <div class="modal-row">
       <div class="form-group">
         <label>Valor (R$)</label>
@@ -880,12 +889,13 @@ async function addGanho(){
   const val  = parseMoney(document.getElementById('g-valor').value);
   const data = document.getElementById('g-data').value;
   const obs  = document.getElementById('g-obs').value.trim();
+  const tipo = document.getElementById('g-tipo').value;
   if(!desc){ alert('Preencha a descrição.'); return; }
   if(isNaN(val)||val<=0){ alert('Preencha um valor válido.'); return; }
   const btn = document.getElementById('btn-confirm-ganho');
   btn.disabled = true; btn.textContent = 'Salvando...';
   try{
-    await sbInsert({descricao:desc,categoria:'ganho',data,valor:val,status:'pago',obs,orcamento:0,quantidade:1});
+    await sbInsert({descricao:desc,categoria:'ganho',data,valor:val,status:'pago',obs,orcamento:0,quantidade:1,subcategoria:tipo});
     document.getElementById('g-desc').value='';
     document.getElementById('g-valor').value='';
     document.getElementById('g-obs').value='';
@@ -1687,33 +1697,78 @@ function renderGeral(){
 }
 
 // ── GANHOS PAGE ──────────────────────────────────────────────────
+const GANHO_TIPOS = {
+  disponivel:  {label:'Disponível',     emoji:'🟢', color:'#4caf50', bg:'#0d1a0d', border:'#1e3a1e', desc:'Dinheiro que já está na sua conta'},
+  areceber:    {label:'A receber',      emoji:'🔵', color:'#42a5f5', bg:'#0d1520', border:'#1a2a3a', desc:'Garantido mas ainda não caiu na conta'},
+  direcionado: {label:'Direcionado',    emoji:'🟡', color:'#e8b544', bg:'#1a1500', border:'#2a2000', desc:'Vai receber mas já tem destino certo — não passa pela sua conta'},
+  comprometido:{label:'Comprometido',   emoji:'⚫', color:'#666',    bg:'#161616', border:'#2a2a2a', desc:'Já foi usado ou reservado'},
+};
+
 function renderGanhos(){
   const lista = gastos.filter(g=>g.categoria==='ganho');
-  const total = lista.reduce((s,g)=>s+(g.valor||0),0);
+  const total = lista.reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
+  const dispTotal = lista.filter(g=>g.subcategoria==='disponivel'||!g.subcategoria).reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
+  const aReceberTotal = lista.filter(g=>g.subcategoria==='areceber').reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
+
+  const blocos = Object.entries(GANHO_TIPOS).map(([tipo, meta])=>{
+    const items = lista.filter(g=>(g.subcategoria===tipo)||(tipo==='disponivel'&&!g.subcategoria));
+    if(!items.length) return '';
+    const subtotal = items.reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
+    const rows = items.map(g=>`
+      <tr style="border-bottom:1px solid ${meta.border}">
+        <td style="width:32px;vertical-align:middle;padding:6px 4px">${fmtDate(g.data)}</td>
+        <td style="font-size:12px;padding:6px 4px">
+          <div>${g.descricao||''}</div>
+          ${g.obs?`<div style="font-size:10px;color:#555;margin-top:2px">${g.obs}</div>`:''}
+        </td>
+        <td style="text-align:right;font-weight:600;font-size:13px;color:${meta.color};padding:6px 4px;white-space:nowrap">${fmt((g.valor||0)*(g.quantidade||1))}</td>
+        <td style="padding:6px 2px"><div class="qty-wrap"><button class="qty-btn" onclick="changeQty(${g.id},-1)">−</button><input class="qty-input" type="number" min="1" value="${g.quantidade||1}" onchange="setQty(${g.id},this)" onclick="event.stopPropagation()"><button class="qty-btn" onclick="changeQty(${g.id},1)">+</button></div></td>
+        <td style="white-space:nowrap;padding:6px 8px 6px 2px">
+          <span style="display:inline-block;width:18px;text-align:center">${g.link?`<a href="${g.link}" target="_blank" style="color:#2a78d6;font-size:13px"><i class="ti ti-external-link"></i></a>`:''}</span>
+          <button class="edit-btn" style="opacity:1" onclick="openEdit(${g.id})"><i class="ti ti-pencil"></i></button>
+          <button class="del-btn" style="opacity:1" onclick="removeGasto(${g.id})"><i class="ti ti-trash"></i></button>
+        </td>
+      </tr>`).join('');
+    return `
+      <div style="background:${meta.bg};border:1px solid ${meta.border};border-left:3px solid ${meta.color};border-radius:10px;overflow:hidden;margin-bottom:12px">
+        <div style="padding:10px 14px;background:${meta.bg};border-bottom:1px solid ${meta.border};display:flex;align-items:center;gap:8px">
+          <span style="font-size:14px">${meta.emoji}</span>
+          <span style="font-size:11px;font-weight:600;color:${meta.color};text-transform:uppercase;letter-spacing:.08em">${meta.label}</span>
+          <span style="font-size:10px;color:#555">${meta.desc}</span>
+          <span style="margin-left:auto;font-size:14px;font-weight:700;color:${meta.color}">${fmt(subtotal)}</span>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="background:${meta.bg}">
+            <th style="padding:6px 4px;color:#555;font-weight:500;font-size:10px;border-bottom:1px solid ${meta.border}">Data</th>
+            <th style="padding:6px 4px;color:#555;font-weight:500;font-size:10px;border-bottom:1px solid ${meta.border}">Descrição</th>
+            <th style="padding:6px 4px;color:#555;font-weight:500;font-size:10px;text-align:right;border-bottom:1px solid ${meta.border}">Valor</th>
+            <th style="padding:6px 4px;color:#555;font-weight:500;font-size:10px;border-bottom:1px solid ${meta.border}">Qtd</th>
+            <th style="padding:6px 4px;border-bottom:1px solid ${meta.border}"></th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }).join('');
 
   document.getElementById('content').innerHTML = `
-    <div class="cat-total-card" style="border-left:3px solid #4caf50">
-      <div class="cat-stat">
-        <span class="cat-stat-label">Total de ganhos</span>
-        <span class="cat-stat-value" style="color:#4caf50">${fmt(total)}</span>
+    <div style="background:#111;border:1px solid #2a2a2a;border-radius:10px;padding:1rem;margin-bottom:1.25rem;display:flex;gap:2rem;align-items:center;flex-wrap:wrap">
+      <div>
+        <div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Total registrado</div>
+        <div style="font-size:22px;font-weight:700;color:#4caf50">${fmt(total)}</div>
       </div>
-      <div class="cat-stat">
-        <span class="cat-stat-label">Entradas</span>
-        <span class="cat-stat-value" style="color:#888">${lista.length}</span>
+      <div style="border-left:1px solid #2a2a2a;padding-left:2rem">
+        <div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">🟢 Disponível agora</div>
+        <div style="font-size:18px;font-weight:700;color:#4caf50">${fmt(dispTotal)}</div>
+      </div>
+      <div style="border-left:1px solid #2a2a2a;padding-left:2rem">
+        <div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">🔵 A receber</div>
+        <div style="font-size:18px;font-weight:700;color:#42a5f5">${fmt(aReceberTotal)}</div>
       </div>
       <div style="margin-left:auto">
         <button class="btn-ganho" onclick="openModalGanho()"><i class="ti ti-plus"></i> Lançar ganho</button>
       </div>
     </div>
-    <div class="table-card">
-      <table>
-        <thead><tr>
-          <th>Data</th><th>Descrição</th><th>Sub</th>
-          <th style="text-align:right">Valor</th><th>Qtd</th><th>Obs</th><th>Link</th><th></th>
-        </tr></thead>
-        <tbody>${renderGanhoRows(lista)}</tbody>
-      </table>
-    </div>
+    ${blocos}
   `;
 }
 
