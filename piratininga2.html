@@ -220,14 +220,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       </div>
       <div id="cat-nav-list"></div>
       <div class="divider"></div>
-      <div class="nav-item" onclick="navigate('venda-imovel')" id="nav-venda-imovel" style="display:flex;align-items:center;gap:8px">
-        <span style="width:6px;height:6px;border-radius:50%;background:#4caf50;display:inline-block;flex-shrink:0"></span>
-        <i class="ti ti-home-dollar"></i> Venda do Imóvel
-      </div>
-      <div class="nav-item" onclick="navigate('compra-imovel')" id="nav-compra-imovel" style="display:flex;align-items:center;gap:8px">
-        <span style="width:6px;height:6px;border-radius:50%;background:#42a5f5;display:inline-block;flex-shrink:0"></span>
-        <i class="ti ti-home-move"></i> Compra do Imóvel
-      </div>
+      <div id="imovel-nav-list"></div>
       <div class="divider"></div>
       <div class="nav-item" onclick="navigate('ganhos')" id="nav-ganhos">
         <i class="ti ti-trending-up"></i> Ganhos
@@ -723,6 +716,7 @@ function renderCatNav(){
       <div id="subcat-list-${k}" style="overflow:hidden;max-height:${isOpen?'500px':'0'};transition:max-height .25s ease">${subs}</div>
     </div>`;
   }).join('');
+  renderImovelNav();
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   const active = document.getElementById('nav-'+currentPage);
   if(active) active.classList.add('active');
@@ -1521,6 +1515,93 @@ function render(){
   else if(currentPage==='compra-imovel') renderImovelCat('compra-imovel');
   else if(currentPage.includes('__')) renderSubCat(currentPage);
   else renderCat(currentPage);
+}
+
+// ── IMÓVEL NAV ───────────────────────────────────────────────────
+let imovelOrder = JSON.parse(localStorage.getItem('imovel_order')||'["venda-imovel","compra-imovel"]');
+let imovelDragKey = null;
+
+function saveImovelOrder(){ localStorage.setItem('imovel_order', JSON.stringify(imovelOrder)); }
+
+function renderImovelNav(){
+  const list = document.getElementById('imovel-nav-list');
+  if(!list) return;
+  list.innerHTML = imovelOrder.map(k=>{
+    const info = IMOVEL_CATS[k];
+    if(!info) return '';
+    const subs = SUBCATS[k] ? Object.keys(SUBCATS[k]) : [];
+    const expanded = JSON.parse(localStorage.getItem('pirati_expanded')||'{}');
+    const isOpen = !!expanded[k];
+    const subRows = subs.map(sk=>`
+      <div class="subcat-row" id="subcat-row-${k}-${sk}" draggable="true"
+        ondragstart="subDragStart('${k}','${sk}',event)"
+        ondragover="subDragOver('${k}','${sk}',event)"
+        ondragleave="subDragLeave('${k}','${sk}',event)"
+        ondrop="subDragDrop('${k}','${sk}',event)"
+        ondragend="subDragEnd(event)">
+        <span style="color:#333;cursor:grab;font-size:11px;padding:0 4px 0 1rem;user-select:none">⠿</span>
+        <div class="nav-item" style="padding-left:0;font-size:11px;color:#555;flex:1;border-left:2px solid #2a2a2a;padding-left:8px;margin:2px 0"
+          onclick="navigate('${k}__${sk}')" id="nav-${k}__${sk}"
+          onmouseover="this.style.borderColor='${info.color}';this.style.color='#999'"
+          onmouseout="this.style.borderColor='#2a2a2a';this.style.color='#555'">
+          ${SUBCATS[k][sk].label}
+        </div>
+      </div>`).join('');
+
+    return `<div class="nav-cat-wrap" id="imovel-wrap-${k}" draggable="true"
+      ondragstart="imovelDragStart('${k}',event)"
+      ondragover="imovelDragOver('${k}',event)"
+      ondragleave="imovelDragLeave('${k}',event)"
+      ondrop="imovelDragDrop('${k}',event)"
+      ondragend="imovelDragEnd(event)">
+      <div style="display:flex;align-items:center">
+        <span class="nav-drag" draggable="false" style="color:#444;cursor:grab;padding:0 6px;font-size:13px">⠿</span>
+        ${subs.length>0?`<button onclick="toggleExpand('${k}',event)" style="background:none;border:none;cursor:pointer;padding:4px 2px;color:#555">
+          <i class="ti ti-chevron-right" id="chev-${k}" style="font-size:11px;transition:transform .2s;${isOpen?'transform:rotate(90deg)':''}"></i>
+        </button>`:'<span style="width:22px;display:inline-block"></span>'}
+        <div class="nav-item" onclick="navigate('${k}')" ondblclick="toggleExpand('${k}',event)" id="nav-${k}" style="flex:1;display:flex;align-items:center;gap:6px;padding-left:2px">
+          <span style="width:6px;height:6px;border-radius:50%;background:${info.color};display:inline-block;flex-shrink:0"></span>
+          ${info.icon} ${info.label}
+        </div>
+      </div>
+      ${subs.length>0?`<div id="subcat-list-${k}" style="overflow:hidden;transition:max-height .25s;max-height:${isOpen?'500px':'0px'}">${subRows}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function imovelDragStart(k, e){
+  imovelDragKey = k;
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(()=>{ const el=document.getElementById('imovel-wrap-'+k); if(el) el.classList.add('dragging'); },0);
+}
+function imovelDragOver(k, e){
+  e.preventDefault();
+  if(k===imovelDragKey) return;
+  document.querySelectorAll('[id^="imovel-wrap-"]').forEach(el=>el.classList.remove('drag-over'));
+  const el = document.getElementById('imovel-wrap-'+k);
+  if(el) el.classList.add('drag-over');
+}
+function imovelDragLeave(k, e){
+  const el = document.getElementById('imovel-wrap-'+k);
+  if(el) el.classList.remove('drag-over');
+}
+function imovelDragDrop(k, e){
+  e.preventDefault();
+  if(k===imovelDragKey) return;
+  const fromIdx = imovelOrder.indexOf(imovelDragKey);
+  const toIdx = imovelOrder.indexOf(k);
+  if(fromIdx===-1||toIdx===-1) return;
+  imovelOrder.splice(fromIdx,1);
+  imovelOrder.splice(toIdx,0,imovelDragKey);
+  saveImovelOrder();
+  renderImovelNav();
+  imovelDragKey = null;
+}
+function imovelDragEnd(e){
+  imovelDragKey = null;
+  document.querySelectorAll('[id^="imovel-wrap-"]').forEach(el=>{
+    el.classList.remove('dragging','drag-over');
+  });
 }
 
 // ── IMÓVEL CATS ──────────────────────────────────────────────────
