@@ -1803,14 +1803,18 @@ function renderGanhos(){
   const necessarios = gastos.filter(g=>g.status==='necessario'&&g.categoria!=='ganho').reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
   const dispensaveis = gastos.filter(g=>g.status==='apagar'&&g.categoria!=='ganho').reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
   const saldoReal = dispTotal - jaGasto - necessarios;
-  const saldoProjetado = saldoReal + aReceberTotal;
+  const saldoProjetado = (dispTotal - jaGasto) + aReceberTotal - necessarios;
   const saldoTudo = saldoReal - dispensaveis;
 
   document.getElementById('content').innerHTML = `
     <div style="background:#111;border:1px solid #2a2a2a;border-radius:10px;padding:1rem;margin-bottom:1.25rem">
 
-      <!-- linha de referência: tipos em pequeno + total escondido à direita -->
+      <!-- linha de referência -->
       <div style="display:flex;gap:1.5rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem">
+        <div>
+          <div style="font-size:10px;color:#555;margin-bottom:2px">🟢 Disponível bruto</div>
+          <div style="font-size:13px;font-weight:600;color:#4caf50">${fmt(dispTotal)}</div>
+        </div>
         <div>
           <div style="font-size:10px;color:#555;margin-bottom:2px">🔵 A receber</div>
           <div style="font-size:13px;font-weight:600;color:#42a5f5">${fmt(aReceberTotal)}</div>
@@ -1820,43 +1824,40 @@ function renderGanhos(){
           <div style="font-size:13px;font-weight:600;color:#e8b544">${fmt(dirTotal)}</div>
         </div>
         <div>
-          <div style="font-size:10px;color:#555;margin-bottom:2px">⚫ Comprometido</div>
-          <div style="font-size:13px;font-weight:600;color:#444">${fmt(compTotal)}</div>
+          <div style="font-size:10px;color:#333;margin-bottom:2px">⚫ Comprometido</div>
+          <div style="font-size:13px;font-weight:600;color:#333">${fmt(compTotal)}</div>
         </div>
         <div style="margin-left:auto;display:flex;align-items:center;gap:1.5rem">
           <div style="text-align:right">
-            <div style="font-size:9px;color:#333;text-transform:uppercase;letter-spacing:.06em">Total registrado</div>
-            <div style="font-size:12px;color:#333">${fmt(total)}</div>
+            <div style="font-size:9px;color:#2a2a2a;text-transform:uppercase;letter-spacing:.06em">Total registrado</div>
+            <div style="font-size:11px;color:#2a2a2a">${fmt(total)}</div>
           </div>
           <button class="btn-ganho" onclick="openModalGanho()"><i class="ti ti-plus"></i> Lançar ganho</button>
         </div>
       </div>
 
-      <!-- bloco principal de saldo -->
-      <div style="background:#0d1a0d;border:1px solid #1e3a1e;border-left:3px solid #e91e8c;border-radius:8px;padding:14px 18px">
-        <div style="display:flex;align-items:flex-start;gap:24px;flex-wrap:wrap">
+      <!-- bloco principal -->
+      <div style="background:#0d1a0d;border:1px solid #1e3a1e;border-left:3px solid #e91e8c;border-radius:8px;padding:16px 20px">
+        <div style="display:flex;align-items:flex-start;gap:32px;flex-wrap:wrap">
 
-          <!-- disponível -->
+          <!-- na conta agora -->
           <div>
-            <div style="font-size:10px;color:#555;margin-bottom:2px">🟢 Disponível (bruto)</div>
-            <div style="font-size:15px;font-weight:600;color:#4caf50">${fmt(dispTotal)}</div>
-          </div>
-
-          <!-- saldo real = principal -->
-          <div style="border-left:1px solid #1e3a1e;padding-left:20px">
-            <div style="font-size:10px;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em">Disponível − Pago − Necessários</div>
-            <div style="font-size:30px;font-weight:800;color:${saldoReal<0?'#ef5350':'#e91e8c'}">${fmt(saldoReal)}</div>
-            <div style="margin-top:8px;font-size:11px;color:#555">
-              Se usar dispensáveis: <span style="font-weight:700;color:${saldoTudo<0?'#ef5350':'#666'}">${fmt(saldoTudo)}</span>
+            <div style="font-size:10px;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">Na conta agora</div>
+            <div style="font-size:32px;font-weight:800;color:${(dispTotal-jaGasto)<0?'#ef5350':'#e91e8c'}">${fmt(dispTotal-jaGasto)}</div>
+            <div style="font-size:10px;color:#555;margin-top:4px">Disponível − Já pago</div>
+            <div style="margin-top:10px;display:flex;flex-direction:column;gap:4px">
+              <div style="font-size:11px;color:#555">Se pagar necessários: <span style="font-weight:700;color:${(dispTotal-jaGasto-necessarios)<0?'#ef5350':'#888'}">${fmt(dispTotal-jaGasto-necessarios)}</span></div>
+              <div style="font-size:11px;color:#555">Se pagar tudo: <span style="font-weight:700;color:${(dispTotal-jaGasto-necessarios-dispensavel)<0?'#ef5350':'#666'}">${fmt(dispTotal-jaGasto-necessarios-dispensavel)}</span></div>
             </div>
           </div>
 
           <!-- projetado -->
-          <div style="border-left:1px solid #1e3a1e;padding-left:20px">
-            <div style="font-size:10px;color:#42a5f5;margin-bottom:4px">🔵 Projetado (+ a receber)</div>
-            <div style="font-size:20px;font-weight:700;color:${saldoProjetado<0?'#ef5350':'#42a5f5'}">${fmt(saldoProjetado)}</div>
-            <div style="margin-top:8px;font-size:11px;color:#555">
-              Se usar dispensáveis: <span style="font-weight:700;color:${(saldoProjetado-dispensaveis)<0?'#ef5350':'#444'}">${fmt(saldoProjetado-dispensaveis)}</span>
+          <div style="border-left:1px solid #1e3a1e;padding-left:24px">
+            <div style="font-size:10px;color:#42a5f5;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">🔵 Projetado (+ a receber)</div>
+            <div style="font-size:24px;font-weight:700;color:${saldoProjetado<0?'#ef5350':'#42a5f5'}">${fmt(saldoProjetado)}</div>
+            <div style="font-size:10px;color:#555;margin-top:4px">Na conta + A receber − Necessários</div>
+            <div style="margin-top:10px">
+              <div style="font-size:11px;color:#555">Se pagar tudo: <span style="font-weight:700;color:${(saldoProjetado-dispensavel)<0?'#ef5350':'#444'}">${fmt(saldoProjetado-dispensavel)}</span></div>
             </div>
           </div>
 
