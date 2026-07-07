@@ -677,7 +677,6 @@ const TABLE  = 'piratininga';
 const HEADERS = {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
 
 const DEFAULT_CATS = {
-  obra:        {label:'Obra / Reforma',    icon:'🔨', color:'#e8b544'},
   moveis:      {label:'Móveis',            icon:'🪑', color:'#4caf50'},
   eletro:      {label:'Eletrodomésticos',  icon:'🔌', color:'#2a78d6'},
   taxas:       {label:'Taxas / Cartório',  icon:'🧾', color:'#ab47bc'},
@@ -708,7 +707,7 @@ function renderCatNav(){
   const expanded = JSON.parse(localStorage.getItem('pirati_expanded')||'{}');
 
   // Merge CATS + IMOVEL_CATS into unified ordered list
-  const imovelKeys = JSON.parse(localStorage.getItem('imovel_order')||'["venda-imovel","compra-imovel","projeto-arq"]');
+  const imovelKeys = JSON.parse(localStorage.getItem('imovel_order')||'["venda-imovel","compra-imovel","projeto-arq","obra-bruta"]');
   const allOrder = JSON.parse(localStorage.getItem('all_cat_order')||'null');
   let allKeys;
   if(allOrder){
@@ -1313,6 +1312,17 @@ const KEY_MIGRATION = {
 };
 
 async function migrateSubcats(gastosList){
+  // migrate old 'obra' category to 'obra-bruta'
+  const obraItems = gastosList.filter(g=>g.categoria==='obra');
+  for(const g of obraItems){
+    try{
+      await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${g.id}`,{
+        method:'PATCH', headers:{...HEADERS},
+        body:JSON.stringify({categoria:'obra-bruta'})
+      });
+      g.categoria = 'obra-bruta';
+    }catch(e){ console.warn('obra migration failed',g.id,e); }
+  }
   const toMigrate = gastosList.filter(g=>g.subcategoria && KEY_MIGRATION[g.subcategoria]);
   for(const g of toMigrate){
     const newKey = KEY_MIGRATION[g.subcategoria];
@@ -1446,7 +1456,7 @@ function populateCatSelect(id){
   sel.innerHTML = Object.keys(allCats).map(k=>`<option value="${k}"${k===cur?' selected':''}>${allCats[k].label}</option>`).join('');
 }
 
-const M2_CATS = ['revestimentos-piso','revestimentos-paredes','obra','marmoraria'];
+const M2_CATS = ['revestimentos-piso','revestimentos-paredes','obra-bruta','marmoraria'];
 
 function checkM2Section(catKey){
   const section = document.getElementById('f-m2-section');
@@ -1673,7 +1683,7 @@ function navigate(page, skipHistory){
     render();
     return;
   }
-  const fixedTitles={geral:'Visão Geral',ganhos:'Aportes','venda-imovel':'Venda do Imóvel','compra-imovel':'Compra do Imóvel','projeto-arq':'Projeto de Arquitetura'};
+  const fixedTitles={geral:'Visão Geral',ganhos:'Aportes','venda-imovel':'Venda do Imóvel','compra-imovel':'Compra do Imóvel','projeto-arq':'Projeto de Arquitetura','obra-bruta':'Obra Bruta'};
   const title = fixedTitles[page] || (CATS[page]?.label) || page;
   document.getElementById('topbar-title').textContent = title;
   if(barChart){barChart.destroy();barChart=null;}
@@ -1696,6 +1706,7 @@ function render(){
   else if(currentPage==='venda-imovel') renderImovelCat('venda-imovel', null);
   else if(currentPage==='compra-imovel') renderImovelCat('compra-imovel', null);
   else if(currentPage==='projeto-arq') renderImovelCat('projeto-arq', null);
+  else if(currentPage==='obra-bruta') renderImovelCat('obra-bruta', null);
   else if(currentPage.includes('__')){
     const [catKey, subKey] = currentPage.split('__');
     if(IMOVEL_CATS[catKey]) renderImovelCat(catKey, subKey);
@@ -1709,9 +1720,10 @@ const IMOVEL_CATS = {
   'venda-imovel':  { label:'Venda do Imóvel',        color:'#4caf50', icon:'🏠' },
   'compra-imovel': { label:'Compra do Imóvel',        color:'#42a5f5', icon:'🔑' },
   'projeto-arq':   { label:'Projeto de Arquitetura',  color:'#e8b544', icon:'📐' },
+  'obra-bruta':    { label:'Obra Bruta',              color:'#e8b544', icon:'🔨' },
 };
 
-let imovelOrder = JSON.parse(localStorage.getItem('imovel_order')||'["venda-imovel","compra-imovel","projeto-arq"]');
+let imovelOrder = JSON.parse(localStorage.getItem('imovel_order')||'["venda-imovel","compra-imovel","projeto-arq","obra-bruta"]');
 let imovelDragKey = null;
 
 function saveImovelOrder(){ localStorage.setItem('imovel_order', JSON.stringify(imovelOrder)); }
