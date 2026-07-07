@@ -2170,7 +2170,6 @@ function renderImovelCat(catKey, subKey){
 
     el.innerHTML = headerHtml + docUploadHtml +
       '<div style="background:#111;border:1px solid #1a1a1a;border-radius:10px;padding:1rem">'+rowsHtml+'</div>';
-    renderCatNav();
     if(!isDoc){
       const btn = document.getElementById('imovel-sub-launch');
       if(btn) btn.onclick = ()=>openModal(catKey, subKey);
@@ -2329,7 +2328,6 @@ function renderImovelCat(catKey, subKey){
   if(entregaItems.length) html += makeRow(entregaItems, 'Entregas',    '#42a5f5', '#42a5f5');
 
   el.innerHTML = html;
-  renderCatNav();
   // attach novo cartão button
   const btnNovoCartao = document.getElementById('btn-novo-cartao-'+catKey);
   if(btnNovoCartao) btnNovoCartao.onclick = ()=>openModalAddSubCat(catKey);
