@@ -1684,11 +1684,11 @@ function render(){
   barChart=null; pieChart=null; catChart=null;
   if(currentPage==='geral') renderGeral();
   else if(currentPage==='ganhos') renderGanhos();
-  else if(currentPage==='venda-imovel') renderImovelCat('venda-imovel');
-  else if(currentPage==='compra-imovel') renderImovelCat('compra-imovel');
+  else if(currentPage==='venda-imovel') renderImovelCat('venda-imovel', null);
+  else if(currentPage==='compra-imovel') renderImovelCat('compra-imovel', null);
   else if(currentPage.includes('__')){
-    const catKey = currentPage.split('__')[0];
-    if(IMOVEL_CATS[catKey]) renderImovelCat(catKey);
+    const [catKey, subKey] = currentPage.split('__');
+    if(IMOVEL_CATS[catKey]) renderImovelCat(catKey, subKey);
     else renderSubCat(currentPage);
   }
   else renderCat(currentPage);
@@ -1765,11 +1765,122 @@ const IMOVEL_CATS = {
   'compra-imovel': { label:'Compra do Imóvel', color:'#42a5f5', icon:'🔑' },
 };
 
-function renderImovelCat(catKey){
+function renderImovelCat(catKey, subKey){
   const info = IMOVEL_CATS[catKey];
   const lista = gastos.filter(g=>g.categoria===catKey);
   const getVal = g=>(g.valor||0)*(g.quantidade||1);
   const total = lista.reduce((s,g)=>s+getVal(g),0);
+
+  const summaryItems = catKey==='venda-imovel' ? [
+    {label:'Proposta', key:'proposta', color:'#888', icon:'📝'},
+    {label:'Contrato', key:'contrato', color:'#42a5f5', icon:'📄'},
+    {label:'Entrada', key:'entrada-venda', color:'#4caf50', icon:'💵'},
+    {label:'Repasse bancário', key:'repasse-bancario', color:'#e91e8c', icon:'🏦'},
+    {label:'Corretagem', key:'corretagem', color:'#e8b544', icon:'🤝'},
+  ] : [
+    {label:'Valor do imóvel', key:'valor-imovel', color:'#42a5f5', icon:'🏠'},
+    {label:'Entrada', key:'entrada', color:'#4caf50', icon:'💵'},
+    {label:'Financiamento', key:'financiamento', color:'#e8b544', icon:'🏦'},
+    {label:'FGTS', key:'fgts', color:'#e91e8c', icon:'💳'},
+    {label:'Taxas / Cartório', key:'taxas-compra', color:'#888', icon:'📋'},
+  ];
+
+  if(!SUBCATS[catKey]) SUBCATS[catKey]={};
+  summaryItems.forEach(item=>{ if(!SUBCATS[catKey][item.key]) SUBCATS[catKey][item.key]={label:item.label}; });
+  saveSubCats();
+
+  // — SUBCAT VIEW: detail of one item —
+  if(subKey){
+    const item = summaryItems.find(i=>i.key===subKey) || {label:subKey, color:info.color, icon:'📋'};
+    const itemGastos = lista.filter(g=>g.subcategoria===subKey);
+    const itemTotal = itemGastos.reduce((s,g)=>s+getVal(g),0);
+    const rows = itemGastos.length ? itemGastos.map(g=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #1a1a1a">
+        <div>
+          <div style="font-size:13px;color:#e8e7e2">${g.descricao||''}</div>
+          ${g.data?`<div style="font-size:10px;color:#555;margin-top:2px">${fmtDate(g.data)}</div>`:''}
+          ${g.obs?`<div style="font-size:10px;color:#555;margin-top:2px">${g.obs}</div>`:''}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:14px;font-weight:700;color:${item.color}">${fmt(getVal(g))}</span>
+          ${g.link?`<a href="${g.link}" target="_blank" style="color:#2a78d6;font-size:13px"><i class="ti ti-external-link"></i></a>`:''}
+          <button onclick="openEdit(${g.id})" style="background:none;border:none;color:#555;cursor:pointer;font-size:13px;padding:2px"><i class="ti ti-pencil"></i></button>
+          <button onclick="removeGasto(${g.id})" style="background:none;border:none;color:#555;cursor:pointer;font-size:13px;padding:2px"><i class="ti ti-trash"></i></button>
+        </div>
+      </div>`).join('') : `<div style="padding:2rem;text-align:center;color:#444;font-size:13px">Nenhum lançamento ainda</div>`;
+
+    document.getElementById('content').innerHTML = `
+      <div style="background:#111;border:1px solid #2a2a2a;border-left:3px solid ${item.color};border-radius:10px;padding:1.25rem;margin-bottom:1rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:20px">${item.icon}</span>
+            <div>
+              <div style="font-size:11px;color:#555;text-transform:uppercase;letter-spacing:.08em">${item.label}</div>
+              <div style="font-size:22px;font-weight:700;color:${item.color}">${itemTotal>0?fmt(itemTotal):'—'}</div>
+            </div>
+          </div>
+          <button onclick="openModal('${catKey}','${subKey}')"
+            style="background:transparent;border:1px solid ${item.color};color:${item.color};padding:6px 14px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">
+            + lançar
+          </button>
+        </div>
+      </div>
+      <div style="background:#111;border:1px solid #1a1a1a;border-radius:10px;padding:1rem">${rows}</div>
+    `;
+    renderCatNav();
+    return;
+  }
+
+  // — MAIN VIEW: summary of all items —
+  const cards = summaryItems.map(item=>{
+    const itemGastos = lista.filter(g=>g.subcategoria===item.key);
+    const itemTotal = itemGastos.reduce((s,g)=>s+getVal(g),0);
+    const pct = total>0 ? Math.round(itemTotal/total*100) : 0;
+    return `<div style="background:#111;border:1px solid #2a2a2a;border-left:3px solid ${item.color};border-radius:8px;padding:14px;cursor:pointer;transition:background .15s"
+      onclick="navigate('${catKey}__${item.key}')"
+      onmouseover="this.style.background='#1a1a1a'" onmouseout="this.style.background='#111'">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <div style="font-size:18px;margin-bottom:4px">${item.icon}</div>
+          <div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em">${item.label}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:16px;font-weight:700;color:${itemTotal>0?item.color:'#333'}">${itemTotal>0?fmt(itemTotal):'—'}</div>
+          ${itemGastos.length?`<div style="font-size:10px;color:#555;margin-top:2px">${itemGastos.length} lançamento${itemGastos.length!==1?'s':''}</div>`:''}
+        </div>
+      </div>
+      <div style="background:#222;border-radius:20px;height:3px;overflow:hidden">
+        <div style="width:${pct}%;background:${item.color};height:100%;transition:width .4s"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const pago = lista.filter(g=>g.status==='pago').reduce((s,g)=>s+getVal(g),0);
+  const pendente = lista.filter(g=>g.status!=='pago').reduce((s,g)=>s+getVal(g),0);
+
+  document.getElementById('content').innerHTML = `
+    <div style="background:#111;border:1px solid #2a2a2a;border-left:3px solid ${info.color};border-radius:10px;padding:1.25rem;margin-bottom:1.25rem;display:flex;gap:2rem;align-items:center;flex-wrap:wrap">
+      <div>
+        <div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Total</div>
+        <div style="font-size:24px;font-weight:700;color:${info.color}">${fmt(total)}</div>
+      </div>
+      <div style="border-left:1px solid #2a2a2a;padding-left:1.5rem">
+        <div style="font-size:10px;color:#555;margin-bottom:2px">✓ Recebido / pago</div>
+        <div style="font-size:16px;font-weight:600;color:#4caf50">${fmt(pago)}</div>
+      </div>
+      <div style="border-left:1px solid #2a2a2a;padding-left:1.5rem">
+        <div style="font-size:10px;color:#555;margin-bottom:2px">⏳ Pendente</div>
+        <div style="font-size:16px;font-weight:600;color:#e8b544">${fmt(pendente)}</div>
+      </div>
+      <div style="border-left:1px solid #2a2a2a;padding-left:1.5rem">
+        <div style="font-size:10px;color:#555;margin-bottom:2px">Lançamentos</div>
+        <div style="font-size:16px;font-weight:600;color:#888">${lista.length}</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(${summaryItems.length},1fr);gap:10px">${cards}</div>
+  `;
+  renderCatNav();
+}
 
   const summaryItems = catKey==='venda-imovel' ? [
     {label:'Proposta', key:'proposta', color:'#888', icon:'📝'},
@@ -1825,22 +1936,6 @@ function renderImovelCat(catKey){
         </div>`;
       }).join('')}
     </div>`;
-
-  document.getElementById('content').innerHTML = `
-    <div class="cat-total-card" style="border-left:3px solid ${info.color}">
-      <div class="cat-stat">
-        <span class="cat-stat-label">Total</span>
-        <span class="cat-stat-value" style="color:${info.color}">${fmt(total)}</span>
-      </div>
-      <div class="cat-stat">
-        <span class="cat-stat-label">Lançamentos</span>
-        <span class="cat-stat-value" style="color:#888">${lista.length}</span>
-      </div>
-    </div>
-    ${summaryHtml}
-  `;
-  renderCatNav();
-}
 
 function openModalImovel(catKey){
   populateCatSelect('f-cat');
