@@ -2011,10 +2011,10 @@ function renderImovelCat(catKey, subKey){
     const d = getCardDate(key);
     const dateStr = d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'2-digit'}) : '';
     const inputId = 'date-input-'+catKey+'-'+key;
-    return '<div style="display:flex;align-items:center;gap:6px">'
+    return '<div style="display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">'
       +(dateStr?'<span style="font-size:10px;color:#e8b544;font-weight:600">'+dateStr+'</span>':'')
-      +'<span title="Definir data" style="cursor:pointer;font-size:15px" onclick="event.stopPropagation();const el=document.getElementById(\''+inputId+'\');if(el){if(el.showPicker)el.showPicker();else el.focus();}">📅</span>'
-      +'<input type="date" id="'+inputId+'" value="'+d+'" style="position:fixed;opacity:0;width:0;height:0;pointer-events:none" onchange="event.stopPropagation();setCardDate(\''+key+'\',this.value)">'
+      +'<input type="date" id="'+inputId+'" value="'+d+'" title="Definir data" style="width:26px;height:26px;opacity:0.01;cursor:pointer;border:none;background:none;color-scheme:dark" onchange="event.stopPropagation();setCardDate(\''+key+'\',this.value)" onclick="event.stopPropagation()">'
+      +'<span style="position:relative;margin-left:-24px;pointer-events:none;font-size:15px">📅</span>'
       +'</div>';
   }
 
