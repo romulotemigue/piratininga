@@ -1193,9 +1193,26 @@ function addSubCat(){
   const expanded = JSON.parse(localStorage.getItem('pirati_expanded')||'{}');
   expanded[addingSubCatFor] = true;
   localStorage.setItem('pirati_expanded', JSON.stringify(expanded));
+  const isImovelCard = !!IMOVEL_CATS[addingSubCatFor];
+  const catForRender = addingSubCatFor;
   closeModalAddSubCat();
   renderCatNav();
-  toast('Subcategoria criada!');
+  if(isImovelCard){
+    renderImovelCat(catForRender, null);
+    // animate the new card after render
+    setTimeout(()=>{
+      const cards = document.querySelectorAll('[data-card-key="'+key+'"]');
+      cards.forEach(c=>{
+        c.style.transition = 'transform .4s cubic-bezier(.17,.67,.32,1.3), box-shadow .4s';
+        c.style.transform = 'scale(1.06)';
+        c.style.boxShadow = '0 0 20px '+( IMOVEL_CATS[catForRender]?.color||'#e8b544')+'88';
+        setTimeout(()=>{ c.style.transform=''; c.style.boxShadow=''; }, 600);
+      });
+    }, 100);
+    toast('Cartão criado!');
+  } else {
+    toast('Subcategoria criada!');
+  }
 }
 
 function openEditSubCat(catKey, subKey){
@@ -1864,6 +1881,44 @@ function render(){
 function getCardDate(catKey, key){ return localStorage.getItem('imovel-date-'+catKey+'-'+key)||''; }
 function setCardDate(catKey, key, val){ localStorage.setItem('imovel-date-'+catKey+'-'+key, val); console.log('setCardDate',catKey,key,val,localStorage.getItem('imovel-date-'+catKey+'-'+key)); renderImovelCat(catKey, null); }
 
+// ── CARD DRAG (imovel main view) ─────────────────────────────────
+let cardDragKey = null;
+let cardDragCat = null;
+
+function cardDragStart(e, catKey, key){
+  cardDragKey = key; cardDragCat = catKey;
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(()=>{ const el = document.querySelector('[data-card-key="'+key+'"]'); if(el){ el.style.opacity='.3'; el.style.transform='scale(0.95)'; } },0);
+}
+
+function cardDragOver(e, catKey, key){
+  e.preventDefault();
+  if(key===cardDragKey) return;
+  document.querySelectorAll('[data-card-key]').forEach(el=>el.style.outline='');
+  const el = document.querySelector('[data-card-key="'+key+'"]');
+  if(el) el.style.outline = '2px solid #e8b544';
+}
+
+function cardDragDrop(e, catKey, key){
+  e.preventDefault();
+  if(key===cardDragKey||catKey!==cardDragCat) return;
+  // get current order from DOM
+  const allCards = [...document.querySelectorAll('[data-card-key]')].map(el=>el.dataset.cardKey);
+  const fromIdx = allCards.indexOf(cardDragKey);
+  const toIdx = allCards.indexOf(key);
+  if(fromIdx===-1||toIdx===-1) return;
+  allCards.splice(fromIdx,1); allCards.splice(toIdx,0,cardDragKey);
+  localStorage.setItem('imovel-card-order-'+catKey, JSON.stringify(allCards));
+  renderImovelCat(catKey, null);
+  renderCatNav();
+  cardDragKey = null; cardDragCat = null;
+}
+
+function cardDragEnd(e){
+  document.querySelectorAll('[data-card-key]').forEach(el=>{ el.style.opacity=''; el.style.transform=''; el.style.outline=''; });
+  cardDragKey = null; cardDragCat = null;
+}
+
 // ── IMÓVEL NAV ───────────────────────────────────────────────────
 const IMOVEL_CATS = {
   'venda-imovel':  { label:'Venda do Imóvel',        color:'#4caf50', icon:'🏠' },
@@ -1990,6 +2045,15 @@ function renderImovelCat(catKey, subKey){
   const customCards = JSON.parse(localStorage.getItem('imovel-custom-cards-'+catKey)||'[]');
   customCards.forEach(c=>{ if(!summaryItems.find(i=>i.key===c.key)) summaryItems.push(c); });
 
+  // apply saved card order
+  const savedCardOrder = JSON.parse(localStorage.getItem('imovel-card-order-'+catKey)||'null');
+  if(savedCardOrder){
+    summaryItems.sort((a,b)=>{
+      const ai = savedCardOrder.indexOf(a.key); const bi = savedCardOrder.indexOf(b.key);
+      return (ai===-1?999:ai) - (bi===-1?999:bi);
+    });
+  }
+
   if(!SUBCATS[catKey]) SUBCATS[catKey]={};
   const validKeys = summaryItems.map(i=>i.key);
   // only add missing summaryItems, never delete manually created subcats
@@ -2109,7 +2173,7 @@ function renderImovelCat(catKey, subKey){
       +'</div>'
     ) : '';
 
-    return '<div onclick="navigate(\''+catKey+'__'+item.key+'\')" style="background:#0e0e0e;border:1px solid '+(hasData?item.color:'#1e1e1e')+';border-top:3px solid '+item.color+';border-radius:8px;padding:14px 16px;cursor:pointer;min-height:90px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;transition:background .15s" onmouseover="this.style.background=\'#161616\'" onmouseout="this.style.background=\'#0e0e0e\'">'
+    return '<div data-card-key="'+item.key+'" draggable="true" ondragstart="cardDragStart(event,\''+catKey+'\',\''+item.key+'\')" ondragover="cardDragOver(event,\''+catKey+'\',\''+item.key+'\')" ondrop="cardDragDrop(event,\''+catKey+'\',\''+item.key+'\')" ondragend="cardDragEnd(event)" onclick="navigate(\''+catKey+'__'+item.key+'\')" style="background:#0e0e0e;border:1px solid '+(hasData?item.color:'#1e1e1e')+';border-top:3px solid '+item.color+';border-radius:8px;padding:14px 16px;cursor:pointer;min-height:90px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;transition:all .15s" onmouseover="this.style.background=\'#161616\'" onmouseout="this.style.background=\'#0e0e0e\'">'
       +'<div style="display:flex;align-items:center;justify-content:space-between">'
       +'<span style="font-size:18px">'+item.icon+'</span>'
       +'<div style="display:flex;align-items:center;gap:4px">'+(itemGastos.length?'<button onclick="event.stopPropagation();openEdit('+itemGastos[0].id+')" title="Editar" style="background:none;border:none;color:#444;cursor:pointer;font-size:15px;padding:0 4px;line-height:1"><i class="ti ti-pencil"></i></button>':'')+(showDate ? dateBadge(item) : (hasData?'<span style="font-size:13px;font-weight:700;color:'+item.color+'">'+fmt(itemTotal)+'</span>':''))+'</div>'
@@ -2159,7 +2223,10 @@ function renderImovelCat(catKey, subKey){
   }
 
   // Summary bar
-  let html = '<div style="background:#0e0e0e;border:1px solid #222;border-left:3px solid '+info.color+';border-radius:10px;padding:1.25rem;margin-bottom:1.5rem;display:flex;gap:0;align-items:stretch;flex-wrap:wrap">';
+  let html = '<div style="background:#0e0e0e;border:1px solid #222;border-left:3px solid '+info.color+';border-radius:10px;padding:1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:0;flex-wrap:wrap">';
+
+  // LEFT: financial numbers
+  html += '<div style="display:flex;align-items:center;gap:0;flex:1;flex-wrap:wrap">';
   if(recItems.length){
     html += '<div style="padding-right:2rem"><div style="font-size:10px;color:#4caf50;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Recebido</div><div style="font-size:22px;font-weight:800;color:#4caf50">'+fmt(totalRecebido)+'</div><div style="font-size:10px;color:#42a5f5;margin-top:3px">+ a receber: '+fmt(totalRecebido+totalAReceber)+'</div></div>';
     html += '<div style="border-left:1px solid #222;padding:0 2rem"><div style="font-size:10px;color:#42a5f5;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">A receber</div><div style="font-size:22px;font-weight:800;color:#42a5f5">'+fmt(totalAReceber)+'</div></div>';
@@ -2167,11 +2234,17 @@ function renderImovelCat(catKey, subKey){
     html += '<div style="border-left:1px solid #222;padding:0 2rem"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Líquido</div><div style="font-size:22px;font-weight:800;color:'+(liquido>=0?'#4caf50':'#ef5350')+'">'+fmt(liquido)+'</div></div>';
   } else {
     html += '<div style="padding-right:2rem"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Já pago</div><div style="font-size:22px;font-weight:800;color:'+info.color+'">'+fmt(totalGasto)+'</div></div>';
-    if(totalAPagar>0) html += '<div style="border-left:1px solid #222;padding:0 0 0 2rem"><div style="font-size:10px;color:#e8b544;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">A pagar</div><div style="font-size:22px;font-weight:800;color:#e8b544">'+fmt(totalAPagar)+'</div></div>';
+    if(totalAPagar>0) html += '<div style="border-left:1px solid #222;padding:0 2rem"><div style="font-size:10px;color:#e8b544;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">A pagar</div><div style="font-size:22px;font-weight:800;color:#e8b544">'+fmt(totalAPagar)+'</div></div>';
   }
   html += '<div style="border-left:1px solid #222;padding:0 0 0 2rem"><div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Lançamentos</div><div style="font-size:22px;font-weight:800;color:#555">'+lista.length+'</div></div>';
-  if(daysHtml) html += '<div style="border-left:1px solid #222;padding:0 0 0 2rem">'+daysHtml.replace('<div style="margin-left:auto;text-align:right">','<div style="text-align:right">')+'</div>';
-  html += '<div style="margin-left:auto;display:flex;align-items:center"><button id="btn-novo-cartao-'+catKey+'" style="background:transparent;border:1px solid '+info.color+';color:'+info.color+';padding:6px 14px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">+ Novo cartão</button></div>';
+  html += '</div>';
+
+  // RIGHT: days + novo cartão button
+  html += '<div style="display:flex;align-items:center;gap:1.5rem;flex-shrink:0;padding-left:1.5rem;border-left:1px solid #222">';
+  if(daysHtml) html += daysHtml;
+  html += '<button id="btn-novo-cartao-'+catKey+'" style="background:transparent;border:1px solid '+info.color+';color:'+info.color+';padding:6px 14px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">+ Novo cartão</button>';
+  html += '</div>';
+
   html += '</div>';
 
   if(docItems.length)     html += makeRow(docItems,     'Documentos',  '#666',    '#666');
