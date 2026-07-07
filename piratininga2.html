@@ -101,7 +101,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
 .nav-dots{background:none;border:none;color:#444;cursor:pointer;padding:6px 8px;font-size:14px;position:absolute;right:4px;opacity:0;transition:opacity .15s;border-radius:4px}
 .nav-item-wrap:hover .nav-dots{opacity:1}
 .nav-dots:hover{color:#e8b544;background:#2a2000}
-.cat-menu{display:none;position:fixed;background:#222;border:1px solid #333;border-radius:7px;z-index:999;min-width:140px;padding:4px 0;box-shadow:0 4px 20px rgba(0,0,0,.8)}
+.cat-menu{display:none;position:fixed;background:#222;border:1px solid #333;border-radius:7px;z-index:9999;min-width:140px;padding:4px 0;box-shadow:0 4px 20px rgba(0,0,0,.8)}
 .cat-menu.open{display:block}
 .cat-menu-item{padding:8px 12px;font-size:12px;color:#ccc;cursor:pointer;display:flex;align-items:center;gap:8px}
 .cat-menu-item:hover{background:#2a2a2a;color:#e8e7e2}
@@ -1993,7 +1993,7 @@ function renderGeral(){
           <span style="font-size:10px;font-weight:600;color:#4caf50;text-transform:uppercase;letter-spacing:.08em">Pago</span>
           <div style="margin-left:auto;display:flex;gap:2px;align-items:center">
           <button onclick="openBulkModal('pago','')" title="Mover em massa" style="background:none;border:none;color:#444;cursor:pointer;font-size:15px;padding:2px 4px;border-radius:4px;transition:color .15s" onmouseover="this.style.color='#4caf50'" onmouseout="this.style.color='#444'"><i class="ti ti-arrows-transfer-down"></i></button>
-          <button onclick="toggleColMenu('geral-col-menu-pago',event)" title="Opções" style="background:none;border:none;color:#444;cursor:pointer;font-size:15px;padding:2px 4px;border-radius:4px;transition:color .15s" onmouseover="this.style.color='#e8e7e2'" onmouseout="this.style.color='#444'"><i class="ti ti-dots-vertical"></i></button>
+          <button onclick="toggleColMenu('geral-col-menu-pago',event)" title="Opções" style="background:none;border:none;color:#666;cursor:pointer;font-size:15px;padding:2px 4px;border-radius:4px;transition:color .15s" onmouseover="this.style.color='#e8e7e2'" onmouseout="this.style.color='#666'"><i class="ti ti-dots-vertical"></i></button>
         </div>
         <div id="geral-col-menu-pago" class="cat-menu">
           <div class="cat-menu-item danger" onclick="deleteAllInCol('pago','')"><i class="ti ti-trash"></i> Deletar todos</div>
@@ -2018,7 +2018,7 @@ function renderGeral(){
           <span style="font-size:10px;font-weight:600;color:#42a5f5;text-transform:uppercase;letter-spacing:.08em">Necessários</span>
           <div style="margin-left:auto;display:flex;gap:2px;align-items:center">
           <button onclick="openBulkModal('necessario','')" title="Mover em massa" style="background:none;border:none;color:#444;cursor:pointer;font-size:15px;padding:2px 4px;border-radius:4px;transition:color .15s" onmouseover="this.style.color='#42a5f5'" onmouseout="this.style.color='#444'"><i class="ti ti-arrows-transfer-down"></i></button>
-          <button onclick="toggleColMenu('geral-col-menu-necessario',event)" title="Opções" style="background:none;border:none;color:#444;cursor:pointer;font-size:15px;padding:2px 4px;border-radius:4px;transition:color .15s" onmouseover="this.style.color='#e8e7e2'" onmouseout="this.style.color='#444'"><i class="ti ti-dots-vertical"></i></button>
+          <button onclick="toggleColMenu('geral-col-menu-necessario',event)" title="Opções" style="background:none;border:none;color:#666;cursor:pointer;font-size:15px;padding:2px 4px;border-radius:4px;transition:color .15s" onmouseover="this.style.color='#e8e7e2'" onmouseout="this.style.color='#666'"><i class="ti ti-dots-vertical"></i></button>
         </div>
         <div id="geral-col-menu-necessario" class="cat-menu">
           <div class="cat-menu-item danger" onclick="deleteAllInCol('necessario','')"><i class="ti ti-trash"></i> Deletar todos</div>
@@ -2043,7 +2043,7 @@ function renderGeral(){
           <span style="font-size:10px;font-weight:600;color:#e8b544;text-transform:uppercase;letter-spacing:.08em">Dispensáveis</span>
           <div style="margin-left:auto;display:flex;gap:2px;align-items:center">
           <button onclick="openBulkModal('apagar','')" title="Mover em massa" style="background:none;border:none;color:#444;cursor:pointer;font-size:15px;padding:2px 4px;border-radius:4px;transition:color .15s" onmouseover="this.style.color='#e8b544'" onmouseout="this.style.color='#444'"><i class="ti ti-arrows-transfer-down"></i></button>
-          <button onclick="toggleColMenu('geral-col-menu-apagar',event)" title="Opções" style="background:none;border:none;color:#444;cursor:pointer;font-size:15px;padding:2px 4px;border-radius:4px;transition:color .15s" onmouseover="this.style.color='#e8e7e2'" onmouseout="this.style.color='#444'"><i class="ti ti-dots-vertical"></i></button>
+          <button onclick="toggleColMenu('geral-col-menu-apagar',event)" title="Opções" style="background:none;border:none;color:#666;cursor:pointer;font-size:15px;padding:2px 4px;border-radius:4px;transition:color .15s" onmouseover="this.style.color='#e8e7e2'" onmouseout="this.style.color='#666'"><i class="ti ti-dots-vertical"></i></button>
         </div>
         <div id="geral-col-menu-apagar" class="cat-menu">
           <div class="cat-menu-item danger" onclick="deleteAllInCol('apagar','')"><i class="ti ti-trash"></i> Deletar todos</div>
