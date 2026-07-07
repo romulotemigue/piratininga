@@ -131,9 +131,10 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
 .qty-input:focus{outline:none;border-color:#e8b544}
 .nav-drag{cursor:grab;color:#333;padding:4px 2px 4px 6px;font-size:13px;flex-shrink:0}
 .nav-drag:active{cursor:grabbing}
-.nav-cat-wrap{transition:opacity .15s, transform .15s, box-shadow .15s}
+.nav-cat-wrap{transition:opacity .2s, transform .2s, box-shadow .2s, filter .2s}
 .nav-cat-wrap.dragging{opacity:.2;transform:scale(0.93) rotate(-1deg);filter:blur(1px)}
 .nav-cat-wrap.drag-over{border-top:3px solid #e8b544;transform:translateY(6px) scale(1.02);box-shadow:0 -4px 12px rgba(232,181,68,0.4);background:rgba(232,181,68,0.05)}
+.nav-cat-wrap.imovel-dimmed{opacity:.3;filter:saturate(0.2)}
 .subcat-row:hover .subcat-dots-btn{opacity:1!important;color:#e8b544}
 .subcat-dots-btn{opacity:0}
 .cat-chevron{background:none;border:none;color:#555;cursor:pointer;padding:4px 6px;font-size:12px;transition:transform .2s;flex-shrink:0;line-height:1}
@@ -1740,6 +1741,19 @@ function navigate(page, skipHistory){
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   const activeEl = document.getElementById('nav-'+page);
   if(activeEl) activeEl.classList.add('active');
+
+  // dim non-active imovel etapas
+  const activeCatKey = page.includes('__') ? page.split('__')[0] : page;
+  const isImovelPage = !!IMOVEL_CATS[activeCatKey];
+  Object.keys(IMOVEL_CATS).forEach(k=>{
+    const wrap = document.getElementById('cat-wrap-'+k);
+    if(!wrap) return;
+    if(isImovelPage && k !== activeCatKey){
+      wrap.classList.add('imovel-dimmed');
+    } else {
+      wrap.classList.remove('imovel-dimmed');
+    }
+  });
   // handle subcat pages like 'obra__subkey'
   if(page.includes('__')){
     const [catKey, subKey] = page.split('__');
@@ -1881,7 +1895,7 @@ function renderImovelCat(catKey, subKey){
     {label:'Proposta',         key:'proposta',        color:'#888',    icon:'📝', tipo:'doc'},
     {label:'Contrato',         key:'contrato',        color:'#42a5f5', icon:'📄', tipo:'doc'},
     {label:'Sinal',            key:'sinal',           color:'#9c27b0', icon:'🤝', tipo:'recibo'},
-    {label:'Entrada',          key:'entrada',         color:'#4caf50', icon:'💵', tipo:'recebimento'},
+    {label:'Entrada',          key:'entrada',         color:'#4caf50', icon:'💵', tipo:'recibo'},
     {label:'Repasse bancário', key:'repasse-bancario',color:'#e91e8c', icon:'🏦', tipo:'recebimento'},
     {label:'Corretagem',       key:'corretagem',      color:'#e8b544', icon:'🤝', tipo:'gasto', recibo:true},
     {label:'Taxas',            key:'taxas',           color:'#555',    icon:'📋', tipo:'gasto', recibo:true},
