@@ -1623,13 +1623,13 @@ async function uploadAnexos(gastoId, files){
   for(const f of files){
     const ext = f.name.split('.').pop();
     const path = `${gastoId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const res = await fetch(`${SB_URL}/storage/v1/object/anexos/${path}`,{
+    const res = await fetch(`${SB_URL}/storage/v1/object/Anexos/${path}`,{
       method:'POST',
       headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':f.type},
       body:f
     });
     if(!res.ok){ toast('Erro ao enviar: '+f.name,'err'); continue; }
-    const publicUrl = `${SB_URL}/storage/v1/object/public/anexos/${path}`;
+    const publicUrl = `${SB_URL}/storage/v1/object/public/Anexos/${path}`;
     urls.push({nome:f.name, url:publicUrl});
   }
   return urls;
@@ -1801,6 +1801,9 @@ function render(){
   }
   else renderCat(currentPage);
 }
+
+function getCardDate(catKey, key){ return localStorage.getItem('imovel-date-'+catKey+'-'+key)||''; }
+function setCardDate(catKey, key, val){ localStorage.setItem('imovel-date-'+catKey+'-'+key, val); renderImovelCat(catKey, null); }
 
 // ── IMÓVEL NAV ───────────────────────────────────────────────────
 const IMOVEL_CATS = {
@@ -2002,19 +2005,21 @@ function renderImovelCat(catKey, subKey){
   const gastoItems   = summaryItems.filter(i=>i.tipo==='gasto');
   const entregaItems = summaryItems.filter(i=>i.tipo==='entrega');
 
-  // get stored date for each card
-  function getCardDate(key){ return localStorage.getItem('imovel-date-'+catKey+'-'+key)||''; }
-  function setCardDate(key, val){ localStorage.setItem('imovel-date-'+catKey+'-'+key, val); renderImovelCat(catKey, null); }
+  // use global getCardDate/setCardDate
 
   // date badge: small date in top right, clickable
   function dateBadge(key){
-    const d = getCardDate(key);
+    const d = getCardDate(catKey, key);
     const dateStr = d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'2-digit'}) : '';
     const inputId = 'date-input-'+catKey+'-'+key;
-    return '<div style="display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">'
+    // use a real visible date input styled minimally
+    return '<div style="display:flex;align-items:center;gap:4px" onclick="event.stopPropagation()">'
+      +'<span style="font-size:13px">📅</span>'
       +(dateStr?'<span style="font-size:10px;color:#e8b544;font-weight:600">'+dateStr+'</span>':'')
-      +'<input type="date" id="'+inputId+'" value="'+d+'" title="Definir data" style="width:26px;height:26px;opacity:0.01;cursor:pointer;border:none;background:none;color-scheme:dark" onchange="event.stopPropagation();setCardDate(\''+key+'\',this.value)" onclick="event.stopPropagation()">'
-      +'<span style="position:relative;margin-left:-24px;pointer-events:none;font-size:15px">📅</span>'
+      +'<input type="date" id="'+inputId+'" value="'+d+'" '
+      +'style="width:20px;height:20px;opacity:0.01;position:absolute;cursor:pointer;" '
+      +'onchange="event.stopPropagation();setCardDate(\''+catKey+'\',\''+key+'\',this.value)" '
+      +'onclick="event.stopPropagation()">'
       +'</div>';
   }
 
@@ -2062,7 +2067,7 @@ function renderImovelCat(catKey, subKey){
   }
 
   // days counter since proposta
-  const propostaDate = localStorage.getItem('imovel-date-'+catKey+'-proposta');
+  const propostaDate = getCardDate(catKey, 'proposta');
   let daysHtml = '';
   if(propostaDate){
     const start = new Date(propostaDate+'T12:00:00');
@@ -3377,7 +3382,7 @@ async function handleImovelDocFiles(files, catKey, subKey){
     try{
       const ext = f.name.split('.').pop();
       const path = catKey+'/'+subKey+'/'+Date.now()+'-'+f.name;
-      const res = await fetch(`${SB_URL}/storage/v1/object/anexos/${path}`,{
+      const res = await fetch(`${SB_URL}/storage/v1/object/Anexos/${path}`,{
         method:'POST', headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':f.type}, body:f
       });
       if(!res.ok){
@@ -3385,7 +3390,7 @@ async function handleImovelDocFiles(files, catKey, subKey){
         console.error('Storage error:', res.status, errBody);
         throw new Error(res.status+': '+errBody.slice(0,100));
       }
-      const url = `${SB_URL}/storage/v1/object/public/anexos/${path}`;
+      const url = `${SB_URL}/storage/v1/object/public/Anexos/${path}`;
       await sbInsert({descricao:f.name, categoria:catKey, subcategoria:subKey, data:new Date().toISOString().slice(0,10), valor:0, status:'pago', obs:'', link:url, quantidade:1, orcamento:0});
       toast('Documento enviado: '+f.name);
       await loadGastos();
