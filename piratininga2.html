@@ -134,7 +134,8 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
 .nav-cat-wrap{transition:opacity .15s}
 .nav-cat-wrap.dragging{opacity:.4}
 .nav-cat-wrap.drag-over{border-top:2px solid #e8b544}
-.subcat-row:hover .subcat-dots-btn{opacity:1!important}
+.subcat-row:hover .subcat-dots-btn{opacity:1!important;color:#e8b544}
+.subcat-dots-btn{opacity:0}
 .cat-chevron{background:none;border:none;color:#555;cursor:pointer;padding:4px 6px;font-size:12px;transition:transform .2s;flex-shrink:0;line-height:1}
 .cat-chevron.open{transform:rotate(90deg)}
 .cat-chevron:hover{color:#e8b544}
@@ -706,7 +707,7 @@ function renderCatNav(){
           onmouseout="this.style.borderColor='#2a2a2a';this.style.color='#555'">
           ${SUBCATS[k][sk].label}
         </div>
-        <button class="subcat-dots-btn" style="background:none;border:none;color:#444;cursor:pointer;padding:4px 6px;font-size:13px;opacity:0;transition:opacity .15s" onclick="toggleSubCatMenu('subcat-menu-${k}-${sk}',event)"><i class="ti ti-dots-vertical"></i></button>
+        <button class="subcat-dots-btn" style="background:none;border:none;color:#444;cursor:pointer;padding:4px 6px;font-size:13px;transition:opacity .15s" onclick="toggleSubCatMenu('subcat-menu-${k}-${sk}',event)"><i class="ti ti-dots-vertical"></i></button>
         <div class="subcat-menu" id="subcat-menu-${k}-${sk}">
           <div class="cat-menu-item" onclick="openEditSubCat('${k}','${sk}')"><i class="ti ti-pencil"></i> Renomear</div>
           <div class="cat-menu-item danger" onclick="deleteSubCat('${k}','${sk}')"><i class="ti ti-trash"></i> Excluir</div>
@@ -1638,9 +1639,11 @@ function renderImovelCat(catKey){
 
   // Summary items per cat type
   const summaryItems = catKey==='venda-imovel' ? [
-    {label:'Valor da venda', key:'valor-venda', color:'#4caf50', icon:'🏠'},
+    {label:'Proposta', key:'proposta', color:'#888', icon:'📝'},
+    {label:'Contrato', key:'contrato', color:'#42a5f5', icon:'📄'},
+    {label:'Entrada', key:'entrada-venda', color:'#4caf50', icon:'💵'},
+    {label:'Repasse bancário', key:'repasse-bancario', color:'#e91e8c', icon:'🏦'},
     {label:'Corretagem', key:'corretagem', color:'#e8b544', icon:'🤝'},
-    {label:'Taxas', key:'taxas-venda', color:'#42a5f5', icon:'📋'},
   ] : [
     {label:'Valor do imóvel', key:'valor-imovel', color:'#42a5f5', icon:'🏠'},
     {label:'Entrada', key:'entrada', color:'#4caf50', icon:'💵'},
