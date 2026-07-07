@@ -1692,6 +1692,18 @@ async function addGasto(){
   }
 }
 
+async function removeAnexo(id){
+  try{
+    await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${id}`,{
+      method:'PATCH', headers:{...HEADERS},
+      body:JSON.stringify({link:''})
+    });
+    const g = gastos.find(x=>x.id===id);
+    if(g) g.link='';
+    render();
+  } catch(e){ toast('Erro ao remover anexo.','err'); }
+}
+
 async function removeGasto(id){
   if(!confirm('Remover este gasto?')) return;
   try{
@@ -2049,7 +2061,7 @@ function renderImovelCat(catKey, subKey){
       +'<div>'
       +'<div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.07em">'+item.label+'</div>'
       
-      +(itemGastos.length&&itemGastos[0].link?'<div style="position:relative;display:inline-flex;margin-top:6px" onclick="event.stopPropagation()">'+'<a href="'+itemGastos[0].link+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;background:#1a2a3a;border:1px solid #2a78d6;color:#42a5f5;font-size:10px;font-weight:600;padding:4px 10px;border-radius:5px;text-decoration:none"><i class="ti ti-eye" style="font-size:11px"></i> Ver anexo</a>'+'<button onclick="event.stopPropagation();if(confirm(\'Remover anexo?\'))removeGasto('+itemGastos[0].id+')" style="position:absolute;top:-6px;right:-6px;width:15px;height:15px;border-radius:50%;background:#555;border:none;color:#fff;cursor:pointer;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0">×</button>'+'</div>':'')
+      +(itemGastos.length&&itemGastos[0].link?'<div style="position:relative;display:inline-flex;margin-top:6px" onclick="event.stopPropagation()">'+'<a href="'+itemGastos[0].link+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;background:#1a2a3a;border:1px solid #2a78d6;color:#42a5f5;font-size:10px;font-weight:600;padding:4px 10px;border-radius:5px;text-decoration:none"><i class="ti ti-eye" style="font-size:11px"></i> Ver anexo</a>'+'<button onclick="event.stopPropagation();removeAnexo('+itemGastos[0].id+')" title="Remover anexo" style="position:absolute;top:-6px;right:-6px;width:15px;height:15px;border-radius:50%;background:#555;border:none;color:#fff;cursor:pointer;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0">×</button>'+'</div>':'')
       +'</div>'
       +uploadZone
       +'</div>';
