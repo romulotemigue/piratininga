@@ -727,32 +727,30 @@ function renderCatNav(){
   if(!list) return;
   const expanded = JSON.parse(localStorage.getItem('pirati_expanded')||'{}');
 
-  // Merge CATS + IMOVEL_CATS — imovel etapas always pinned to top
-  const savedImovelOrder = JSON.parse(localStorage.getItem('imovel_order')||'null');
-  const imovelKeys = savedImovelOrder ? savedImovelOrder.filter(k=>IMOVEL_CATS[k]) : Object.keys(IMOVEL_CATS);
-  // ensure all imovel keys are included
-  Object.keys(IMOVEL_CATS).forEach(k=>{ if(!imovelKeys.includes(k)) imovelKeys.push(k); });
-  const catKeys = Object.keys(CATS);
+  // Merge CATS + etapas pinadas (imóvel + extras) — sempre no topo, numeradas
+  const pinnedKeys = getPinnedStageKeys();
+  const catKeys = Object.keys(CATS).filter(k=>!EXTRA_PINNED_STAGES.includes(k));
   const allOrder = JSON.parse(localStorage.getItem('all_cat_order')||'null');
   let catOrder;
   if(allOrder){
-    // only apply saved order to normal CATS, not imovel
+    // only apply saved order to normal CATS, not pinned stages
     catOrder = allOrder.filter(k=>catKeys.includes(k));
     catKeys.forEach(k=>{ if(!catOrder.includes(k)) catOrder.push(k); });
   } else {
     catOrder = [...catKeys];
   }
-  const allKeys = [...imovelKeys, ...catOrder];
+  const allKeys = [...pinnedKeys, ...catOrder];
   let imovelCount = 0;
 
   list.innerHTML = allKeys.map(k=>{
     const isImovel = !!IMOVEL_CATS[k];
+    const isPinnedStage = isImovel || EXTRA_PINNED_STAGES.includes(k);
     const info = isImovel ? IMOVEL_CATS[k] : CATS[k];
     if(!info) return '';
     const hasSubs = SUBCATS[k] && Object.keys(SUBCATS[k]).length>0;
     const isOpen = !!expanded[k];
     const subColor = info.color||'#e8b544';
-    const etapaNum = isImovel ? ++imovelCount : null;
+    const etapaNum = isPinnedStage ? ++imovelCount : null;
 
     const subs = hasSubs ? Object.keys(SUBCATS[k]).map(sk=>`
       <div class="subcat-row" id="subcat-row-${k}-${sk}" draggable="true"
@@ -775,8 +773,8 @@ function renderCatNav(){
       </div>
     `).join('') : '';
 
-    const imovelStyle = isImovel ? `background:${info.color}18;border:1px solid ${info.color}44;border-left:3px solid ${info.color};border-radius:8px;margin:4px 6px;` : '';
-    const imovelNavStyle = isImovel ? `color:${info.color};font-weight:600;font-size:12px;` : '';
+    const imovelStyle = isPinnedStage ? `background:${info.color}18;border:1px solid ${info.color}44;border-left:3px solid ${info.color};border-radius:8px;margin:4px 6px;` : '';
+    const imovelNavStyle = isPinnedStage ? `color:${info.color};font-weight:600;font-size:12px;` : '';
 
     return `<div class="nav-cat-wrap" id="cat-wrap-${k}" draggable="true"
       style="${imovelStyle}"
@@ -961,6 +959,28 @@ function toast(msg, type='ok'){
   t.textContent = msg;
   t.className = 'toast show '+type;
   setTimeout(()=>t.className='toast',2500);
+}
+
+// Destaca com uma animação "pop" o elemento onde um anexo acabou de ser enviado
+function popAnexoHighlight(el, color){
+  if(!el) return;
+  const c = color || '#4caf50';
+  el.style.transition = 'transform .35s cubic-bezier(.17,.67,.32,1.4), box-shadow .35s, background-color .35s';
+  el.style.transform = 'scale(1.05)';
+  el.style.boxShadow = '0 0 0 2px '+c+', 0 0 18px '+c+'99';
+  const prevBg = el.style.backgroundColor;
+  el.style.backgroundColor = c+'22';
+  setTimeout(()=>{
+    el.style.transform = '';
+    el.style.boxShadow = '';
+    el.style.backgroundColor = prevBg || '';
+  }, 700);
+}
+function popAnexoHighlightById(gastoId, color){
+  setTimeout(()=>{
+    const rows = document.querySelectorAll('tr[data-id="'+gastoId+'"]');
+    rows.forEach(row=>popAnexoHighlight(row, color));
+  }, 60);
 }
 
 // ── SUPABASE API ─────────────────────────────────────────────────
@@ -1733,9 +1753,11 @@ async function addGasto(){
     const link = document.getElementById('f-link').value.trim();
     const inserted = await sbInsert({descricao:desc,categoria:cat,data,valor:val,status:st,obs,orcamento,subcategoria:subcat,link,quantidade:1});
     // upload pending files
+    let uploadedGastoId = null;
     if(pendingFiles.length > 0 && inserted?.length){
       btn.textContent = 'Enviando arquivos...';
       const gastoId = inserted[0].id;
+      uploadedGastoId = gastoId;
       const urls = await uploadAnexos(gastoId, pendingFiles);
       await saveAnexosToDb(gastoId, urls);
     }
@@ -1749,6 +1771,7 @@ async function addGasto(){
     closeModal();
     toast('Gasto salvo com sucesso!');
     await loadGastos();
+    if(uploadedGastoId) popAnexoHighlightById(uploadedGastoId);
   } catch(e){
     toast('Erro ao salvar: '+e.message,'err');
   } finally{
@@ -1780,11 +1803,8 @@ async function removeGasto(id){
 // ── NAVIGATE ─────────────────────────────────────────────────────
 function getEtapaNum(page){
   const catKey = page.includes('__') ? page.split('__')[0] : page;
-  if(!IMOVEL_CATS[catKey]) return null;
-  const savedImovelOrder = JSON.parse(localStorage.getItem('imovel_order')||'null');
-  const imovelKeys = savedImovelOrder ? savedImovelOrder.filter(k=>IMOVEL_CATS[k]) : Object.keys(IMOVEL_CATS);
-  Object.keys(IMOVEL_CATS).forEach(k=>{ if(!imovelKeys.includes(k)) imovelKeys.push(k); });
-  const idx = imovelKeys.indexOf(catKey);
+  const pinnedKeys = getPinnedStageKeys();
+  const idx = pinnedKeys.indexOf(catKey);
   return idx > -1 ? idx + 1 : null;
 }
 
@@ -1818,13 +1838,14 @@ function navigate(page, skipHistory){
   const activeEl = document.getElementById('nav-'+page);
   if(activeEl) activeEl.classList.add('active');
 
-  // dim non-active imovel etapas
+  // dim non-active pinned stages (imóvel + extras)
   const activeCatKey = page.includes('__') ? page.split('__')[0] : page;
-  const isImovelPage = !!IMOVEL_CATS[activeCatKey];
-  Object.keys(IMOVEL_CATS).forEach(k=>{
+  const pinnedKeys = getPinnedStageKeys();
+  const isPinnedPage = pinnedKeys.includes(activeCatKey);
+  pinnedKeys.forEach(k=>{
     const wrap = document.getElementById('cat-wrap-'+k);
     if(!wrap) return;
-    if(isImovelPage && k !== activeCatKey){
+    if(isPinnedPage && k !== activeCatKey){
       wrap.classList.add('imovel-dimmed');
     } else {
       wrap.classList.remove('imovel-dimmed');
@@ -1845,7 +1866,7 @@ function navigate(page, skipHistory){
   const num = getEtapaNum(page);
   const titleEl = document.getElementById('topbar-title');
   if(num){
-    titleEl.innerHTML = `<span style="display:inline-flex;align-items:center;gap:10px"><span style="font-family:'Arial Black',sans-serif;font-size:22px;font-weight:900;color:${IMOVEL_CATS[page.split('__')[0]]?.color||'#e8b544'};opacity:.9;line-height:1">${num}</span><span>${rawTitle}</span></span>`;
+    titleEl.innerHTML = `<span style="display:inline-flex;align-items:center;gap:10px"><span style="font-family:'Arial Black',sans-serif;font-size:22px;font-weight:900;color:${getStageColor(page.split('__')[0])};opacity:.9;line-height:1">${num}</span><span>${rawTitle}</span></span>`;
   } else {
     titleEl.textContent = rawTitle;
   }
@@ -1945,6 +1966,17 @@ const IMOVEL_CATS = {
   'projeto-arq':   { label:'Projeto de Arquitetura',  color:'#e8b544', icon:'📐' },
   'obra-bruta':    { label:'Execução de Obra',              color:'#ff7043', icon:'🔨' },
 };
+
+// Categorias normais "promovidas" visualmente a etapa (numeração + fundo colorido no menu),
+// mas que continuam usando o SUBCATS/renderCat normal — conteúdo interno não muda.
+const EXTRA_PINNED_STAGES = ['moveis'];
+function getPinnedStageKeys(){
+  const savedImovelOrder = JSON.parse(localStorage.getItem('imovel_order')||'null');
+  const imovelKeys = savedImovelOrder ? savedImovelOrder.filter(k=>IMOVEL_CATS[k]) : Object.keys(IMOVEL_CATS);
+  Object.keys(IMOVEL_CATS).forEach(k=>{ if(!imovelKeys.includes(k)) imovelKeys.push(k); });
+  return [...imovelKeys, ...EXTRA_PINNED_STAGES.filter(k=>CATS[k])];
+}
+function getStageColor(k){ return IMOVEL_CATS[k]?.color || CATS[k]?.color || '#e8b544'; }
 
 let imovelOrder = JSON.parse(localStorage.getItem('imovel_order')||'["venda-imovel","compra-imovel","projeto-arq","obra-bruta"]');
 let imovelDragKey = null;
@@ -3614,6 +3646,10 @@ async function handleImovelDocFiles(files, catKey, subKey){
       await sbInsert({descricao:f.name, categoria:catKey, subcategoria:subKey, data:new Date().toISOString().slice(0,10), valor:0, status:'pago', obs:'', link:url, quantidade:1, orcamento:0});
       toast('Documento enviado: '+f.name);
       await loadGastos();
+      setTimeout(()=>{
+        const cardEl = document.querySelector('[data-card-key="'+subKey+'"]');
+        if(cardEl) popAnexoHighlight(cardEl, IMOVEL_CATS[catKey]?.color);
+      }, 60);
     } catch(e){
       clearInterval(interval);
       if(progressEl) progressEl.remove();
