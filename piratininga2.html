@@ -2012,11 +2012,9 @@ function renderImovelCat(catKey, subKey){
     const dateStr = d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'2-digit'}) : '';
     const inputId = 'date-input-'+catKey+'-'+key;
     return '<div style="display:flex;align-items:center;gap:6px">'
-      +(dateStr?'<span style="font-size:10px;color:#888;font-weight:500">'+dateStr+'</span>':'')
-      +'<label title="Definir data" style="cursor:pointer;font-size:11px;color:#444" onclick="event.stopPropagation()">'
-      +'<span style="font-size:13px">📅</span>'
-      +'<input type="date" id="'+inputId+'" value="'+d+'" style="position:absolute;opacity:0;width:0;height:0" onchange="event.stopPropagation();setCardDate(\''+key+'\',this.value)">'
-      +'</label>'
+      +(dateStr?'<span style="font-size:10px;color:#e8b544;font-weight:600">'+dateStr+'</span>':'')
+      +'<span title="Definir data" style="cursor:pointer;font-size:15px" onclick="event.stopPropagation();const el=document.getElementById(\''+inputId+'\');if(el){if(el.showPicker)el.showPicker();else el.focus();}">📅</span>'
+      +'<input type="date" id="'+inputId+'" value="'+d+'" style="position:fixed;opacity:0;width:0;height:0;pointer-events:none" onchange="event.stopPropagation();setCardDate(\''+key+'\',this.value)">'
       +'</div>';
   }
 
@@ -3382,7 +3380,11 @@ async function handleImovelDocFiles(files, catKey, subKey){
       const res = await fetch(`${SB_URL}/storage/v1/object/anexos/${path}`,{
         method:'POST', headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':f.type}, body:f
       });
-      if(!res.ok) throw new Error('Upload falhou');
+      if(!res.ok){
+        const errBody = await res.text();
+        console.error('Storage error:', res.status, errBody);
+        throw new Error(res.status+': '+errBody.slice(0,100));
+      }
       const url = `${SB_URL}/storage/v1/object/public/anexos/${path}`;
       await sbInsert({descricao:f.name, categoria:catKey, subcategoria:subKey, data:new Date().toISOString().slice(0,10), valor:0, status:'pago', obs:'', link:url, quantidade:1, orcamento:0});
       toast('Documento enviado: '+f.name);
