@@ -1996,14 +1996,32 @@ function renderImovelCat(catKey, subKey){
   const gastoItems   = summaryItems.filter(i=>i.tipo==='gasto');
   const entregaItems = summaryItems.filter(i=>i.tipo==='entrega');
 
+  // get stored date for each card
+  function getCardDate(key){ return localStorage.getItem('imovel-date-'+catKey+'-'+key)||''; }
+  function setCardDate(key, val){ localStorage.setItem('imovel-date-'+catKey+'-'+key, val); renderImovelCat(catKey, null); }
+
+  // date badge: small date in top right, clickable
+  function dateBadge(key){
+    const d = getCardDate(key);
+    const dateStr = d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'2-digit'}) : '';
+    const inputId = 'date-input-'+catKey+'-'+key;
+    return '<div style="display:flex;align-items:center;gap:6px">'
+      +(dateStr?'<span style="font-size:10px;color:#888;font-weight:500">'+dateStr+'</span>':'')
+      +'<label title="Definir data" style="cursor:pointer;font-size:11px;color:#444" onclick="event.stopPropagation()">'
+      +'<span style="font-size:13px">📅</span>'
+      +'<input type="date" id="'+inputId+'" value="'+d+'" style="position:absolute;opacity:0;width:0;height:0" onchange="event.stopPropagation();setCardDate(\''+key+'\',this.value)">'
+      +'</label>'
+      +'</div>';
+  }
+
   function makeCard(item){
     const itemGastos = lista.filter(g=>g.subcategoria===item.key);
     const itemTotal = itemGastos.reduce((s,g)=>s+getVal(g),0);
     const hasData = itemTotal > 0;
     const isUpload = item.tipo==='doc' || item.tipo==='recibo' || item.recibo;
     const uploadLabel = item.tipo==='doc' ? 'documento' : 'recibo';
-
     const inputId = 'upload-'+catKey+'-'+item.key;
+    const showDate = ['proposta','contrato','sinal','entrada','entrada-venda','repasse-bancario','corretagem'].includes(item.key);
 
     const uploadZone = isUpload ? (
       '<div onclick="event.stopPropagation();document.getElementById(\''+inputId+'\').click()" '
@@ -2019,8 +2037,9 @@ function renderImovelCat(catKey, subKey){
     return '<div onclick="navigate(\''+catKey+'__'+item.key+'\')" style="background:#0e0e0e;border:1px solid '+(hasData?item.color:'#1e1e1e')+';border-top:3px solid '+item.color+';border-radius:8px;padding:14px 16px;cursor:pointer;min-height:90px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;transition:background .15s" onmouseover="this.style.background=\'#161616\'" onmouseout="this.style.background=\'#0e0e0e\'">'
       +'<div style="display:flex;align-items:center;justify-content:space-between">'
       +'<span style="font-size:18px">'+item.icon+'</span>'
-      +(hasData?'<span style="font-size:13px;font-weight:700;color:'+item.color+'">'+fmt(itemTotal)+'</span>':'')
+      +(showDate ? dateBadge(item.key) : (hasData?'<span style="font-size:13px;font-weight:700;color:'+item.color+'">'+fmt(itemTotal)+'</span>':''))
       +'</div>'
+      +(showDate && hasData ? '<div style="font-size:13px;font-weight:700;color:'+item.color+';margin-top:4px">'+fmt(itemTotal)+'</div>' : '')
       +'<div>'
       +'<div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.07em">'+item.label+'</div>'
       +(itemGastos.length?'<div style="font-size:10px;color:#444;margin-top:2px">'+itemGastos.length+' arquivo'+(itemGastos.length!==1?'s':'')+'</div>':'')
@@ -2038,6 +2057,19 @@ function renderImovelCat(catKey, subKey){
       +'</div>';
   }
 
+  // days counter since proposta
+  const propostaDate = localStorage.getItem('imovel-date-'+catKey+'-proposta');
+  let daysHtml = '';
+  if(propostaDate){
+    const start = new Date(propostaDate+'T12:00:00');
+    const today = new Date();
+    const days = Math.floor((today-start)/(1000*60*60*24));
+    daysHtml = '<div style="margin-left:auto;text-align:right">'
+      +'<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Desde a assinatura da proposta</div>'
+      +'<div style="font-size:20px;font-weight:800;color:'+info.color+'">'+days+' <span style="font-size:11px;font-weight:500;color:#666">dias corridos</span></div>'
+      +'</div>';
+  }
+
   // Summary bar
   let html = '<div style="background:#0e0e0e;border:1px solid #222;border-left:3px solid '+info.color+';border-radius:10px;padding:1.25rem;margin-bottom:1.5rem;display:flex;gap:0;align-items:stretch;flex-wrap:wrap">';
   if(recItems.length){
@@ -2049,6 +2081,7 @@ function renderImovelCat(catKey, subKey){
     html += '<div style="padding-right:2rem"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Total pago</div><div style="font-size:22px;font-weight:800;color:'+info.color+'">'+fmt(totalGasto)+'</div></div>';
   }
   html += '<div style="border-left:1px solid #222;padding:0 0 0 2rem;margin-left:auto"><div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Lançamentos</div><div style="font-size:22px;font-weight:800;color:#555">'+lista.length+'</div></div>';
+  if(daysHtml) html += '<div style="border-left:1px solid #222;padding:0 0 0 2rem">'+daysHtml.replace('<div style="margin-left:auto;text-align:right">','<div style="text-align:right">')+'</div>';
   html += '</div>';
 
   if(docItems.length)     html += makeRow(docItems,     'Documentos',  '#666',    '#666');
