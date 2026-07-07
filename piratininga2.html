@@ -1521,23 +1521,21 @@ function openModal(cat, subcat){
 
   // Adjust status options for imovel cats
   const statusEl = document.getElementById('f-status');
-  if(statusEl){
-    if(IMOVEL_CATS[cat]){
-      statusEl.innerHTML = `
-        <option value="pago">Recebido</option>
-        <option value="necessario">A receber</option>`;
-    } else {
-      statusEl.innerHTML = `
-        <option value="pago">Pago</option>
-        <option value="necessario">Necessário</option>
-        <option value="apagar">Dispensável</option>`;
-    }
-  }
 
   setTimeout(()=>{
     populateSubCatSelect('f-cat','f-subcat');
     if(subcat) document.getElementById('f-subcat').value = subcat;
     checkM2Section(document.getElementById('f-cat').value);
+    const curCat = document.getElementById('f-cat').value;
+    if(statusEl){
+      if(curCat==='venda-imovel'){
+        statusEl.innerHTML = '<option value="pago">Recebido</option><option value="necessario">A receber</option>';
+      } else if(curCat==='compra-imovel'){
+        statusEl.innerHTML = '<option value="pago">Pago</option><option value="necessario">A pagar</option>';
+      } else {
+        statusEl.innerHTML = '<option value="pago">Pago</option><option value="necessario">Necessário</option><option value="apagar">Dispensável</option>';
+      }
+    }
   }, 0);
   document.getElementById('modal-overlay').classList.add('open');
   setTimeout(()=>document.getElementById('f-desc').focus(),100);
