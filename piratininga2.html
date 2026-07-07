@@ -224,7 +224,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       <div id="imovel-nav-list"></div>
       <div class="divider"></div>
       <div class="nav-item" onclick="navigate('ganhos')" id="nav-ganhos">
-        <i class="ti ti-trending-up"></i> Ganhos
+        <i class="ti ti-trending-up"></i> Aportes
       </div>
     </div>
   </div>
@@ -235,7 +235,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       <div class="topbar-right">
         <span class="topbar-date" id="topbar-date"></span>
         <button class="btn-ganho" onclick="openModalGanho()">
-          <i class="ti ti-plus"></i> Lançar ganho
+          <i class="ti ti-plus"></i> Lançar aporte
         </button>
         <button class="btn-launch" onclick="openModal()">
           <i class="ti ti-minus"></i> Lançar gasto
@@ -396,7 +396,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
 <div class="modal-overlay" id="modal-ganho-overlay">
   <div class="modal">
     <div class="modal-header">
-      <span class="modal-title" style="color:#4caf50">Lançar ganho</span>
+      <span class="modal-title" style="color:#4caf50">Lançar aporte</span>
       <button class="modal-close" onclick="closeModalGanho()"><i class="ti ti-x"></i></button>
     </div>
     <div class="form-group">
@@ -441,7 +441,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       <label>Observação (opcional)</label>
       <input type="text" id="g-obs" spellcheck="true" lang="pt-BR" placeholder="Detalhe adicional...">
     </div>
-    <button class="btn-confirm" id="btn-confirm-ganho" onclick="addGanho()" style="background:#4caf50">Confirmar ganho</button>
+    <button class="btn-confirm" id="btn-confirm-ganho" onclick="addGanho()" style="background:#4caf50">Confirmar aporte</button>
   </div>
 </div>
 
@@ -991,12 +991,12 @@ async function addGanho(){
     document.getElementById('g-obs').value='';
     selectTipoGanho('disponivel');
     closeModalGanho();
-    toast('Ganho registrado!');
+    toast('Aporte registrado!');
     await loadGastos();
   } catch(e){
     toast('Erro ao salvar: '+e.message,'err');
   } finally{
-    btn.disabled=false; btn.textContent='Confirmar ganho';
+    btn.disabled=false; btn.textContent='Confirmar aporte';
   }
 }
 
@@ -1678,7 +1678,7 @@ function navigate(page, skipHistory){
     render();
     return;
   }
-  const fixedTitles={geral:'Visão Geral',ganhos:'Ganhos','venda-imovel':'Venda do Imóvel','compra-imovel':'Compra do Imóvel'};
+  const fixedTitles={geral:'Visão Geral',ganhos:'Aportes','venda-imovel':'Venda do Imóvel','compra-imovel':'Compra do Imóvel'};
   const title = fixedTitles[page] || (CATS[page]?.label) || page;
   document.getElementById('topbar-title').textContent = title;
   if(barChart){barChart.destroy();barChart=null;}
@@ -1785,21 +1785,21 @@ function renderImovelCat(catKey, subKey){
   const getVal = g=>(g.valor||0)*(g.quantidade||1);
 
   const summaryItems = catKey==='venda-imovel' ? [
-    {label:'Proposta', key:'proposta', color:'#888', icon:'📝', tipo:'doc'},
-    {label:'Contrato', key:'contrato', color:'#42a5f5', icon:'📄', tipo:'doc'},
-    {label:'Sinal', key:'sinal', color:'#9c27b0', icon:'🤝', tipo:'recebimento'},
-    {label:'Entrada', key:'entrada', color:'#4caf50', icon:'💵', tipo:'recebimento'},
-    {label:'Repasse bancário', key:'repasse-bancario', color:'#e91e8c', icon:'🏦', tipo:'recebimento'},
-    {label:'Corretagem', key:'corretagem', color:'#e8b544', icon:'🤝', tipo:'gasto'},
-    {label:'Taxas', key:'taxas', color:'#555', icon:'📋', tipo:'gasto'},
+    {label:'Proposta',        key:'proposta',        color:'#888',    icon:'📝', tipo:'doc'},
+    {label:'Contrato',        key:'contrato',        color:'#42a5f5', icon:'📄', tipo:'doc'},
+    {label:'Sinal',           key:'sinal',           color:'#9c27b0', icon:'🤝', tipo:'recebimento'},
+    {label:'Entrada',         key:'entrada',         color:'#4caf50', icon:'💵', tipo:'recebimento'},
+    {label:'Repasse bancário',key:'repasse-bancario',color:'#e91e8c', icon:'🏦', tipo:'recebimento'},
+    {label:'Corretagem',      key:'corretagem',      color:'#e8b544', icon:'🤝', tipo:'gasto'},
+    {label:'Taxas',           key:'taxas',           color:'#555',    icon:'📋', tipo:'gasto'},
   ] : [
-    {label:'Proposta', key:'proposta', color:'#888', icon:'📝', tipo:'doc'},
-    {label:'Contrato', key:'contrato', color:'#42a5f5', icon:'📄', tipo:'doc'},
-    {label:'Sinal', key:'sinal', color:'#9c27b0', icon:'🤝', tipo:'gasto'},
-    {label:'Entrada', key:'entrada', color:'#4caf50', icon:'💵', tipo:'gasto'},
-    {label:'Repasse bancário', key:'repasse-bancario', color:'#e91e8c', icon:'🏦', tipo:'gasto'},
-    {label:'FGTS', key:'fgts', color:'#e91e8c', icon:'💳', tipo:'gasto'},
-    {label:'Taxas', key:'taxas', color:'#888', icon:'📋', tipo:'gasto'},
+    {label:'Proposta',        key:'proposta',        color:'#888',    icon:'📝', tipo:'doc'},
+    {label:'Contrato',        key:'contrato',        color:'#42a5f5', icon:'📄', tipo:'doc'},
+    {label:'Sinal',           key:'sinal',           color:'#9c27b0', icon:'🤝', tipo:'gasto'},
+    {label:'Entrada',         key:'entrada',         color:'#4caf50', icon:'💵', tipo:'gasto'},
+    {label:'Repasse bancário',key:'repasse-bancario',color:'#e91e8c', icon:'🏦', tipo:'gasto'},
+    {label:'FGTS',            key:'fgts',            color:'#e91e8c', icon:'💳', tipo:'gasto'},
+    {label:'Taxas',           key:'taxas',           color:'#888',    icon:'📋', tipo:'gasto'},
   ];
 
   if(!SUBCATS[catKey]) SUBCATS[catKey]={};
@@ -1810,6 +1810,7 @@ function renderImovelCat(catKey, subKey){
 
   const el = document.getElementById('content');
 
+  // SUBCAT DETAIL VIEW
   if(subKey){
     const item = summaryItems.find(i=>i.key===subKey)||{label:subKey,color:info.color,icon:'📋'};
     const itemGastos = lista.filter(g=>g.subcategoria===subKey);
@@ -1838,14 +1839,18 @@ function renderImovelCat(catKey, subKey){
             '<div><div style="font-size:11px;color:#555;text-transform:uppercase;letter-spacing:.08em">'+item.label+'</div>'+
             '<div style="font-size:22px;font-weight:700;color:'+item.color+'">'+(itemTotal>0?fmt(itemTotal):'—')+'</div></div>'+
           '</div>'+
-          '<button onclick="openModal(\"'+catKey+'\",\"'+subKey+'\")" style="background:transparent;border:1px solid '+item.color+';color:'+item.color+';padding:6px 14px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">+ lançar</button>'+
+          '<button id="imovel-sub-launch" style="background:transparent;border:1px solid '+item.color+';color:'+item.color+';padding:6px 14px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">+ lançar</button>'+
         '</div>'+
       '</div>'+
       '<div style="background:#111;border:1px solid #1a1a1a;border-radius:10px;padding:1rem">'+rowsHtml+'</div>';
     renderCatNav();
+    // attach launch button handler after DOM is set
+    const btn = document.getElementById('imovel-sub-launch');
+    if(btn) btn.onclick = ()=>openModal(catKey, subKey);
     return;
   }
 
+  // MAIN SUMMARY VIEW
   const recKeys = summaryItems.filter(i=>i.tipo==='recebimento').map(i=>i.key);
   const gastoKeys = summaryItems.filter(i=>i.tipo==='gasto').map(i=>i.key);
   const recLista = lista.filter(g=>recKeys.includes(g.subcategoria));
@@ -1855,48 +1860,49 @@ function renderImovelCat(catKey, subKey){
   const totalGasto = gastoLista.reduce((s,g)=>s+getVal(g),0);
   const liquido = totalRecebido - totalGasto;
 
-  const recItems = summaryItems.filter(i=>i.tipo==='recebimento');
+  const docItems   = summaryItems.filter(i=>i.tipo==='doc');
+  const recItems   = summaryItems.filter(i=>i.tipo==='recebimento');
   const gastoItems = summaryItems.filter(i=>i.tipo==='gasto');
-  const docItems = summaryItems.filter(i=>i.tipo==='doc');
 
-  function makeCard(item, showArrow){
+  function makeCard(item){
     const itemGastos = lista.filter(g=>g.subcategoria===item.key);
     const itemTotal = itemGastos.reduce((s,g)=>s+getVal(g),0);
     const hasData = itemTotal > 0;
-    let c = '<div style="flex:1;min-width:0;background:#111;border:1px solid '+(hasData?item.color:'#2a2a2a')+';border-left:3px solid '+item.color+';border-radius:8px;padding:12px 14px;cursor:pointer" onclick="navigate(\''+catKey+'__'+item.key+'\')">';
-    c += '<div style="font-size:16px;margin-bottom:6px">'+item.icon+'</div>';
-    c += '<div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">'+item.label+'</div>';
-    c += '<div style="font-size:15px;font-weight:700;color:'+(hasData?item.color:'#333')+'">'+(hasData?fmt(itemTotal):'—')+'</div>';
-    if(itemGastos.length) c += '<div style="font-size:10px;color:#555;margin-top:2px">'+itemGastos.length+' lançamento'+(itemGastos.length!==1?'s':'')+'</div>';
-    c += '</div>';
-    if(showArrow) c += '<div style="display:flex;align-items:center;color:#333;font-size:20px;padding:0 6px;flex-shrink:0">›</div>';
-    return c;
+    return '<div onclick="navigate(\''+catKey+'__'+item.key+'\')" style="flex:1;min-width:0;background:#0e0e0e;border:1px solid '+(hasData?item.color:'#222')+';border-top:3px solid '+item.color+';border-radius:8px;padding:14px 16px;cursor:pointer;transition:background .15s" onmouseover="this.style.background=\'#161616\'" onmouseout="this.style.background=\'#0e0e0e\'">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
+      +'<span style="font-size:18px">'+item.icon+'</span>'
+      +(hasData?'<span style="font-size:13px;font-weight:700;color:'+item.color+'">'+fmt(itemTotal)+'</span>':'<span style="color:#333;font-size:12px">—</span>')
+      +'</div>'
+      +'<div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">'+item.label+'</div>'
+      +(itemGastos.length?'<div style="font-size:10px;color:#444">'+itemGastos.length+' lançamento'+(itemGastos.length!==1?'s':'')+'</div>':'<div style="font-size:10px;color:#2a2a2a">—</div>')
+      +'</div>';
   }
 
-  function makeRow(items, label, labelColor){
-    let r = '<div style="margin-bottom:1rem">';
-    if(label) r += '<div style="font-size:10px;color:'+labelColor+';text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">'+label+'</div>';
-    r += '<div style="display:flex;align-items:stretch">';
-    items.forEach((item,i)=>{ r += makeCard(item, i<items.length-1); });
-    r += '</div></div>';
-    return r;
+  function makeRow(items, label, labelColor, borderColor){
+    const cols = items.map(makeCard).join('');
+    return '<div style="margin-bottom:14px">'
+      +'<div style="font-size:10px;font-weight:600;color:'+labelColor+';text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;display:flex;align-items:center;gap:6px">'
+      +'<span style="width:8px;height:8px;border-radius:50%;background:'+borderColor+';display:inline-block"></span>'+label+'</div>'
+      +'<div style="display:grid;grid-template-columns:repeat('+items.length+',1fr);gap:8px">'+cols+'</div>'
+      +'</div>';
   }
 
-  let html = '<div style="background:#111;border:1px solid #2a2a2a;border-left:3px solid '+info.color+';border-radius:10px;padding:1.25rem;margin-bottom:1.25rem;display:flex;gap:2rem;align-items:center;flex-wrap:wrap">';
+  // Summary bar
+  let html = '<div style="background:#0e0e0e;border:1px solid #222;border-left:3px solid '+info.color+';border-radius:10px;padding:1.25rem;margin-bottom:1.5rem;display:flex;gap:0;align-items:stretch;flex-wrap:wrap">';
   if(recItems.length){
-    html += '<div><div style="font-size:10px;color:#4caf50;margin-bottom:2px">🟢 Recebido</div><div style="font-size:20px;font-weight:700;color:#4caf50">'+fmt(totalRecebido)+'</div><div style="font-size:10px;color:#42a5f5;margin-top:3px">com a receber: '+fmt(totalRecebido+totalAReceber)+'</div></div>';
-    html += '<div style="border-left:1px solid #2a2a2a;padding-left:1.5rem"><div style="font-size:10px;color:#42a5f5;margin-bottom:2px">🔵 A receber</div><div style="font-size:20px;font-weight:700;color:#42a5f5">'+fmt(totalAReceber)+'</div></div>';
-    html += '<div style="border-left:1px solid #2a2a2a;padding-left:1.5rem"><div style="font-size:10px;color:#ef5350;margin-bottom:2px">🔴 Gastos</div><div style="font-size:20px;font-weight:700;color:#ef5350">'+fmt(totalGasto)+'</div></div>';
-    html += '<div style="border-left:1px solid #2a2a2a;padding-left:1.5rem"><div style="font-size:10px;color:#555;margin-bottom:2px">= Líquido</div><div style="font-size:20px;font-weight:700;color:'+(liquido>=0?'#4caf50':'#ef5350')+'">'+fmt(liquido)+'</div></div>';
+    html += '<div style="padding-right:2rem"><div style="font-size:10px;color:#4caf50;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Recebido</div><div style="font-size:22px;font-weight:800;color:#4caf50">'+fmt(totalRecebido)+'</div><div style="font-size:10px;color:#42a5f5;margin-top:3px">+ a receber: '+fmt(totalRecebido+totalAReceber)+'</div></div>';
+    html += '<div style="border-left:1px solid #222;padding:0 2rem"><div style="font-size:10px;color:#42a5f5;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">A receber</div><div style="font-size:22px;font-weight:800;color:#42a5f5">'+fmt(totalAReceber)+'</div></div>';
+    html += '<div style="border-left:1px solid #222;padding:0 2rem"><div style="font-size:10px;color:#ef5350;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Gastos</div><div style="font-size:22px;font-weight:800;color:#ef5350">'+fmt(totalGasto)+'</div></div>';
+    html += '<div style="border-left:1px solid #222;padding:0 2rem"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Líquido</div><div style="font-size:22px;font-weight:800;color:'+(liquido>=0?'#4caf50':'#ef5350')+'">'+fmt(liquido)+'</div></div>';
   } else {
-    html += '<div><div style="font-size:10px;color:#555;margin-bottom:2px">Total</div><div style="font-size:20px;font-weight:700;color:'+info.color+'">'+fmt(totalGasto)+'</div></div>';
+    html += '<div style="padding-right:2rem"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Total pago</div><div style="font-size:22px;font-weight:800;color:'+info.color+'">'+fmt(totalGasto)+'</div></div>';
   }
-  html += '<div style="border-left:1px solid #2a2a2a;padding-left:1.5rem"><div style="font-size:10px;color:#555;margin-bottom:2px">Lançamentos</div><div style="font-size:16px;font-weight:600;color:#888">'+lista.length+'</div></div>';
+  html += '<div style="border-left:1px solid #222;padding:0 0 0 2rem;margin-left:auto"><div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Lançamentos</div><div style="font-size:22px;font-weight:800;color:#555">'+lista.length+'</div></div>';
   html += '</div>';
 
-  if(docItems.length) html += makeRow(docItems, '📋 Documentos', '#555');
-  if(recItems.length) html += makeRow(recItems, '🟢 Recebimentos', '#4caf50');
-  if(gastoItems.length) html += makeRow(gastoItems, '🔴 Gastos', '#ef5350');
+  if(docItems.length)   html += makeRow(docItems,   'Documentos',   '#666',    '#666');
+  if(recItems.length)   html += makeRow(recItems,   'Recebimentos', '#4caf50', '#4caf50');
+  if(gastoItems.length) html += makeRow(gastoItems, 'Gastos',       '#ef5350', '#ef5350');
 
   el.innerHTML = html;
   renderCatNav();
@@ -1966,7 +1972,7 @@ function renderGeral(){
         </div>
       </div>
       <div class="card" style="border-left:3px solid #555">
-        <div class="card-label"><i class="ti ti-trending-up" style="font-size:13px;color:#888"></i> Total de ganhos</div>
+        <div class="card-label"><i class="ti ti-trending-up" style="font-size:13px;color:#888"></i> Total de aportes</div>
         <div class="card-value muted">${fmt(totalGanhos)}</div>
         <div class="card-sub" style="font-size:10px;color:#555">🟢 Disponível: ${fmt(dispGanhos)}</div>
       </div>
@@ -2222,7 +2228,7 @@ function renderGanhos(){
             <div style="font-size:9px;color:#2a2a2a;text-transform:uppercase;letter-spacing:.06em">Total registrado</div>
             <div style="font-size:11px;color:#2a2a2a">${fmt(total)}</div>
           </div>
-          <button class="btn-ganho" onclick="openModalGanho()"><i class="ti ti-plus"></i> Lançar ganho</button>
+          <button class="btn-ganho" onclick="openModalGanho()"><i class="ti ti-plus"></i> Lançar aporte</button>
         </div>
       </div>
 
