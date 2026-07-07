@@ -1368,6 +1368,7 @@ async function loadGastos(){
     renderCatNav();
     const initialPage = location.hash ? location.hash.slice(1) : 'geral';
     navigate(initialPage, true);
+    checkPaymentNotifications();
   } catch(e){
     console.error(e);
     document.getElementById('content').innerHTML = '<div class="loading" style="color:#ef5350">Erro ao conectar ao banco de dados.<br><small>'+e.message+'</small></div>';
@@ -1678,7 +1679,7 @@ function navigate(page, skipHistory){
     render();
     return;
   }
-  const fixedTitles={geral:'Visão Geral',ganhos:'Aportes','venda-imovel':'Venda do Imóvel','compra-imovel':'Compra do Imóvel'};
+  const fixedTitles={geral:'Visão Geral',ganhos:'Aportes','venda-imovel':'Venda do Imóvel','compra-imovel':'Compra do Imóvel','projeto-arq':'Projeto de Arquitetura'};
   const title = fixedTitles[page] || (CATS[page]?.label) || page;
   document.getElementById('topbar-title').textContent = title;
   if(barChart){barChart.destroy();barChart=null;}
@@ -1700,6 +1701,7 @@ function render(){
   else if(currentPage==='ganhos') renderGanhos();
   else if(currentPage==='venda-imovel') renderImovelCat('venda-imovel', null);
   else if(currentPage==='compra-imovel') renderImovelCat('compra-imovel', null);
+  else if(currentPage==='projeto-arq') renderImovelCat('projeto-arq', null);
   else if(currentPage.includes('__')){
     const [catKey, subKey] = currentPage.split('__');
     if(IMOVEL_CATS[catKey]) renderImovelCat(catKey, subKey);
@@ -1709,7 +1711,7 @@ function render(){
 }
 
 // ── IMÓVEL NAV ───────────────────────────────────────────────────
-let imovelOrder = JSON.parse(localStorage.getItem('imovel_order')||'["venda-imovel","compra-imovel"]');
+let imovelOrder = JSON.parse(localStorage.getItem('imovel_order')||'["venda-imovel","compra-imovel","projeto-arq"]');
 let imovelDragKey = null;
 
 function saveImovelOrder(){ localStorage.setItem('imovel_order', JSON.stringify(imovelOrder)); }
@@ -1775,8 +1777,9 @@ function imovelDragEnd(e){
 
 // ── IMÓVEL CATS ──────────────────────────────────────────────────
 const IMOVEL_CATS = {
-  'venda-imovel': { label:'Venda do Imóvel', color:'#4caf50', icon:'🏠' },
-  'compra-imovel': { label:'Compra do Imóvel', color:'#42a5f5', icon:'🔑' },
+  'venda-imovel':  { label:'Venda do Imóvel',        color:'#4caf50', icon:'🏠' },
+  'compra-imovel': { label:'Compra do Imóvel',        color:'#42a5f5', icon:'🔑' },
+  'projeto-arq':   { label:'Projeto de Arquitetura',  color:'#e8b544', icon:'📐' },
 };
 
 function renderImovelCat(catKey, subKey){
@@ -1792,7 +1795,7 @@ function renderImovelCat(catKey, subKey){
     {label:'Repasse bancário',key:'repasse-bancario',color:'#e91e8c', icon:'🏦', tipo:'recebimento'},
     {label:'Corretagem',      key:'corretagem',      color:'#e8b544', icon:'🤝', tipo:'gasto'},
     {label:'Taxas',           key:'taxas',           color:'#555',    icon:'📋', tipo:'gasto'},
-  ] : [
+  ] : catKey==='compra-imovel' ? [
     {label:'Proposta',        key:'proposta',        color:'#888',    icon:'📝', tipo:'doc'},
     {label:'Contrato',        key:'contrato',        color:'#42a5f5', icon:'📄', tipo:'doc'},
     {label:'Sinal',           key:'sinal',           color:'#9c27b0', icon:'🤝', tipo:'gasto'},
@@ -1800,6 +1803,14 @@ function renderImovelCat(catKey, subKey){
     {label:'Repasse bancário',key:'repasse-bancario',color:'#e91e8c', icon:'🏦', tipo:'gasto'},
     {label:'FGTS',            key:'fgts',            color:'#e91e8c', icon:'💳', tipo:'gasto'},
     {label:'Taxas',           key:'taxas',           color:'#888',    icon:'📋', tipo:'gasto'},
+  ] : [
+    {label:'Proposta',          key:'proposta',      color:'#888',    icon:'📝', tipo:'doc'},
+    {label:'Contrato',          key:'contrato',      color:'#42a5f5', icon:'📄', tipo:'doc'},
+    {label:'Pagamento',         key:'pagamento',     color:'#e8b544', icon:'💰', tipo:'gasto'},
+    {label:'Levantamento',      key:'levantamento',  color:'#888',    icon:'📏', tipo:'entrega'},
+    {label:'Estudo Preliminar', key:'estudo-prelim', color:'#9c27b0', icon:'✏️',  tipo:'entrega'},
+    {label:'Anteprojeto',       key:'anteprojeto',   color:'#42a5f5', icon:'📐', tipo:'entrega'},
+    {label:'Projeto Executivo', key:'proj-exec',     color:'#4caf50', icon:'✅', tipo:'entrega'},
   ];
 
   if(!SUBCATS[catKey]) SUBCATS[catKey]={};
@@ -1860,9 +1871,10 @@ function renderImovelCat(catKey, subKey){
   const totalGasto = gastoLista.reduce((s,g)=>s+getVal(g),0);
   const liquido = totalRecebido - totalGasto;
 
-  const docItems   = summaryItems.filter(i=>i.tipo==='doc');
-  const recItems   = summaryItems.filter(i=>i.tipo==='recebimento');
-  const gastoItems = summaryItems.filter(i=>i.tipo==='gasto');
+  const docItems     = summaryItems.filter(i=>i.tipo==='doc');
+  const recItems     = summaryItems.filter(i=>i.tipo==='recebimento');
+  const gastoItems   = summaryItems.filter(i=>i.tipo==='gasto');
+  const entregaItems = summaryItems.filter(i=>i.tipo==='entrega');
 
   function makeCard(item){
     const itemGastos = lista.filter(g=>g.subcategoria===item.key);
@@ -1900,9 +1912,10 @@ function renderImovelCat(catKey, subKey){
   html += '<div style="border-left:1px solid #222;padding:0 0 0 2rem;margin-left:auto"><div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Lançamentos</div><div style="font-size:22px;font-weight:800;color:#555">'+lista.length+'</div></div>';
   html += '</div>';
 
-  if(docItems.length)   html += makeRow(docItems,   'Documentos',   '#666',    '#666');
-  if(recItems.length)   html += makeRow(recItems,   'Recebimentos', '#4caf50', '#4caf50');
-  if(gastoItems.length) html += makeRow(gastoItems, 'Gastos',       '#ef5350', '#ef5350');
+  if(docItems.length)     html += makeRow(docItems,     'Documentos',  '#666',    '#666');
+  if(recItems.length)     html += makeRow(recItems,     'Recebimentos','#4caf50', '#4caf50');
+  if(gastoItems.length)   html += makeRow(gastoItems,   'Pagamentos',  '#ef5350', '#ef5350');
+  if(entregaItems.length) html += makeRow(entregaItems, 'Entregas',    '#42a5f5', '#42a5f5');
 
   el.innerHTML = html;
   renderCatNav();
@@ -3158,6 +3171,31 @@ async function bulkMoveSelected(newStatus){
 ensureSubCats();
 renderCatNav();
 loadGastos();
+
+// ── NOTIFICAÇÕES DE PAGAMENTO ────────────────────────────────────
+async function checkPaymentNotifications(){
+  if(!('Notification' in window)) return;
+  const pending = gastos.filter(g=>{
+    if(g.status!=='necessario') return false;
+    if(!g.data) return false;
+    const diff = (new Date(g.data) - new Date()) / (1000*60*60*24);
+    return diff >= 0 && diff <= 7; // vence nos próximos 7 dias
+  });
+  if(!pending.length) return;
+  if(Notification.permission === 'default'){
+    await Notification.requestPermission();
+  }
+  if(Notification.permission !== 'granted') return;
+  pending.forEach(g=>{
+    const diff = Math.ceil((new Date(g.data) - new Date()) / (1000*60*60*24));
+    const msg = diff === 0 ? 'Vence hoje!' : `Vence em ${diff} dia${diff>1?'s':''}`;
+    new Notification(`💰 ${g.descricao}`, {
+      body: `${msg} — ${fmt(g.valor||0)}`,
+      icon: '/favicon.ico',
+      tag: 'pirati-'+g.id
+    });
+  });
+}
 
 // ── SUPABASE KEEP-ALIVE ───────────────────────────────────────────
 // Pings Supabase silently every 4 hours to prevent auto-pause
