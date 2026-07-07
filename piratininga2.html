@@ -2052,6 +2052,7 @@ function renderImovelCat(catKey, subKey){
       +'<div>'
       +'<div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.07em">'+item.label+'</div>'
       +(itemGastos.length?'<div style="font-size:10px;color:#444;margin-top:2px">'+itemGastos.length+' arquivo'+(itemGastos.length!==1?'s':'')+'</div>':'')
+      +(itemGastos.length&&itemGastos[0].link?'<a href="'+itemGastos[0].link+'" target="_blank" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:3px;margin-top:4px;background:#1a2a3a;border:1px solid #2a78d6;color:#42a5f5;font-size:10px;font-weight:600;padding:3px 7px;border-radius:4px;text-decoration:none"><i class="ti ti-eye" style="font-size:11px"></i> Ver anexo</a>':'')
       +'</div>'
       +uploadZone
       +'</div>';
@@ -2070,12 +2071,14 @@ function renderImovelCat(catKey, subKey){
   const propostaDate = getCardDate(catKey, 'proposta');
   let daysHtml = '';
   if(propostaDate){
-    const start = new Date(propostaDate+'T12:00:00');
-    const today = new Date();
-    const days = Math.floor((today-start)/(1000*60*60*24));
-    daysHtml = '<div style="margin-left:auto;text-align:right">'
-      +'<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Desde a assinatura da proposta</div>'
-      +'<div style="font-size:20px;font-weight:800;color:'+info.color+'">'+days+' <span style="font-size:11px;font-weight:500;color:#666">dias corridos</span></div>'
+    const [y,m,d] = propostaDate.split('-').map(Number);
+    const start = new Date(y, m-1, d);
+    const now = new Date(); const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const days = Math.round((today-start)/(1000*60*60*24));
+    const propostaFmt = start.toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+    daysHtml = '<div style="text-align:right">'
+      +'<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Proposta assinada em '+propostaFmt+'</div>'
+      +'<div style="font-size:20px;font-weight:800;color:'+info.color+'">'+days+' <span style="font-size:11px;font-weight:500;color:#888">dias corridos</span></div>'
       +'</div>';
   }
 
