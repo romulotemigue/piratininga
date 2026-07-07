@@ -1968,9 +1968,9 @@ function cardDragEnd(e){
 
 // ── IMÓVEL NAV ───────────────────────────────────────────────────
 const IMOVEL_CATS = {
-  'venda-imovel':  { label:'Venda do Imóvel',        color:'#4caf50', icon:'🏠' },
-  'compra-imovel': { label:'Compra do Imóvel',        color:'#42a5f5', icon:'🔑' },
-  'projeto-arq':   { label:'Projeto de Arquitetura',  color:'#e8b544', icon:'📐' },
+  'venda-imovel':  { label:'Venda do Imóvel',        color:'#db4343', icon:'🏠' },
+  'compra-imovel': { label:'Compra do Imóvel',        color:'#db7d43', icon:'🔑' },
+  'projeto-arq':   { label:'Projeto de Arquitetura',  color:'#dbb543', icon:'📐' },
 };
 
 // Categorias normais "promovidas" visualmente a etapa (numeração + fundo colorido no menu),
@@ -2080,6 +2080,22 @@ try{
     saveSubCats();
     localStorage.setItem('stage_migration_v1','1');
   }catch(e){ console.warn('Erro na migração de etapas:', e); }
+})();
+
+// ── CORES DISTINTAS PARA CADA ETAPA (roda uma única vez) ──────────
+(function assignDistinctStageColors(){
+  if(localStorage.getItem('stage_colors_v1')) return;
+  try{
+    const PALETTE = ['#db4343','#db7d43','#dbb543','#c7db43','#8fdb43','#54db43','#43db69','#43dba3','#43dbdb','#43a1db','#4369db','#5743db','#8f43db','#c943db','#db43b5','#db437a'];
+    const order = getPinnedStageKeys();
+    order.forEach((k,i)=>{
+      const color = PALETTE[i % PALETTE.length];
+      if(IMOVEL_CATS[k]) IMOVEL_CATS[k].color = color;
+      else if(CATS[k]) CATS[k].color = color;
+    });
+    saveCats();
+    localStorage.setItem('stage_colors_v1','1');
+  }catch(e){ console.warn('Erro ao colorir etapas:', e); }
 })();
 
 function openEditImovelCat(k){
