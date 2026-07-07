@@ -2190,7 +2190,7 @@ function renderImovelCat(catKey, subKey){
       +'ondragover="event.preventDefault();event.stopPropagation();this.style.borderColor=\''+item.color+'\'" '
       +'ondragleave="this.style.borderColor=\'transparent\'" '
       +'ondrop="event.preventDefault();event.stopPropagation();handleImovelDocFiles(event.dataTransfer.files,\''+catKey+'\',\''+item.key+'\')" '
-      +'style="margin-top:6px;border:1.5px dashed '+item.color+(item.color==='#888'?'':'88')+';border-radius:6px;padding:8px;cursor:pointer;transition:border-color .15s;text-align:center">'
+      +'style="margin-top:6px;flex:1;min-height:32px;display:flex;align-items:center;justify-content:center;border:1.5px dashed '+item.color+(item.color==='#888'?'':'88')+';border-radius:6px;padding:8px;cursor:pointer;transition:border-color .15s;text-align:center">'
       +'<span style="font-size:11px;color:#666">☁ arraste ou clique para adicionar '+uploadLabel+'</span>'
       +'<input type="file" id="'+inputId+'" style="display:none" multiple onchange="handleImovelDocFiles(this.files,\''+catKey+'\',\''+item.key+'\');this.value=\'\'">'
       +'</div>'
@@ -3594,7 +3594,8 @@ async function handleImovelDocFiles(files, catKey, subKey){
 
     try{
       const ext = f.name.split('.').pop();
-      const path = catKey+'/'+subKey+'/'+Date.now()+'-'+f.name;
+      const safeName = f.name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9._-]/g,'-').replace(/-+/g,'-');
+      const path = catKey+'/'+subKey+'/'+Date.now()+'-'+safeName;
       const res = await fetch(`${SB_URL}/storage/v1/object/Anexos/${path}`,{
         method:'POST', headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':f.type}, body:f
       });
