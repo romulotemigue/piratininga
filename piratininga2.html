@@ -706,11 +706,11 @@ function renderCatNav(){
           onmouseout="this.style.borderColor='#2a2a2a';this.style.color='#555'">
           ${SUBCATS[k][sk].label}
         </div>
-        ${!isImovel?`<button class="subcat-dots-btn" style="background:none;border:none;color:#444;cursor:pointer;padding:4px 6px;font-size:13px;opacity:0;transition:opacity .15s" onclick="toggleSubCatMenu('subcat-menu-${k}-${sk}',event)"><i class="ti ti-dots-vertical"></i></button>
+        <button class="subcat-dots-btn" style="background:none;border:none;color:#444;cursor:pointer;padding:4px 6px;font-size:13px;opacity:0;transition:opacity .15s" onclick="toggleSubCatMenu('subcat-menu-${k}-${sk}',event)"><i class="ti ti-dots-vertical"></i></button>
         <div class="subcat-menu" id="subcat-menu-${k}-${sk}">
           <div class="cat-menu-item" onclick="openEditSubCat('${k}','${sk}')"><i class="ti ti-pencil"></i> Renomear</div>
           <div class="cat-menu-item danger" onclick="deleteSubCat('${k}','${sk}')"><i class="ti ti-trash"></i> Excluir</div>
-        </div>`:''}
+        </div>
       </div>
     `).join('') : '';
 
