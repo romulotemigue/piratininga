@@ -3102,6 +3102,35 @@ function tableCardHeader(label, color, icon, status, catKey){
     </div>
   </div>`;
 }
+const SUBCAT_GROUP_PALETTE = ['#42a5f5','#e8b544','#ab47bc','#4caf50','#ef5350','#26c6da','#ff7043','#8d6e63','#7cb342','#5c6bc0','#ec407a','#26a69a'];
+function subGroupColor(idx){ return SUBCAT_GROUP_PALETTE[idx % SUBCAT_GROUP_PALETTE.length]; }
+
+function renderOneRow(g, status, catKey, rowBorder, showSubLabel){
+  const subLabel = showSubLabel && g.subcategoria && SUBCATS[catKey||g.categoria]?.[g.subcategoria]?.label || '';
+  const val = (g.valor||0)*(g.quantidade||1);
+  return `<tr draggable="true" data-id="${g.id}" data-status="${status}" data-catkey="${catKey||''}"
+    onDragStart="onRowDragStart(event,${g.id})"
+    onDragEnd="onRowDragEnd(event)"
+    onDragOver="onRowInternalOver(event)"
+    onDrop="onRowInternalDrop(event,${g.id},'${status}','${catKey||''}')"
+    style="cursor:default;border-bottom:1px solid ${rowBorder}">
+    <td style="padding:6px 2px 6px 8px;width:12px"><span class="drag-handle" title="Arrastar">⠿</span></td>
+    <td style="width:32px;vertical-align:middle;padding:4px">${fmtDate(g.data)}</td>
+    <td style="font-size:12px;padding:4px">
+      <div>${g.descricao||''}</div>
+      ${subLabel?`<div style="font-size:10px;color:#555;margin-top:2px">${subLabel}</div>`:''}
+    </td>
+    <td style="text-align:right;font-weight:500;font-size:11px;white-space:nowrap;padding:4px">${fmtShort(val)}</td>
+    <td style="padding:4px 2px"><div class="qty-wrap"><button class="qty-btn" onclick="changeQty(${g.id},-1)">−</button><input class="qty-input" type="number" min="1" value="${g.quantidade||1}" onchange="setQty(${g.id},this)" onclick="event.stopPropagation()"><button class="qty-btn" onclick="changeQty(${g.id},1)">+</button></div></td>
+    <td style="white-space:nowrap;padding:4px 6px 4px 2px;min-width:90px">
+      <span style="display:inline-block;width:18px;text-align:center">${g.link?`<a href="${g.link}" target="_blank" style="color:#2a78d6;font-size:13px"><i class="ti ti-external-link"></i></a>`:''}</span>
+      <span style="display:inline-block;width:18px;text-align:center">${g.obs?`<span title="${g.obs}" style="color:#555;font-size:12px;cursor:default"><i class="ti ti-message-circle"></i></span>`:''}</span>
+      <button class="edit-btn" style="opacity:1;padding:2px 4px" onclick="openEdit(${g.id})"><i class="ti ti-pencil"></i></button>
+      <button class="del-btn" style="opacity:1;padding:2px 4px" onclick="removeGasto(${g.id})"><i class="ti ti-trash"></i></button>
+    </td>
+  </tr>`;
+}
+
 function renderRowsFiltered(list, status, catKey, borderColor){
   const filtered = list.filter(g=>g.status===status);
   const rowBorder = borderColor||'#1f1f1f';
@@ -3112,31 +3141,35 @@ function renderRowsFiltered(list, status, catKey, borderColor){
   const sorted = order.length
     ? [...filtered].sort((a,b)=>{ const ai=order.indexOf(a.id); const bi=order.indexOf(b.id); return (ai===-1?9999:ai)-(bi===-1?9999:bi); })
     : filtered;
-  return sorted.map((g,idx)=>{
-    const subLabel = g.subcategoria && SUBCATS[catKey||g.categoria]?.[g.subcategoria]?.label || '';
-    const val = (g.valor||0)*(g.quantidade||1);
-    return `<tr draggable="true" data-id="${g.id}" data-status="${status}" data-catkey="${catKey||''}"
-      onDragStart="onRowDragStart(event,${g.id})"
-      onDragEnd="onRowDragEnd(event)"
-      onDragOver="onRowInternalOver(event)"
-      onDrop="onRowInternalDrop(event,${g.id},'${status}','${catKey||''}')"
-      style="cursor:default;border-bottom:1px solid ${rowBorder}">
-      <td style="padding:6px 2px 6px 8px;width:12px"><span class="drag-handle" title="Arrastar">⠿</span></td>
-      <td style="width:32px;vertical-align:middle;padding:4px">${fmtDate(g.data)}</td>
-      <td style="font-size:12px;padding:4px">
-        <div>${g.descricao||''}</div>
-        ${subLabel?`<div style="font-size:10px;color:#555;margin-top:2px">${subLabel}</div>`:''}
-      </td>
-      <td style="text-align:right;font-weight:500;font-size:11px;white-space:nowrap;padding:4px">${fmtShort(val)}</td>
-      <td style="padding:4px 2px"><div class="qty-wrap"><button class="qty-btn" onclick="changeQty(${g.id},-1)">−</button><input class="qty-input" type="number" min="1" value="${g.quantidade||1}" onchange="setQty(${g.id},this)" onclick="event.stopPropagation()"><button class="qty-btn" onclick="changeQty(${g.id},1)">+</button></div></td>
-      <td style="white-space:nowrap;padding:4px 6px 4px 2px;min-width:90px">
-        <span style="display:inline-block;width:18px;text-align:center">${g.link?`<a href="${g.link}" target="_blank" style="color:#2a78d6;font-size:13px"><i class="ti ti-external-link"></i></a>`:''}</span>
-        <span style="display:inline-block;width:18px;text-align:center">${g.obs?`<span title="${g.obs}" style="color:#555;font-size:12px;cursor:default"><i class="ti ti-message-circle"></i></span>`:''}</span>
-        <button class="edit-btn" style="opacity:1;padding:2px 4px" onclick="openEdit(${g.id})"><i class="ti ti-pencil"></i></button>
-        <button class="del-btn" style="opacity:1;padding:2px 4px" onclick="removeGasto(${g.id})"><i class="ti ti-trash"></i></button>
-      </td>
-    </tr>`;
-  }).join('');
+
+  // Agrupa por subcategoria (ambiente), seguindo a mesma ordem em Pago/Necessário/Dispensável
+  const subKeysOrder = catKey && SUBCATS[catKey] ? Object.keys(SUBCATS[catKey]) : [];
+  if(subKeysOrder.length){
+    const groupMap = {};
+    subKeysOrder.forEach((sk,i)=>{ groupMap[sk] = { label: SUBCATS[catKey][sk].label, color: subGroupColor(i), items: [] }; });
+    const noGroup = { label:'Sem ambiente', color:'#555', items: [] };
+    sorted.forEach(g=>{
+      if(g.subcategoria && groupMap[g.subcategoria]) groupMap[g.subcategoria].items.push(g);
+      else noGroup.items.push(g);
+    });
+    const groups = subKeysOrder.map(sk=>groupMap[sk]).filter(gr=>gr.items.length);
+    if(noGroup.items.length) groups.push(noGroup);
+
+    // Se só existe um grupo de fato (tudo na mesma subcategoria ou nenhuma usada), não precisa de cabeçalho
+    if(groups.length > 1){
+      return groups.map(grp=>{
+        const header = `<tr class="subcat-group-header"><td colspan="6" style="padding:5px 8px;background:${grp.color}1c;border-top:1px solid ${grp.color}55;border-bottom:1px solid ${grp.color}33">
+          <span style="display:inline-flex;align-items:center;gap:6px;font-size:9px;font-weight:700;color:${grp.color};text-transform:uppercase;letter-spacing:.09em">
+            <span style="width:6px;height:6px;border-radius:50%;background:${grp.color};display:inline-block"></span>${grp.label}
+          </span>
+        </td></tr>`;
+        const rows = grp.items.map(g=>renderOneRow(g,status,catKey,rowBorder,false)).join('');
+        return header + rows;
+      }).join('');
+    }
+  }
+
+  return sorted.map(g=>renderOneRow(g,status,catKey,rowBorder,true)).join('');
 }
 
 function renderRowsGeral(list, borderColor){
