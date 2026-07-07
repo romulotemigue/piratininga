@@ -1713,6 +1713,12 @@ function render(){
 }
 
 // ── IMÓVEL NAV ───────────────────────────────────────────────────
+const IMOVEL_CATS = {
+  'venda-imovel':  { label:'Venda do Imóvel',        color:'#4caf50', icon:'🏠' },
+  'compra-imovel': { label:'Compra do Imóvel',        color:'#42a5f5', icon:'🔑' },
+  'projeto-arq':   { label:'Projeto de Arquitetura',  color:'#e8b544', icon:'📐' },
+};
+
 let imovelOrder = JSON.parse(localStorage.getItem('imovel_order')||'["venda-imovel","compra-imovel","projeto-arq"]');
 let imovelDragKey = null;
 
@@ -1789,12 +1795,6 @@ function imovelDragEnd(e){
 }
 
 // ── IMÓVEL CATS ──────────────────────────────────────────────────
-const IMOVEL_CATS = {
-  'venda-imovel':  { label:'Venda do Imóvel',        color:'#4caf50', icon:'🏠' },
-  'compra-imovel': { label:'Compra do Imóvel',        color:'#42a5f5', icon:'🔑' },
-  'projeto-arq':   { label:'Projeto de Arquitetura',  color:'#e8b544', icon:'📐' },
-};
-
 function renderImovelCat(catKey, subKey){
   const info = IMOVEL_CATS[catKey];
   const lista = gastos.filter(g=>g.categoria===catKey);
@@ -3182,6 +3182,13 @@ async function bulkMoveSelected(newStatus){
 }
 
 ensureSubCats();
+
+// reset imovel subcats to avoid stale localStorage breaking renderCatNav
+try{
+  Object.keys(IMOVEL_CATS).forEach(k=>{ delete SUBCATS[k]; });
+  saveSubCats();
+}catch(e){}
+
 renderCatNav();
 loadGastos();
 
