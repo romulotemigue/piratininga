@@ -707,7 +707,7 @@ function renderCatNav(){
   const expanded = JSON.parse(localStorage.getItem('pirati_expanded')||'{}');
 
   // Merge CATS + IMOVEL_CATS into unified ordered list
-  const imovelKeys = JSON.parse(localStorage.getItem('imovel_order')||'["venda-imovel","compra-imovel"]');
+  const imovelKeys = JSON.parse(localStorage.getItem('imovel_order')||'["venda-imovel","compra-imovel","projeto-arq"]');
   const allOrder = JSON.parse(localStorage.getItem('all_cat_order')||'null');
   let allKeys;
   if(allOrder){
@@ -1207,7 +1207,7 @@ function dragLeave(k, e){
 function dragDrop(k, e){
   e.preventDefault();
   if(k===dragKey) return;
-  const imovelKeys = JSON.parse(localStorage.getItem('imovel_order')||'["venda-imovel","compra-imovel"]');
+  const imovelKeys = JSON.parse(localStorage.getItem('imovel_order')||'["venda-imovel","compra-imovel","projeto-arq"]');
   const allOrder = JSON.parse(localStorage.getItem('all_cat_order')||'null') || [...Object.keys(CATS), ...imovelKeys];
   const fromIdx = allOrder.indexOf(dragKey);
   const toIdx = allOrder.indexOf(k);
@@ -1712,6 +1712,9 @@ function render(){
 
 // ── IMÓVEL NAV ───────────────────────────────────────────────────
 let imovelOrder = JSON.parse(localStorage.getItem('imovel_order')||'["venda-imovel","compra-imovel","projeto-arq"]');
+// ensure all IMOVEL_CATS keys are in imovelOrder
+Object.keys(IMOVEL_CATS).forEach(k=>{ if(!imovelOrder.includes(k)) imovelOrder.push(k); });
+saveImovelOrder();
 let imovelDragKey = null;
 
 function saveImovelOrder(){ localStorage.setItem('imovel_order', JSON.stringify(imovelOrder)); }
