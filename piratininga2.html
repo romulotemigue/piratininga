@@ -1850,12 +1850,13 @@ function renderImovelCat(catKey, subKey){
   }
 
   // MAIN SUMMARY VIEW
-  const totalRecebido = summaryItems.filter(i=>i.tipo==='recebimento').reduce((s,item)=>{
-    return s + lista.filter(g=>g.subcategoria===item.key).reduce((ss,g)=>ss+getVal(g),0);
-  },0);
-  const totalGasto = summaryItems.filter(i=>i.tipo==='gasto').reduce((s,item)=>{
-    return s + lista.filter(g=>g.subcategoria===item.key).reduce((ss,g)=>ss+getVal(g),0);
-  },0);
+  const recKeys = summaryItems.filter(i=>i.tipo==='recebimento').map(i=>i.key);
+  const gastoKeys = summaryItems.filter(i=>i.tipo==='gasto').map(i=>i.key);
+  const recLista = lista.filter(g=>recKeys.includes(g.subcategoria));
+  const gastoLista = lista.filter(g=>gastoKeys.includes(g.subcategoria));
+  const totalRecebido = recLista.filter(g=>g.status==='pago').reduce((s,g)=>s+getVal(g),0);
+  const totalAReceber = recLista.filter(g=>g.status!=='pago').reduce((s,g)=>s+getVal(g),0);
+  const totalGasto = gastoLista.reduce((s,g)=>s+getVal(g),0);
   const liquido = totalRecebido - totalGasto;
 
   function makeCard(item){
@@ -1889,7 +1890,8 @@ function renderImovelCat(catKey, subKey){
   // Summary bar
   html += '<div style="background:#111;border:1px solid #2a2a2a;border-left:3px solid '+info.color+';border-radius:10px;padding:1.25rem;margin-bottom:1.25rem;display:flex;gap:2rem;align-items:center;flex-wrap:wrap">';
   if(recItems.length){
-    html += '<div><div style="font-size:10px;color:#555;margin-bottom:2px">🟢 Recebimentos</div><div style="font-size:20px;font-weight:700;color:#4caf50">'+fmt(totalRecebido)+'</div></div>';
+    html += '<div><div style="font-size:10px;color:#4caf50;margin-bottom:2px">🟢 Recebido</div><div style="font-size:20px;font-weight:700;color:#4caf50">'+fmt(totalRecebido)+'</div></div>';
+    html += '<div style="border-left:1px solid #2a2a2a;padding-left:1.5rem"><div style="font-size:10px;color:#42a5f5;margin-bottom:2px">🔵 A receber</div><div style="font-size:20px;font-weight:700;color:#42a5f5">'+fmt(totalAReceber)+'</div></div>';
     html += '<div style="border-left:1px solid #2a2a2a;padding-left:1.5rem"><div style="font-size:10px;color:#555;margin-bottom:2px">🔴 Gastos</div><div style="font-size:20px;font-weight:700;color:#ef5350">'+fmt(totalGasto)+'</div></div>';
     html += '<div style="border-left:1px solid #2a2a2a;padding-left:1.5rem"><div style="font-size:10px;color:#555;margin-bottom:2px">= Líquido</div><div style="font-size:20px;font-weight:700;color:'+(liquido>=0?'#4caf50':'#ef5350')+'">'+fmt(liquido)+'</div></div>';
   } else {
