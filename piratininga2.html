@@ -1880,7 +1880,7 @@ function renderImovelCat(catKey, subKey){
   const summaryItems = catKey==='venda-imovel' ? [
     {label:'Proposta',         key:'proposta',        color:'#888',    icon:'📝', tipo:'doc'},
     {label:'Contrato',         key:'contrato',        color:'#42a5f5', icon:'📄', tipo:'doc'},
-    {label:'Sinal',            key:'sinal',           color:'#9c27b0', icon:'🤝', tipo:'recebimento'},
+    {label:'Sinal',            key:'sinal',           color:'#9c27b0', icon:'🤝', tipo:'recibo'},
     {label:'Entrada',          key:'entrada',         color:'#4caf50', icon:'💵', tipo:'recebimento'},
     {label:'Repasse bancário', key:'repasse-bancario',color:'#e91e8c', icon:'🏦', tipo:'recebimento'},
     {label:'Corretagem',       key:'corretagem',      color:'#e8b544', icon:'🤝', tipo:'gasto'},
@@ -1888,8 +1888,8 @@ function renderImovelCat(catKey, subKey){
   ] : catKey==='compra-imovel' ? [
     {label:'Proposta',         key:'proposta',        color:'#888',    icon:'📝', tipo:'doc'},
     {label:'Contrato',         key:'contrato',        color:'#42a5f5', icon:'📄', tipo:'doc'},
-    {label:'Sinal',            key:'sinal',           color:'#9c27b0', icon:'🤝', tipo:'gasto'},
-    {label:'Entrada',          key:'entrada',         color:'#4caf50', icon:'💵', tipo:'gasto'},
+    {label:'Sinal',            key:'sinal',           color:'#9c27b0', icon:'🤝', tipo:'recibo'},
+    {label:'Entrada',          key:'entrada',         color:'#4caf50', icon:'💵', tipo:'recibo'},
     {label:'Repasse bancário', key:'repasse-bancario',color:'#e91e8c', icon:'🏦', tipo:'gasto'},
     {label:'FGTS',             key:'fgts',            color:'#e91e8c', icon:'💳', tipo:'gasto'},
     {label:'Taxas',            key:'taxas',           color:'#888',    icon:'📋', tipo:'gasto'},
@@ -1996,8 +1996,8 @@ function renderImovelCat(catKey, subKey){
       +'ondragover="event.preventDefault();event.stopPropagation();this.style.borderColor=\''+item.color+'\'" '
       +'ondragleave="this.style.borderColor=\'transparent\'" '
       +'ondrop="event.preventDefault();event.stopPropagation();handleImovelDocFiles(event.dataTransfer.files,\''+catKey+'\',\''+item.key+'\')" '
-      +'style="margin-top:6px;border:1px dashed '+item.color+'55;border-radius:6px;padding:5px 8px;cursor:pointer;transition:border-color .15s;text-align:center">'
-      +'<span style="font-size:9px;color:#555">☁ arraste ou clique para adicionar '+uploadLabel+'</span>'
+      +'style="margin-top:6px;border:1.5px dashed '+item.color+'88;border-radius:6px;padding:8px;cursor:pointer;transition:border-color .15s;text-align:center">'
+      +'<span style="font-size:11px;color:#666">☁ arraste ou clique para adicionar '+uploadLabel+'</span>'
       +'<input type="file" id="'+inputId+'" style="display:none" multiple onchange="handleImovelDocFiles(this.files,\''+catKey+'\',\''+item.key+'\');this.value=\'\'">'
       +'</div>'
     ) : '';
