@@ -2441,6 +2441,15 @@ function renderCat(cat){
   }
 }
 
+function confirmDeleteCol(status, catKey){
+  const label = STATUS_META[status]?.label || status;
+  const lista = gastos.filter(g=>g.status===status&&(catKey?g.categoria===catKey:g.categoria!=='ganho'));
+  if(!lista.length){ toast('Nenhum item nesta coluna.'); return; }
+  if(confirm(`Deletar todos os ${lista.length} item(ns) de "${label}"?\n\nVocê pode desfazer com ↩`)){
+    deleteAllInCol(status, catKey);
+  }
+}
+
 function toggleColMenu(id, e){
   e.stopPropagation();
   document.querySelectorAll('.cat-menu.open').forEach(m=>{ if(m.id!==id) m.classList.remove('open'); });
@@ -2587,25 +2596,16 @@ function onColCardDrop(e, catKey){
 }
 
 function tableCardHeader(label, color, icon, status, catKey){
-  const menuId = `col-menu-${status}-${catKey||'geral'}`;
-  return `<div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:${color};text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px;position:relative">
-    <span class="col-drag-handle" data-col="${status}" data-catkey="${catKey||''}" draggable="true"
-      title="Arrastar coluna"
-      style="color:#333;cursor:grab;font-size:14px;padding:0 4px 0 0;user-select:none;transition:color .15s"
-      onmouseover="this.style.color='#666'" onmouseout="this.style.color='#333'"
-      ondragstart="onColDragStart(event,'${status}','${catKey||''}')"
-      ondragend="onColDragEnd(event)">⠿</span>
+  const ck = catKey||'';
+  return `<div style="padding:10px 14px;background:#111;border-bottom:1px solid #222;font-size:10px;font-weight:600;color:${color};text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px">
+    <span class="col-drag-handle" data-col="${status}" data-catkey="${ck}" draggable="true" title="Arrastar coluna" style="color:#333;cursor:grab;font-size:14px;padding:0 4px 0 0;user-select:none" ondragstart="onColDragStart(event,'${status}','${ck}')" ondragend="onColDragEnd(event)">⠿</span>
     <i class="ti ${icon}"></i> ${label}
-    <div style="margin-left:auto;display:flex;gap:2px;align-items:center">
-      <button onclick="openBulkModal('${status}','${catKey||''}')" title="Mover em massa" style="background:none;border:none;color:#444;cursor:pointer;font-size:15px;padding:2px 4px;border-radius:4px;transition:color .15s" onmouseover="this.style.color='#e8b544'" onmouseout="this.style.color='#444'"><i class="ti ti-arrows-transfer-down"></i></button>
-      <button onclick="toggleColMenu('${menuId}',event)" title="Opções" style="background:none;border:none;color:#444;cursor:pointer;font-size:15px;padding:2px 4px;border-radius:4px;transition:color .15s" onmouseover="this.style.color='#e8e7e2'" onmouseout="this.style.color='#444'"><i class="ti ti-dots-vertical"></i></button>
-    </div>
-    <div id="${menuId}" class="cat-menu" style="top:30px;right:8px">
-      <div class="cat-menu-item danger" onclick="deleteAllInCol('${status}','${catKey||''}')"><i class="ti ti-trash"></i> Deletar todos</div>
+    <div style="margin-left:auto;display:flex;gap:4px;align-items:center">
+      <button title="Mover em massa" style="background:none;border:none;color:#555;cursor:pointer;font-size:14px;padding:2px" onclick="openBulkModal('${status}','${ck}')"><i class="ti ti-arrows-transfer-down"></i></button>
+      <button title="Opções da coluna" style="background:none;border:none;color:#888;cursor:pointer;font-size:16px;padding:2px;font-weight:bold" onclick="confirmDeleteCol('${status}','${ck}')">⋯</button>
     </div>
   </div>`;
 }
-
 function renderRowsFiltered(list, status, catKey, borderColor){
   const filtered = list.filter(g=>g.status===status);
   const rowBorder = borderColor||'#1f1f1f';
