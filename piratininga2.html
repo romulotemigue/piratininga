@@ -702,6 +702,7 @@ if(Object.keys(CATS).length === 0) CATS = JSON.parse(JSON.stringify(DEFAULT_CATS
 function saveCats(){ localStorage.setItem('pirati_cats', JSON.stringify(CATS)); }
 
 function renderCatNav(){
+  try{
   const list = document.getElementById('cat-nav-list');
   if(!list) return;
   const expanded = JSON.parse(localStorage.getItem('pirati_expanded')||'{}');
@@ -783,6 +784,7 @@ function renderCatNav(){
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   const active = document.getElementById('nav-'+currentPage);
   if(active) active.classList.add('active');
+  }catch(e){ console.error('renderCatNav error:', e); }
 }
 
 function toggleExpand(k, e){
@@ -804,12 +806,12 @@ function toggleExpand(k, e){
 
 function toggleAllExpand(){
   const expanded = JSON.parse(localStorage.getItem('pirati_expanded')||'{}');
-  const keys = Object.keys(CATS).filter(k=>SUBCATS[k]&&Object.keys(SUBCATS[k]).length>0);
+  const allCatKeys = [...Object.keys(CATS), ...Object.keys(IMOVEL_CATS)];
+  const keys = allCatKeys.filter(k=>SUBCATS[k]&&Object.keys(SUBCATS[k]).length>0);
   const allOpen = keys.every(k=>expanded[k]);
   const newState = !allOpen;
   keys.forEach(k=>{ expanded[k]=newState; });
   localStorage.setItem('pirati_expanded', JSON.stringify(expanded));
-  // update icon
   const btn = document.getElementById('btn-expand-all');
   if(btn) btn.innerHTML = newState?'<i class="ti ti-chevrons-up"></i>':'<i class="ti ti-chevrons-down"></i>';
   renderCatNav();
@@ -1712,12 +1714,20 @@ function render(){
 
 // ── IMÓVEL NAV ───────────────────────────────────────────────────
 let imovelOrder = JSON.parse(localStorage.getItem('imovel_order')||'["venda-imovel","compra-imovel","projeto-arq"]');
-// ensure all IMOVEL_CATS keys are in imovelOrder
-Object.keys(IMOVEL_CATS).forEach(k=>{ if(!imovelOrder.includes(k)) imovelOrder.push(k); });
-saveImovelOrder();
 let imovelDragKey = null;
 
 function saveImovelOrder(){ localStorage.setItem('imovel_order', JSON.stringify(imovelOrder)); }
+
+// ensure all IMOVEL_CATS keys are in imovelOrder
+Object.keys(IMOVEL_CATS).forEach(k=>{ if(!imovelOrder.includes(k)) imovelOrder.push(k); });
+saveImovelOrder();
+
+// protect SUBCATS from stale data
+try{
+  Object.keys(IMOVEL_CATS).forEach(k=>{
+    if(SUBCATS[k]) Object.keys(SUBCATS[k]).forEach(sk=>{ if(!SUBCATS[k][sk]||typeof SUBCATS[k][sk]!=='object') delete SUBCATS[k][sk]; });
+  });
+}catch(e){ console.warn('SUBCATS cleanup error',e); }
 
 function openEditImovelCat(k){
   const info = IMOVEL_CATS[k];
