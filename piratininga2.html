@@ -131,9 +131,9 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
 .qty-input:focus{outline:none;border-color:#e8b544}
 .nav-drag{cursor:grab;color:#333;padding:4px 2px 4px 6px;font-size:13px;flex-shrink:0}
 .nav-drag:active{cursor:grabbing}
-.nav-cat-wrap{transition:opacity .2s, transform .2s, box-shadow .2s}
-.nav-cat-wrap.dragging{opacity:.25;transform:scale(0.95);filter:brightness(0.5)}
-.nav-cat-wrap.drag-over{border-top:3px solid #e8b544;transform:translateY(4px);box-shadow:0 -3px 0 0 #e8b54466}
+.nav-cat-wrap{transition:opacity .15s, transform .15s, box-shadow .15s}
+.nav-cat-wrap.dragging{opacity:.2;transform:scale(0.93) rotate(-1deg);filter:blur(1px)}
+.nav-cat-wrap.drag-over{border-top:3px solid #e8b544;transform:translateY(6px) scale(1.02);box-shadow:0 -4px 12px rgba(232,181,68,0.4);background:rgba(232,181,68,0.05)}
 .subcat-row:hover .subcat-dots-btn{opacity:1!important;color:#e8b544}
 .subcat-dots-btn{opacity:0}
 .cat-chevron{background:none;border:none;color:#555;cursor:pointer;padding:4px 6px;font-size:12px;transition:transform .2s;flex-shrink:0;line-height:1}
@@ -1197,40 +1197,55 @@ let dragKey = null;
 function dragStart(k, e){
   dragKey = k;
   e.dataTransfer.effectAllowed = 'move';
-  setTimeout(()=>{ const el=document.getElementById('cat-wrap-'+k); if(el) el.classList.add('dragging'); },0);
+  e.dataTransfer.setData('text/plain', k);
+  const el = document.getElementById('cat-wrap-'+k);
+  if(el){
+    // create ghost image
+    const ghost = el.cloneNode(true);
+    ghost.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0.8;transform:rotate(-2deg) scale(1.05);background:#1a1a1a;border-radius:8px;width:'+el.offsetWidth+'px;pointer-events:none;';
+    document.body.appendChild(ghost);
+    e.dataTransfer.setDragImage(ghost, el.offsetWidth/2, 20);
+    setTimeout(()=>{ ghost.remove(); el.classList.add('dragging'); }, 0);
+  }
 }
 
+let dragOverKey = null;
 function dragOver(k, e){
   e.preventDefault();
   e.dataTransfer.dropEffect = 'move';
   if(k===dragKey) return;
+  if(k===dragOverKey) return; // already highlighted
+  dragOverKey = k;
   document.querySelectorAll('.nav-cat-wrap').forEach(el=>el.classList.remove('drag-over'));
   const el = document.getElementById('cat-wrap-'+k);
   if(el) el.classList.add('drag-over');
 }
 
 function dragLeave(k, e){
+  // only remove if actually leaving (not entering child)
+  if(e.relatedTarget && document.getElementById('cat-wrap-'+k)?.contains(e.relatedTarget)) return;
   const el = document.getElementById('cat-wrap-'+k);
   if(el) el.classList.remove('drag-over');
+  if(dragOverKey===k) dragOverKey=null;
 }
 
 function dragDrop(k, e){
   e.preventDefault();
   if(k===dragKey) return;
-  const imovelKeys = Object.keys(IMOVEL_CATS);
+  const savedImovelOrder = JSON.parse(localStorage.getItem('imovel_order')||'null');
+  const imovelKeys = savedImovelOrder ? savedImovelOrder.filter(k2=>IMOVEL_CATS[k2]) : Object.keys(IMOVEL_CATS);
+  Object.keys(IMOVEL_CATS).forEach(k2=>{ if(!imovelKeys.includes(k2)) imovelKeys.push(k2); });
   const catKeys = Object.keys(CATS);
   const fromIsImovel = imovelKeys.includes(dragKey);
   const toIsImovel = imovelKeys.includes(k);
 
   if(fromIsImovel && toIsImovel){
-    // reorder imovel among themselves
     const arr = [...imovelKeys];
     const fi = arr.indexOf(dragKey);
     const ti = arr.indexOf(k);
     arr.splice(fi,1); arr.splice(ti,0,dragKey);
     localStorage.setItem('imovel_order', JSON.stringify(arr));
   } else if(!fromIsImovel && !toIsImovel){
-    // reorder normal cats
     const allOrder = JSON.parse(localStorage.getItem('all_cat_order')||'null') || [...catKeys];
     const catOrder = allOrder.filter(k2=>catKeys.includes(k2));
     catKeys.forEach(k2=>{ if(!catOrder.includes(k2)) catOrder.push(k2); });
@@ -1240,15 +1255,16 @@ function dragDrop(k, e){
     catOrder.splice(fi,1); catOrder.splice(ti,0,dragKey);
     localStorage.setItem('all_cat_order', JSON.stringify(catOrder));
   }
+  dragOverKey = null;
   renderCatNav();
   dragKey = null;
 }
 
 function dragEnd(e){
   dragKey = null;
+  dragOverKey = null;
   document.querySelectorAll('.nav-cat-wrap').forEach(el=>{
-    el.classList.remove('dragging');
-    el.classList.remove('drag-over');
+    el.classList.remove('dragging','drag-over');
   });
 }
 
@@ -1737,7 +1753,12 @@ function navigate(page, skipHistory){
   const fixedTitles={geral:'Visão Geral',ganhos:'Aportes','venda-imovel':'Venda do Imóvel','compra-imovel':'Compra do Imóvel','projeto-arq':'Projeto de Arquitetura','obra-bruta':'Execução de Obra'};
   const rawTitle = fixedTitles[page] || (CATS[page]?.label) || page;
   const num = getEtapaNum(page);
-  document.getElementById('topbar-title').textContent = num ? `${num}. ${rawTitle}` : rawTitle;
+  const titleEl = document.getElementById('topbar-title');
+  if(num){
+    titleEl.innerHTML = `<span style="display:inline-flex;align-items:center;gap:10px"><span style="font-family:'Arial Black',sans-serif;font-size:22px;font-weight:900;color:${IMOVEL_CATS[page.split('__')[0]]?.color||'#e8b544'};opacity:.9;line-height:1">${num}</span><span>${rawTitle}</span></span>`;
+  } else {
+    titleEl.textContent = rawTitle;
+  }
   if(barChart){barChart.destroy();barChart=null;}
   if(pieChart){pieChart.destroy();pieChart=null;}
   if(catChart){catChart.destroy();catChart=null;}
