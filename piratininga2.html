@@ -1765,12 +1765,8 @@ function renderImovelCat(catKey){
   const info = IMOVEL_CATS[catKey];
   const lista = gastos.filter(g=>g.categoria===catKey);
   const getVal = g=>(g.valor||0)*(g.quantidade||1);
-  const pago = lista.filter(g=>g.status==='pago').reduce((s,g)=>s+getVal(g),0);
-  const necessario = lista.filter(g=>g.status==='necessario').reduce((s,g)=>s+getVal(g),0);
-  const dispensavel = lista.filter(g=>g.status==='apagar').reduce((s,g)=>s+getVal(g),0);
-  const total = pago+necessario+dispensavel;
+  const total = lista.reduce((s,g)=>s+getVal(g),0);
 
-  // Summary items per cat type
   const summaryItems = catKey==='venda-imovel' ? [
     {label:'Proposta', key:'proposta', color:'#888', icon:'📝'},
     {label:'Contrato', key:'contrato', color:'#42a5f5', icon:'📄'},
@@ -1785,26 +1781,46 @@ function renderImovelCat(catKey){
     {label:'Taxas / Cartório', key:'taxas-compra', color:'#888', icon:'📋'},
   ];
 
+  // Ensure subcats exist
+  if(!SUBCATS[catKey]) SUBCATS[catKey] = {};
+  summaryItems.forEach(item=>{ if(!SUBCATS[catKey][item.key]) SUBCATS[catKey][item.key]={label:item.label}; });
+  saveSubCats();
+
   const summaryHtml = `
     <div style="display:grid;grid-template-columns:repeat(${summaryItems.length},1fr);gap:10px;margin-bottom:1rem">
       ${summaryItems.map(item=>{
         const itemGastos = lista.filter(g=>g.subcategoria===item.key);
         const itemTotal = itemGastos.reduce((s,g)=>s+getVal(g),0);
-        return `<div style="background:#111;border:1px solid #2a2a2a;border-left:3px solid ${item.color};border-radius:8px;padding:12px 14px;cursor:pointer" onclick="navigate('${catKey}__${item.key}')">
-          <div style="font-size:16px;margin-bottom:4px">${item.icon}</div>
-          <div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">${item.label}</div>
-          <div style="font-size:16px;font-weight:700;color:${itemTotal>0?item.color:'#333'}">${itemTotal>0?fmt(itemTotal):'R$ 0'}</div>
-          <div style="font-size:10px;color:#444;margin-top:4px">${itemGastos.length} lançamento${itemGastos.length!==1?'s':''}</div>
+        const rows = itemGastos.length ? itemGastos.map(g=>`
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-top:1px solid #222;font-size:11px">
+            <div>
+              <div style="color:#e8e7e2">${g.descricao||''}</div>
+              ${g.data?`<div style="color:#555;font-size:10px">${fmtDate(g.data)}</div>`:''}
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="color:${item.color};font-weight:600">${fmt(getVal(g))}</span>
+              <button onclick="openEdit(${g.id})" style="background:none;border:none;color:#555;cursor:pointer;font-size:12px;padding:2px"><i class="ti ti-pencil"></i></button>
+              <button onclick="removeGasto(${g.id})" style="background:none;border:none;color:#555;cursor:pointer;font-size:12px;padding:2px"><i class="ti ti-trash"></i></button>
+            </div>
+          </div>`).join('') : `<div style="font-size:10px;color:#333;padding:6px 0;border-top:1px solid #1a1a1a">Nenhum lançamento</div>`;
+        return `<div style="background:#111;border:1px solid #2a2a2a;border-left:3px solid ${item.color};border-radius:8px;padding:12px 14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div>
+              <div style="font-size:14px;margin-bottom:2px">${item.icon}</div>
+              <div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em">${item.label}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:15px;font-weight:700;color:${itemTotal>0?item.color:'#333'}">${itemTotal>0?fmt(itemTotal):'—'}</div>
+              <button onclick="openModal('${catKey}','${item.key}')"
+                style="background:transparent;border:1px solid ${item.color};color:${item.color};padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;margin-top:4px">
+                + lançar
+              </button>
+            </div>
+          </div>
+          ${rows}
         </div>`;
       }).join('')}
     </div>`;
-
-  // Ensure subcats exist for summary items
-  if(!SUBCATS[catKey]) SUBCATS[catKey] = {};
-  summaryItems.forEach(item=>{
-    if(!SUBCATS[catKey][item.key]) SUBCATS[catKey][item.key] = {label:item.label};
-  });
-  saveSubCats();
 
   document.getElementById('content').innerHTML = `
     <div class="cat-total-card" style="border-left:3px solid ${info.color}">
@@ -1813,28 +1829,11 @@ function renderImovelCat(catKey){
         <span class="cat-stat-value" style="color:${info.color}">${fmt(total)}</span>
       </div>
       <div class="cat-stat">
-        <span class="cat-stat-label">Já pago</span>
-        <span class="cat-stat-value" style="color:#4caf50">${fmt(pago)}</span>
-      </div>
-      <div class="cat-stat">
-        <span class="cat-stat-label">Necessários</span>
-        <span class="cat-stat-value" style="color:#42a5f5">${fmt(necessario)}</span>
-      </div>
-      <div class="cat-stat">
-        <span class="cat-stat-label">Dispensáveis</span>
-        <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
-      </div>
-      <div style="margin-left:auto">
-        <button onclick="openModalImovel('${catKey}')"
-          style="background:transparent;border:1px solid ${info.color};color:${info.color};padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s"
-          onmouseover="this.style.background='${info.color}';this.style.color='#111'"
-          onmouseout="this.style.background='transparent';this.style.color='${info.color}'">
-          + lançar em ${info.label}
-        </button>
+        <span class="cat-stat-label">Lançamentos</span>
+        <span class="cat-stat-value" style="color:#888">${lista.length}</span>
       </div>
     </div>
     ${summaryHtml}
-    ${renderColGrid(lista, catKey)}
   `;
   renderCatNav();
 }
