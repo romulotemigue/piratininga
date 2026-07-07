@@ -1787,22 +1787,25 @@ function renderImovelCat(catKey, subKey){
   const summaryItems = catKey==='venda-imovel' ? [
     {label:'Proposta', key:'proposta', color:'#888', icon:'📝', tipo:'doc'},
     {label:'Contrato', key:'contrato', color:'#42a5f5', icon:'📄', tipo:'doc'},
-    {label:'Sinal', key:'sinal-venda', color:'#9c27b0', icon:'🤝', tipo:'recebimento'},
-    {label:'Entrada', key:'entrada-venda', color:'#4caf50', icon:'💵', tipo:'recebimento'},
+    {label:'Sinal', key:'sinal', color:'#9c27b0', icon:'🤝', tipo:'recebimento'},
+    {label:'Entrada', key:'entrada', color:'#4caf50', icon:'💵', tipo:'recebimento'},
     {label:'Repasse bancário', key:'repasse-bancario', color:'#e91e8c', icon:'🏦', tipo:'recebimento'},
     {label:'Corretagem', key:'corretagem', color:'#e8b544', icon:'🤝', tipo:'gasto'},
-    {label:'Taxas', key:'taxas-venda', color:'#555', icon:'📋', tipo:'gasto'},
+    {label:'Taxas', key:'taxas', color:'#555', icon:'📋', tipo:'gasto'},
   ] : [
-    {label:'Proposta', key:'proposta-compra', color:'#888', icon:'📝', tipo:'doc'},
-    {label:'Contrato', key:'contrato-compra', color:'#42a5f5', icon:'📄', tipo:'doc'},
+    {label:'Proposta', key:'proposta', color:'#888', icon:'📝', tipo:'doc'},
+    {label:'Contrato', key:'contrato', color:'#42a5f5', icon:'📄', tipo:'doc'},
     {label:'Sinal', key:'sinal', color:'#9c27b0', icon:'🤝', tipo:'gasto'},
-    {label:'Entrada', key:'entrada-compra', color:'#4caf50', icon:'💵', tipo:'gasto'},
-    {label:'Financiamento', key:'financiamento', color:'#e8b544', icon:'🏦', tipo:'gasto'},
+    {label:'Entrada', key:'entrada', color:'#4caf50', icon:'💵', tipo:'gasto'},
+    {label:'Repasse bancário', key:'repasse-bancario', color:'#e91e8c', icon:'🏦', tipo:'gasto'},
     {label:'FGTS', key:'fgts', color:'#e91e8c', icon:'💳', tipo:'gasto'},
-    {label:'Taxas', key:'taxas-compra', color:'#888', icon:'📋', tipo:'gasto'},
+    {label:'Taxas', key:'taxas', color:'#888', icon:'📋', tipo:'gasto'},
   ];
 
   if(!SUBCATS[catKey]) SUBCATS[catKey]={};
+  // Reset imovel subcats to always match current summaryItems exactly
+  const validKeys = summaryItems.map(i=>i.key);
+  Object.keys(SUBCATS[catKey]).forEach(k=>{ if(!validKeys.includes(k)) delete SUBCATS[catKey][k]; });
   summaryItems.forEach(item=>{ if(!SUBCATS[catKey][item.key]) SUBCATS[catKey][item.key]={label:item.label}; });
   saveSubCats();
 
