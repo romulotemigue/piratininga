@@ -2011,15 +2011,12 @@ function renderImovelCat(catKey, subKey){
   function dateBadge(key){
     const d = getCardDate(catKey, key);
     const dateStr = d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'2-digit'}) : '';
-    const inputId = 'date-input-'+catKey+'-'+key;
-    // use a real visible date input styled minimally
+    const inputId = 'card-date-'+catKey+'-'+key;
     return '<div style="display:flex;align-items:center;gap:4px" onclick="event.stopPropagation()">'
-      +'<span style="font-size:13px">📅</span>'
-      +(dateStr?'<span style="font-size:10px;color:#e8b544;font-weight:600">'+dateStr+'</span>':'')
-      +'<input type="date" id="'+inputId+'" value="'+d+'" '
-      +'style="width:20px;height:20px;opacity:0.01;position:absolute;cursor:pointer;" '
-      +'onchange="event.stopPropagation();setCardDate(\''+catKey+'\',\''+key+'\',this.value)" '
-      +'onclick="event.stopPropagation()">'
+      +'<span style="font-size:13px;cursor:pointer" onclick="event.stopPropagation();var el=document.getElementById(\''+inputId+'\');el.dataset.catkey=\''+catKey+'\';el.dataset.key=\''+key+'\';if(el.showPicker)el.showPicker();else el.click()">📅</span>'
+      +(dateStr?'<span style="font-size:10px;color:#666">assinado em </span><span style="font-size:10px;color:#e8b544;font-weight:600">'+dateStr+'</span>':'')
+      +'<input type="date" id="'+inputId+'" value="'+d+'" style="position:fixed;opacity:0;width:1px;height:1px;pointer-events:none" '
+      +'onchange="var el=this;setCardDate(el.dataset.catkey,el.dataset.key,el.value)">'
       +'</div>';
   }
 
@@ -2051,8 +2048,8 @@ function renderImovelCat(catKey, subKey){
       +(showDate && hasData ? '<div style="font-size:13px;font-weight:700;color:'+item.color+';margin-top:4px">'+fmt(itemTotal)+'</div>' : '')
       +'<div>'
       +'<div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.07em">'+item.label+'</div>'
-      +(itemGastos.length?'<div style="font-size:10px;color:#444;margin-top:2px">'+itemGastos.length+' arquivo'+(itemGastos.length!==1?'s':'')+'</div>':'')
-      +(itemGastos.length&&itemGastos[0].link?'<div style="display:flex;align-items:center;gap:4px;margin-top:4px" onclick="event.stopPropagation()">'+'<a href="'+itemGastos[0].link+'" target="_blank" style="display:inline-flex;align-items:center;gap:3px;background:#1a2a3a;border:1px solid #2a78d6;color:#42a5f5;font-size:10px;font-weight:600;padding:3px 7px;border-radius:4px;text-decoration:none"><i class="ti ti-eye" style="font-size:11px"></i> Ver</a>'+'<button onclick="event.stopPropagation();if(confirm(\'Remover anexo?\'))removeGasto('+itemGastos[0].id+')" style="background:none;border:1px solid #333;color:#555;cursor:pointer;font-size:10px;padding:2px 6px;border-radius:4px">×</button>'+(itemGastos.length>1?'<span style="font-size:10px;color:#555">+'+( itemGastos.length-1)+' mais</span>':'')+'</div>':'')
+      
+      +(itemGastos.length&&itemGastos[0].link?'<div style="position:relative;display:inline-flex;margin-top:6px" onclick="event.stopPropagation()">'+'<a href="'+itemGastos[0].link+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;background:#1a2a3a;border:1px solid #2a78d6;color:#42a5f5;font-size:10px;font-weight:600;padding:4px 10px;border-radius:5px;text-decoration:none"><i class="ti ti-eye" style="font-size:11px"></i> Ver anexo</a>'+'<button onclick="event.stopPropagation();if(confirm(\'Remover anexo?\'))removeGasto('+itemGastos[0].id+')" style="position:absolute;top:-6px;right:-6px;width:15px;height:15px;border-radius:50%;background:#555;border:none;color:#fff;cursor:pointer;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0">×</button>'+'</div>':'')
       +'</div>'
       +uploadZone
       +'</div>';
