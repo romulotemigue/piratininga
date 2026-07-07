@@ -2080,17 +2080,26 @@ function renderImovelCat(catKey, subKey){
 
   // days counter since proposta
   const propostaDate = getCardDate(catKey, 'proposta');
+  const repasseDate = getCardDate(catKey, 'repasse-bancario');
   let daysHtml = '';
   if(propostaDate){
     const [y,m,d] = propostaDate.split('-').map(Number);
     const start = new Date(y, m-1, d);
-    const now = new Date(); const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const days = Math.round((today-start)/(1000*60*60*24));
+    let end;
+    let concluido = false;
+    if(repasseDate){
+      const [ry,rm,rd] = repasseDate.split('-').map(Number);
+      end = new Date(ry, rm-1, rd);
+      concluido = true;
+    } else {
+      const now = new Date();
+      end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    }
+    const days = Math.max(0, Math.round((end-start)/(1000*60*60*24)));
     const propostaFmt = start.toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
-    const daysLabel = days < 0 ? '0' : String(days);
     daysHtml = '<div style="text-align:right">'
-      +'<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Proposta assinada em '+propostaFmt+'</div>'
-      +'<div style="font-size:20px;font-weight:800;color:'+info.color+'">'+daysLabel+' <span style="font-size:11px;font-weight:500;color:#888">dias corridos</span></div>'
+      +'<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">'+(concluido?'✅ Processo concluído em':'Proposta assinada em')+' '+propostaFmt+'</div>'
+      +'<div style="font-size:20px;font-weight:800;color:'+(concluido?'#4caf50':info.color)+'">'+days+' <span style="font-size:11px;font-weight:500;color:#888">dias corridos'+(concluido?' no total':'')+'</span></div>'
       +'</div>';
   }
 
