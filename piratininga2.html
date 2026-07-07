@@ -1987,7 +1987,7 @@ function renderGeral(){
 
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:1.25rem">
 
-      <div style="background:#0d1a0d;border:1px solid #1e3a1e;border-left:3px solid #4caf50;border-radius:10px;overflow:hidden">
+      <div style="background:#0d1a0d;border:1px solid #1e3a1e;border-left:3px solid #4caf50;border-radius:10px;position:relative">
         <div style="padding:10px 14px;display:flex;align-items:center;gap:6px;border-bottom:1px solid #1e3a1e">
           <i class="ti ti-circle-check" style="color:#4caf50;font-size:13px"></i>
           <span style="font-size:10px;font-weight:600;color:#4caf50;text-transform:uppercase;letter-spacing:.08em">Pago</span>
@@ -2012,7 +2012,7 @@ function renderGeral(){
         </table>
       </div>
 
-      <div style="background:#0d1520;border:1px solid #1a2a3a;border-left:3px solid #42a5f5;border-radius:10px;overflow:hidden">
+      <div style="background:#0d1520;border:1px solid #1a2a3a;border-left:3px solid #42a5f5;border-radius:10px;position:relative">
         <div style="padding:10px 14px;display:flex;align-items:center;gap:6px;border-bottom:1px solid #1a2a3a">
           <i class="ti ti-alert-circle" style="color:#42a5f5;font-size:13px"></i>
           <span style="font-size:10px;font-weight:600;color:#42a5f5;text-transform:uppercase;letter-spacing:.08em">Necessários</span>
@@ -2037,7 +2037,7 @@ function renderGeral(){
         </table>
       </div>
 
-      <div style="background:#1a1500;border:1px solid #2a2000;border-left:3px solid #e8b544;border-radius:10px;overflow:hidden">
+      <div style="background:#1a1500;border:1px solid #2a2000;border-left:3px solid #e8b544;border-radius:10px;position:relative">
         <div style="padding:10px 14px;display:flex;align-items:center;gap:6px;border-bottom:1px solid #2a2000">
           <i class="ti ti-clock" style="color:#e8b544;font-size:13px"></i>
           <span style="font-size:10px;font-weight:600;color:#e8b544;text-transform:uppercase;letter-spacing:.08em">Dispensáveis</span>
@@ -2488,11 +2488,14 @@ async function deleteAllInCol(status, catKey){
   const lista = gastos.filter(g=>g.status===status&&(catKey?g.categoria===catKey:g.categoria!=='ganho'));
   if(!lista.length){ toast('Nenhum item para deletar.'); return; }
   const label = STATUS_META[status]?.label||status;
-  if(!confirm(`Deletar todos os ${lista.length} item(ns) de "${label}"?\n\nEssa ação não pode ser desfeita.`)) return;
+  if(!confirm(`Deletar todos os ${lista.length} item(ns) de "${label}"?\n\nVocê pode desfazer com o botão ↩ no topo.`)) return;
   try{
+    const ids = lista.map(g=>g.id);
     await Promise.all(lista.map(g=>sbDelete(g.id)));
+    // push to undo history as bulk-delete
+    historyPush({type:'bulk-delete', ids, status, catKey, items: lista.map(g=>({...g}))});
     lista.forEach(g=>{ const i=gastos.indexOf(g); if(i>-1) gastos.splice(i,1); });
-    toast(`${lista.length} item(ns) deletados.`);
+    toast(`${lista.length} item(ns) deletados. Use ↩ para desfazer.`);
     render();
   } catch(e){ toast('Erro ao deletar.','err'); }
 }
@@ -2867,7 +2870,26 @@ async function applyHistoryAction(action, isUndo){
       if(!res.ok) throw new Error();
       const g = gastos.find(x=>x.id===action.id);
       if(g) g.quantidade = newQty;
-    } else if(action.type==='bulk'){
+    } else if(action.type==='bulk-delete'){
+      if(isUndo){
+        // restore deleted items
+        for(const item of action.items){
+          try{
+            const res = await fetch(`${SB_URL}/rest/v1/${TABLE}`,{
+              method:'POST', headers:{...HEADERS,'Prefer':'return=representation'},
+              body:JSON.stringify(item)
+            });
+            if(res.ok){ const r=await res.json(); if(r[0]) gastos.push(r[0]); }
+          } catch(e){}
+        }
+      } else {
+        // redo: delete again
+        await Promise.all(action.ids.map(id=>{
+          return fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${id}`,{
+            method:'DELETE', headers:HEADERS
+          }).then(()=>{ const i=gastos.findIndex(x=>x.id===id); if(i>-1) gastos.splice(i,1); });
+        }));
+      }
       const ids = isUndo ? action.ids : action.ids;
       const targetStatus = isUndo ? action.from : action.to;
       await Promise.all(ids.map(id=>{
