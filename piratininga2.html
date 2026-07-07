@@ -1686,7 +1686,11 @@ function render(){
   else if(currentPage==='ganhos') renderGanhos();
   else if(currentPage==='venda-imovel') renderImovelCat('venda-imovel');
   else if(currentPage==='compra-imovel') renderImovelCat('compra-imovel');
-  else if(currentPage.includes('__')) renderSubCat(currentPage);
+  else if(currentPage.includes('__')){
+    const catKey = currentPage.split('__')[0];
+    if(IMOVEL_CATS[catKey]) renderImovelCat(catKey);
+    else renderSubCat(currentPage);
+  }
   else renderCat(currentPage);
 }
 
