@@ -1803,7 +1803,6 @@ function renderImovelCat(catKey, subKey){
   ];
 
   if(!SUBCATS[catKey]) SUBCATS[catKey]={};
-  // Reset imovel subcats to always match current summaryItems exactly
   const validKeys = summaryItems.map(i=>i.key);
   Object.keys(SUBCATS[catKey]).forEach(k=>{ if(!validKeys.includes(k)) delete SUBCATS[catKey][k]; });
   summaryItems.forEach(item=>{ if(!SUBCATS[catKey][item.key]) SUBCATS[catKey][item.key]={label:item.label}; });
@@ -1811,21 +1810,17 @@ function renderImovelCat(catKey, subKey){
 
   const el = document.getElementById('content');
 
-  // SUBCAT DETAIL VIEW
   if(subKey){
     const item = summaryItems.find(i=>i.key===subKey)||{label:subKey,color:info.color,icon:'📋'};
     const itemGastos = lista.filter(g=>g.subcategoria===subKey);
     const itemTotal = itemGastos.reduce((s,g)=>s+getVal(g),0);
-
     let rowsHtml = '';
     if(itemGastos.length){
       itemGastos.forEach(g=>{
         rowsHtml += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #1a1a1a">';
-        rowsHtml += '<div>';
-        rowsHtml += '<div style="font-size:13px;color:#e8e7e2">'+(g.descricao||'')+'</div>';
+        rowsHtml += '<div><div style="font-size:13px;color:#e8e7e2">'+(g.descricao||'')+'</div>';
         if(g.obs) rowsHtml += '<div style="font-size:10px;color:#555;margin-top:2px">'+g.obs+'</div>';
-        rowsHtml += '</div>';
-        rowsHtml += '<div style="display:flex;align-items:center;gap:8px">';
+        rowsHtml += '</div><div style="display:flex;align-items:center;gap:8px">';
         rowsHtml += '<span style="font-size:14px;font-weight:700;color:'+item.color+'">'+fmt(getVal(g))+'</span>';
         if(g.link) rowsHtml += '<a href="'+g.link+'" target="_blank" style="color:#2a78d6;font-size:13px"><i class="ti ti-external-link"></i></a>';
         rowsHtml += '<button onclick="openEdit('+g.id+')" style="background:none;border:none;color:#555;cursor:pointer;font-size:13px;padding:2px"><i class="ti ti-pencil"></i></button>';
@@ -1835,18 +1830,15 @@ function renderImovelCat(catKey, subKey){
     } else {
       rowsHtml = '<div style="padding:2rem;text-align:center;color:#444;font-size:13px">Nenhum lançamento ainda</div>';
     }
-
     el.innerHTML =
       '<div style="background:#111;border:1px solid #2a2a2a;border-left:3px solid '+item.color+';border-radius:10px;padding:1.25rem;margin-bottom:1rem">'+
-        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">'+
+        '<div style="display:flex;align-items:center;justify-content:space-between">'+
           '<div style="display:flex;align-items:center;gap:8px">'+
             '<span style="font-size:20px">'+item.icon+'</span>'+
-            '<div>'+
-              '<div style="font-size:11px;color:#555;text-transform:uppercase;letter-spacing:.08em">'+item.label+'</div>'+
-              '<div style="font-size:22px;font-weight:700;color:'+item.color+'">'+(itemTotal>0?fmt(itemTotal):'—')+'</div>'+
-            '</div>'+
+            '<div><div style="font-size:11px;color:#555;text-transform:uppercase;letter-spacing:.08em">'+item.label+'</div>'+
+            '<div style="font-size:22px;font-weight:700;color:'+item.color+'">'+(itemTotal>0?fmt(itemTotal):'—')+'</div></div>'+
           '</div>'+
-          '<button onclick="openModal(\''+catKey+'\',\''+subKey+'\')" style="background:transparent;border:1px solid '+item.color+';color:'+item.color+';padding:6px 14px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">+ lançar</button>'+
+          '<button onclick="openModal(\"'+catKey+'\",\"'+subKey+'\")" style="background:transparent;border:1px solid '+item.color+';color:'+item.color+';padding:6px 14px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">+ lançar</button>'+
         '</div>'+
       '</div>'+
       '<div style="background:#111;border:1px solid #1a1a1a;border-radius:10px;padding:1rem">'+rowsHtml+'</div>';
@@ -1854,7 +1846,6 @@ function renderImovelCat(catKey, subKey){
     return;
   }
 
-  // MAIN SUMMARY VIEW
   const recKeys = summaryItems.filter(i=>i.tipo==='recebimento').map(i=>i.key);
   const gastoKeys = summaryItems.filter(i=>i.tipo==='gasto').map(i=>i.key);
   const recLista = lista.filter(g=>recKeys.includes(g.subcategoria));
@@ -1864,40 +1855,38 @@ function renderImovelCat(catKey, subKey){
   const totalGasto = gastoLista.reduce((s,g)=>s+getVal(g),0);
   const liquido = totalRecebido - totalGasto;
 
-  function makeCard(item){
-    const itemGastos = lista.filter(g=>g.subcategoria===item.key);
-    const itemTotal = itemGastos.reduce((s,g)=>s+getVal(g),0);
-    const base = item.tipo==='recebimento' ? totalRecebido : item.tipo==='gasto' ? totalGasto : 0;
-    const pct = base>0 ? Math.round(itemTotal/base*100) : 0;
-    return '<div style="background:#111;border:1px solid #2a2a2a;border-left:3px solid '+item.color+';border-radius:8px;padding:14px;cursor:pointer" onclick="navigate(\''+catKey+'__'+item.key+'\')">'+
-      '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">'+
-        '<div>'+
-          '<div style="font-size:18px;margin-bottom:4px">'+item.icon+'</div>'+
-          '<div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em">'+item.label+'</div>'+
-        '</div>'+
-        '<div style="text-align:right">'+
-          '<div style="font-size:15px;font-weight:700;color:'+(itemTotal>0?item.color:'#333')+'">'+(itemTotal>0?fmt(itemTotal):'—')+'</div>'+
-          (itemGastos.length ? '<div style="font-size:10px;color:#555;margin-top:2px">'+itemGastos.length+' lançamento'+(itemGastos.length!==1?'s':'')+'</div>' : '')+
-        '</div>'+
-      '</div>'+
-      '<div style="background:#222;border-radius:20px;height:3px;overflow:hidden">'+
-        '<div style="width:'+pct+'%;background:'+item.color+';height:100%"></div>'+
-      '</div>'+
-    '</div>';
-  }
-
   const recItems = summaryItems.filter(i=>i.tipo==='recebimento');
   const gastoItems = summaryItems.filter(i=>i.tipo==='gasto');
   const docItems = summaryItems.filter(i=>i.tipo==='doc');
 
-  let html = '';
+  function makeCard(item, showArrow){
+    const itemGastos = lista.filter(g=>g.subcategoria===item.key);
+    const itemTotal = itemGastos.reduce((s,g)=>s+getVal(g),0);
+    const hasData = itemTotal > 0;
+    let c = '<div style="flex:1;min-width:0;background:#111;border:1px solid '+(hasData?item.color:'#2a2a2a')+';border-left:3px solid '+item.color+';border-radius:8px;padding:12px 14px;cursor:pointer" onclick="navigate(\''+catKey+'__'+item.key+'\')">';
+    c += '<div style="font-size:16px;margin-bottom:6px">'+item.icon+'</div>';
+    c += '<div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">'+item.label+'</div>';
+    c += '<div style="font-size:15px;font-weight:700;color:'+(hasData?item.color:'#333')+'">'+(hasData?fmt(itemTotal):'—')+'</div>';
+    if(itemGastos.length) c += '<div style="font-size:10px;color:#555;margin-top:2px">'+itemGastos.length+' lançamento'+(itemGastos.length!==1?'s':'')+'</div>';
+    c += '</div>';
+    if(showArrow) c += '<div style="display:flex;align-items:center;color:#333;font-size:20px;padding:0 6px;flex-shrink:0">›</div>';
+    return c;
+  }
 
-  // Summary bar
-  html += '<div style="background:#111;border:1px solid #2a2a2a;border-left:3px solid '+info.color+';border-radius:10px;padding:1.25rem;margin-bottom:1.25rem;display:flex;gap:2rem;align-items:center;flex-wrap:wrap">';
+  function makeRow(items, label, labelColor){
+    let r = '<div style="margin-bottom:1rem">';
+    if(label) r += '<div style="font-size:10px;color:'+labelColor+';text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">'+label+'</div>';
+    r += '<div style="display:flex;align-items:stretch">';
+    items.forEach((item,i)=>{ r += makeCard(item, i<items.length-1); });
+    r += '</div></div>';
+    return r;
+  }
+
+  let html = '<div style="background:#111;border:1px solid #2a2a2a;border-left:3px solid '+info.color+';border-radius:10px;padding:1.25rem;margin-bottom:1.25rem;display:flex;gap:2rem;align-items:center;flex-wrap:wrap">';
   if(recItems.length){
     html += '<div><div style="font-size:10px;color:#4caf50;margin-bottom:2px">🟢 Recebido</div><div style="font-size:20px;font-weight:700;color:#4caf50">'+fmt(totalRecebido)+'</div><div style="font-size:10px;color:#42a5f5;margin-top:3px">com a receber: '+fmt(totalRecebido+totalAReceber)+'</div></div>';
     html += '<div style="border-left:1px solid #2a2a2a;padding-left:1.5rem"><div style="font-size:10px;color:#42a5f5;margin-bottom:2px">🔵 A receber</div><div style="font-size:20px;font-weight:700;color:#42a5f5">'+fmt(totalAReceber)+'</div></div>';
-    html += '<div style="border-left:1px solid #2a2a2a;padding-left:1.5rem"><div style="font-size:10px;color:#555;margin-bottom:2px">🔴 Gastos</div><div style="font-size:20px;font-weight:700;color:#ef5350">'+fmt(totalGasto)+'</div></div>';
+    html += '<div style="border-left:1px solid #2a2a2a;padding-left:1.5rem"><div style="font-size:10px;color:#ef5350;margin-bottom:2px">🔴 Gastos</div><div style="font-size:20px;font-weight:700;color:#ef5350">'+fmt(totalGasto)+'</div></div>';
     html += '<div style="border-left:1px solid #2a2a2a;padding-left:1.5rem"><div style="font-size:10px;color:#555;margin-bottom:2px">= Líquido</div><div style="font-size:20px;font-weight:700;color:'+(liquido>=0?'#4caf50':'#ef5350')+'">'+fmt(liquido)+'</div></div>';
   } else {
     html += '<div><div style="font-size:10px;color:#555;margin-bottom:2px">Total</div><div style="font-size:20px;font-weight:700;color:'+info.color+'">'+fmt(totalGasto)+'</div></div>';
@@ -1905,28 +1894,9 @@ function renderImovelCat(catKey, subKey){
   html += '<div style="border-left:1px solid #2a2a2a;padding-left:1.5rem"><div style="font-size:10px;color:#555;margin-bottom:2px">Lançamentos</div><div style="font-size:16px;font-weight:600;color:#888">'+lista.length+'</div></div>';
   html += '</div>';
 
-  // Doc cards row
-  if(docItems.length){
-    html += '<div style="display:grid;grid-template-columns:repeat('+docItems.length+',1fr);gap:10px;margin-bottom:10px">';
-    docItems.forEach(item=>{ html += makeCard(item); });
-    html += '</div>';
-  }
-
-  // Recebimento cards
-  if(recItems.length){
-    html += '<div style="font-size:10px;color:#4caf50;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;margin-top:4px">🟢 Recebimentos</div>';
-    html += '<div style="display:grid;grid-template-columns:repeat('+recItems.length+',1fr);gap:10px;margin-bottom:10px">';
-    recItems.forEach(item=>{ html += makeCard(item); });
-    html += '</div>';
-  }
-
-  // Gasto cards
-  if(gastoItems.length){
-    html += '<div style="font-size:10px;color:#ef5350;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;margin-top:4px">🔴 Gastos</div>';
-    html += '<div style="display:grid;grid-template-columns:repeat('+gastoItems.length+',1fr);gap:10px">';
-    gastoItems.forEach(item=>{ html += makeCard(item); });
-    html += '</div>';
-  }
+  if(docItems.length) html += makeRow(docItems, '📋 Documentos', '#555');
+  if(recItems.length) html += makeRow(recItems, '🟢 Recebimentos', '#4caf50');
+  if(gastoItems.length) html += makeRow(gastoItems, '🔴 Gastos', '#ef5350');
 
   el.innerHTML = html;
   renderCatNav();
