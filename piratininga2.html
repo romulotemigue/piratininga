@@ -1211,26 +1211,16 @@ function dragLeave(k, e){
 function dragDrop(k, e){
   e.preventDefault();
   if(k===dragKey) return;
-  const imovelKeys = JSON.parse(localStorage.getItem('imovel_order')||'["venda-imovel","compra-imovel","projeto-arq"]');
-  const allOrder = JSON.parse(localStorage.getItem('all_cat_order')||'null') || [...Object.keys(CATS), ...imovelKeys];
+  const allCatKeys = [...Object.keys(CATS), ...Object.keys(IMOVEL_CATS)];
+  let allOrder = JSON.parse(localStorage.getItem('all_cat_order')||'null') || allCatKeys;
+  // ensure all keys are present
+  allCatKeys.forEach(ck=>{ if(!allOrder.includes(ck)) allOrder.push(ck); });
   const fromIdx = allOrder.indexOf(dragKey);
   const toIdx = allOrder.indexOf(k);
-  if(fromIdx===-1||toIdx===-1){
-    // fallback: reorder CATS only
-    const keys = Object.keys(CATS);
-    const fi = keys.indexOf(dragKey);
-    const ti = keys.indexOf(k);
-    if(fi===-1||ti===-1) return;
-    const entries = Object.entries(CATS);
-    const [moved] = entries.splice(fi, 1);
-    entries.splice(ti, 0, moved);
-    CATS = Object.fromEntries(entries);
-    saveCats();
-  } else {
-    allOrder.splice(fromIdx,1);
-    allOrder.splice(toIdx,0,dragKey);
-    localStorage.setItem('all_cat_order', JSON.stringify(allOrder));
-  }
+  if(fromIdx===-1||toIdx===-1){ renderCatNav(); dragKey=null; return; }
+  allOrder.splice(fromIdx,1);
+  allOrder.splice(toIdx,0,dragKey);
+  localStorage.setItem('all_cat_order', JSON.stringify(allOrder));
   renderCatNav();
   dragKey = null;
 }
@@ -3189,6 +3179,13 @@ ensureSubCats();
 try{
   Object.keys(IMOVEL_CATS).forEach(k=>{ delete SUBCATS[k]; });
   saveSubCats();
+  // force rebuild all_cat_order to include imovel cats
+  const savedOrder = JSON.parse(localStorage.getItem('all_cat_order')||'null');
+  if(savedOrder){
+    const imovelKeys = Object.keys(IMOVEL_CATS);
+    imovelKeys.forEach(k=>{ if(!savedOrder.includes(k)) savedOrder.push(k); });
+    localStorage.setItem('all_cat_order', JSON.stringify(savedOrder));
+  }
 }catch(e){}
 
 renderCatNav();
