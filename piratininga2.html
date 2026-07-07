@@ -2217,9 +2217,9 @@ function renderImovelCat(catKey, subKey){
 
     // annexe view
     const anexoRow = itemGastos.length&&itemGastos[0].link
-      ? '<div style="position:relative;display:inline-flex;margin-top:6px" onclick="event.stopPropagation()">'
+      ? '<div style="position:relative;display:inline-flex;align-self:flex-start;width:fit-content;margin-top:6px" onclick="event.stopPropagation()">'
         +'<a href="'+itemGastos[0].link+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;background:#1a2a3a;border:1px solid #2a78d6;color:#42a5f5;font-size:10px;font-weight:600;padding:4px 10px;border-radius:5px;text-decoration:none"><i class="ti ti-eye" style="font-size:11px"></i> Ver anexo</a>'
-        +'<button onclick="event.stopPropagation();if(confirm(\'Remover anexo?\'))removeAnexo('+itemGastos[0].id+')" title="Remover anexo" style="position:absolute;top:-6px;right:-6px;width:15px;height:15px;border-radius:50%;background:#555;border:none;color:#fff;cursor:pointer;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0">×</button>'
+        +'<button onclick="event.stopPropagation();if(confirm(\'Remover anexo?\'))removeAnexo('+itemGastos[0].id+')" title="Remover anexo" style="position:absolute;top:-6px;right:-6px;width:15px;height:15px;border-radius:50%;background:#fff;border:none;color:#111;cursor:pointer;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0">×</button>'
         +'</div>'
       : '';
 
