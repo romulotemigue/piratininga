@@ -1518,6 +1518,22 @@ function openModal(cat, subcat){
   const title = subLabel ? `Lançar em ${subLabel}` : info ? `Lançar em ${info.label}` : 'Lançar gasto';
   const titleEl = document.getElementById('main-modal-title');
   if(titleEl) titleEl.textContent = title;
+
+  // Adjust status options for imovel cats
+  const statusEl = document.getElementById('f-status');
+  if(statusEl){
+    if(IMOVEL_CATS[cat]){
+      statusEl.innerHTML = `
+        <option value="pago">Recebido</option>
+        <option value="necessario">A receber</option>`;
+    } else {
+      statusEl.innerHTML = `
+        <option value="pago">Pago</option>
+        <option value="necessario">Necessário</option>
+        <option value="apagar">Dispensável</option>`;
+    }
+  }
+
   setTimeout(()=>{
     populateSubCatSelect('f-cat','f-subcat');
     if(subcat) document.getElementById('f-subcat').value = subcat;
