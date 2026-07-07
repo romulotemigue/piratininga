@@ -1769,22 +1769,19 @@ function renderImovelCat(catKey, subKey){
   const info = IMOVEL_CATS[catKey];
   const lista = gastos.filter(g=>g.categoria===catKey);
   const getVal = g=>(g.valor||0)*(g.quantidade||1);
-  const total = lista.reduce((s,g)=>s+getVal(g),0);
-  const pago = lista.filter(g=>g.status==='pago').reduce((s,g)=>s+getVal(g),0);
-  const pendente = lista.filter(g=>g.status!=='pago').reduce((s,g)=>s+getVal(g),0);
 
   const summaryItems = catKey==='venda-imovel' ? [
-    {label:'Proposta', key:'proposta', color:'#888', icon:'📝'},
-    {label:'Contrato', key:'contrato', color:'#42a5f5', icon:'📄'},
-    {label:'Entrada', key:'entrada-venda', color:'#4caf50', icon:'💵'},
-    {label:'Repasse bancário', key:'repasse-bancario', color:'#e91e8c', icon:'🏦'},
-    {label:'Corretagem', key:'corretagem', color:'#e8b544', icon:'🤝'},
+    {label:'Proposta', key:'proposta', color:'#888', icon:'📝', tipo:'doc'},
+    {label:'Contrato', key:'contrato', color:'#42a5f5', icon:'📄', tipo:'doc'},
+    {label:'Entrada', key:'entrada-venda', color:'#4caf50', icon:'💵', tipo:'recebimento'},
+    {label:'Repasse bancário', key:'repasse-bancario', color:'#e91e8c', icon:'🏦', tipo:'recebimento'},
+    {label:'Corretagem', key:'corretagem', color:'#e8b544', icon:'🤝', tipo:'gasto'},
   ] : [
-    {label:'Valor do imóvel', key:'valor-imovel', color:'#42a5f5', icon:'🏠'},
-    {label:'Entrada', key:'entrada', color:'#4caf50', icon:'💵'},
-    {label:'Financiamento', key:'financiamento', color:'#e8b544', icon:'🏦'},
-    {label:'FGTS', key:'fgts', color:'#e91e8c', icon:'💳'},
-    {label:'Taxas / Cartório', key:'taxas-compra', color:'#888', icon:'📋'},
+    {label:'Valor do imóvel', key:'valor-imovel', color:'#42a5f5', icon:'🏠', tipo:'gasto'},
+    {label:'Entrada', key:'entrada', color:'#4caf50', icon:'💵', tipo:'gasto'},
+    {label:'Financiamento', key:'financiamento', color:'#e8b544', icon:'🏦', tipo:'gasto'},
+    {label:'FGTS', key:'fgts', color:'#e91e8c', icon:'💳', tipo:'gasto'},
+    {label:'Taxas / Cartório', key:'taxas-compra', color:'#888', icon:'📋', tipo:'gasto'},
   ];
 
   if(!SUBCATS[catKey]) SUBCATS[catKey]={};
@@ -1804,7 +1801,7 @@ function renderImovelCat(catKey, subKey){
       itemGastos.forEach(g=>{
         rowsHtml += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #1a1a1a">';
         rowsHtml += '<div>';
-        rowsHtml += '<div style="font-size:13px;color:#e8e7e2">'+( g.descricao||'')+'</div>';
+        rowsHtml += '<div style="font-size:13px;color:#e8e7e2">'+(g.descricao||'')+'</div>';
         if(g.obs) rowsHtml += '<div style="font-size:10px;color:#555;margin-top:2px">'+g.obs+'</div>';
         rowsHtml += '</div>';
         rowsHtml += '<div style="display:flex;align-items:center;gap:8px">';
@@ -1837,37 +1834,78 @@ function renderImovelCat(catKey, subKey){
   }
 
   // MAIN SUMMARY VIEW
-  let cardsHtml = '';
-  summaryItems.forEach(item=>{
+  const totalRecebido = summaryItems.filter(i=>i.tipo==='recebimento').reduce((s,item)=>{
+    return s + lista.filter(g=>g.subcategoria===item.key).reduce((ss,g)=>ss+getVal(g),0);
+  },0);
+  const totalGasto = summaryItems.filter(i=>i.tipo==='gasto').reduce((s,item)=>{
+    return s + lista.filter(g=>g.subcategoria===item.key).reduce((ss,g)=>ss+getVal(g),0);
+  },0);
+  const liquido = totalRecebido - totalGasto;
+
+  function makeCard(item){
     const itemGastos = lista.filter(g=>g.subcategoria===item.key);
     const itemTotal = itemGastos.reduce((s,g)=>s+getVal(g),0);
-    const pct = total>0 ? Math.round(itemTotal/total*100) : 0;
-    cardsHtml +=
-      '<div style="background:#111;border:1px solid #2a2a2a;border-left:3px solid '+item.color+';border-radius:8px;padding:14px;cursor:pointer" onclick="navigate(\''+catKey+'__'+item.key+'\')">'+
-        '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">'+
-          '<div>'+
-            '<div style="font-size:18px;margin-bottom:4px">'+item.icon+'</div>'+
-            '<div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em">'+item.label+'</div>'+
-          '</div>'+
-          '<div style="text-align:right">'+
-            '<div style="font-size:16px;font-weight:700;color:'+(itemTotal>0?item.color:'#333')+'">'+(itemTotal>0?fmt(itemTotal):'—')+'</div>'+
-            (itemGastos.length ? '<div style="font-size:10px;color:#555;margin-top:2px">'+itemGastos.length+' lançamento'+(itemGastos.length!==1?'s':'')+'</div>' : '')+
-          '</div>'+
+    const base = item.tipo==='recebimento' ? totalRecebido : item.tipo==='gasto' ? totalGasto : 0;
+    const pct = base>0 ? Math.round(itemTotal/base*100) : 0;
+    return '<div style="background:#111;border:1px solid #2a2a2a;border-left:3px solid '+item.color+';border-radius:8px;padding:14px;cursor:pointer" onclick="navigate(\''+catKey+'__'+item.key+'\')">'+
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">'+
+        '<div>'+
+          '<div style="font-size:18px;margin-bottom:4px">'+item.icon+'</div>'+
+          '<div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em">'+item.label+'</div>'+
         '</div>'+
-        '<div style="background:#222;border-radius:20px;height:3px;overflow:hidden">'+
-          '<div style="width:'+pct+'%;background:'+item.color+';height:100%"></div>'+
+        '<div style="text-align:right">'+
+          '<div style="font-size:15px;font-weight:700;color:'+(itemTotal>0?item.color:'#333')+'">'+(itemTotal>0?fmt(itemTotal):'—')+'</div>'+
+          (itemGastos.length ? '<div style="font-size:10px;color:#555;margin-top:2px">'+itemGastos.length+' lançamento'+(itemGastos.length!==1?'s':'')+'</div>' : '')+
         '</div>'+
-      '</div>';
-  });
+      '</div>'+
+      '<div style="background:#222;border-radius:20px;height:3px;overflow:hidden">'+
+        '<div style="width:'+pct+'%;background:'+item.color+';height:100%"></div>'+
+      '</div>'+
+    '</div>';
+  }
 
-  el.innerHTML =
-    '<div style="background:#111;border:1px solid #2a2a2a;border-left:3px solid '+info.color+';border-radius:10px;padding:1.25rem;margin-bottom:1.25rem;display:flex;gap:2rem;align-items:center;flex-wrap:wrap">'+
-      '<div><div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Total</div><div style="font-size:24px;font-weight:700;color:'+info.color+'">'+fmt(total)+'</div></div>'+
-      '<div style="border-left:1px solid #2a2a2a;padding-left:1.5rem"><div style="font-size:10px;color:#555;margin-bottom:2px">✓ Recebido / pago</div><div style="font-size:16px;font-weight:600;color:#4caf50">'+fmt(pago)+'</div></div>'+
-      '<div style="border-left:1px solid #2a2a2a;padding-left:1.5rem"><div style="font-size:10px;color:#555;margin-bottom:2px">⏳ Pendente</div><div style="font-size:16px;font-weight:600;color:#e8b544">'+fmt(pendente)+'</div></div>'+
-      '<div style="border-left:1px solid #2a2a2a;padding-left:1.5rem"><div style="font-size:10px;color:#555;margin-bottom:2px">Lançamentos</div><div style="font-size:16px;font-weight:600;color:#888">'+lista.length+'</div></div>'+
-    '</div>'+
-    '<div style="display:grid;grid-template-columns:repeat('+summaryItems.length+',1fr);gap:10px">'+cardsHtml+'</div>';
+  const recItems = summaryItems.filter(i=>i.tipo==='recebimento');
+  const gastoItems = summaryItems.filter(i=>i.tipo==='gasto');
+  const docItems = summaryItems.filter(i=>i.tipo==='doc');
+
+  let html = '';
+
+  // Summary bar
+  html += '<div style="background:#111;border:1px solid #2a2a2a;border-left:3px solid '+info.color+';border-radius:10px;padding:1.25rem;margin-bottom:1.25rem;display:flex;gap:2rem;align-items:center;flex-wrap:wrap">';
+  if(recItems.length){
+    html += '<div><div style="font-size:10px;color:#555;margin-bottom:2px">🟢 Recebimentos</div><div style="font-size:20px;font-weight:700;color:#4caf50">'+fmt(totalRecebido)+'</div></div>';
+    html += '<div style="border-left:1px solid #2a2a2a;padding-left:1.5rem"><div style="font-size:10px;color:#555;margin-bottom:2px">🔴 Gastos</div><div style="font-size:20px;font-weight:700;color:#ef5350">'+fmt(totalGasto)+'</div></div>';
+    html += '<div style="border-left:1px solid #2a2a2a;padding-left:1.5rem"><div style="font-size:10px;color:#555;margin-bottom:2px">= Líquido</div><div style="font-size:20px;font-weight:700;color:'+(liquido>=0?'#4caf50':'#ef5350')+'">'+fmt(liquido)+'</div></div>';
+  } else {
+    html += '<div><div style="font-size:10px;color:#555;margin-bottom:2px">Total</div><div style="font-size:20px;font-weight:700;color:'+info.color+'">'+fmt(totalGasto)+'</div></div>';
+  }
+  html += '<div style="border-left:1px solid #2a2a2a;padding-left:1.5rem"><div style="font-size:10px;color:#555;margin-bottom:2px">Lançamentos</div><div style="font-size:16px;font-weight:600;color:#888">'+lista.length+'</div></div>';
+  html += '</div>';
+
+  // Doc cards row
+  if(docItems.length){
+    html += '<div style="display:grid;grid-template-columns:repeat('+docItems.length+',1fr);gap:10px;margin-bottom:10px">';
+    docItems.forEach(item=>{ html += makeCard(item); });
+    html += '</div>';
+  }
+
+  // Recebimento cards
+  if(recItems.length){
+    html += '<div style="font-size:10px;color:#4caf50;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;margin-top:4px">🟢 Recebimentos</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat('+recItems.length+',1fr);gap:10px;margin-bottom:10px">';
+    recItems.forEach(item=>{ html += makeCard(item); });
+    html += '</div>';
+  }
+
+  // Gasto cards
+  if(gastoItems.length){
+    html += '<div style="font-size:10px;color:#ef5350;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;margin-top:4px">🔴 Gastos</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat('+gastoItems.length+',1fr);gap:10px">';
+    gastoItems.forEach(item=>{ html += makeCard(item); });
+    html += '</div>';
+  }
+
+  el.innerHTML = html;
   renderCatNav();
 }
 
