@@ -1721,7 +1721,7 @@ const IMOVEL_CATS = {
   'venda-imovel':  { label:'Venda do Imóvel',        color:'#4caf50', icon:'🏠' },
   'compra-imovel': { label:'Compra do Imóvel',        color:'#42a5f5', icon:'🔑' },
   'projeto-arq':   { label:'Projeto de Arquitetura',  color:'#e8b544', icon:'📐' },
-  'obra-bruta':    { label:'Execução de Obra',              color:'#e8b544', icon:'🔨' },
+  'obra-bruta':    { label:'Execução de Obra',              color:'#ff7043', icon:'🔨' },
 };
 
 let imovelOrder = JSON.parse(localStorage.getItem('imovel_order')||'["venda-imovel","compra-imovel","projeto-arq","obra-bruta"]');
@@ -1806,30 +1806,35 @@ function renderImovelCat(catKey, subKey){
   const getVal = g=>(g.valor||0)*(g.quantidade||1);
 
   const summaryItems = catKey==='venda-imovel' ? [
-    {label:'Proposta',        key:'proposta',        color:'#888',    icon:'📝', tipo:'doc'},
-    {label:'Contrato',        key:'contrato',        color:'#42a5f5', icon:'📄', tipo:'doc'},
-    {label:'Sinal',           key:'sinal',           color:'#9c27b0', icon:'🤝', tipo:'recebimento'},
-    {label:'Entrada',         key:'entrada',         color:'#4caf50', icon:'💵', tipo:'recebimento'},
-    {label:'Repasse bancário',key:'repasse-bancario',color:'#e91e8c', icon:'🏦', tipo:'recebimento'},
-    {label:'Corretagem',      key:'corretagem',      color:'#e8b544', icon:'🤝', tipo:'gasto'},
-    {label:'Taxas',           key:'taxas',           color:'#555',    icon:'📋', tipo:'gasto'},
+    {label:'Proposta',         key:'proposta',        color:'#888',    icon:'📝', tipo:'doc'},
+    {label:'Contrato',         key:'contrato',        color:'#42a5f5', icon:'📄', tipo:'doc'},
+    {label:'Sinal',            key:'sinal',           color:'#9c27b0', icon:'🤝', tipo:'recebimento'},
+    {label:'Entrada',          key:'entrada',         color:'#4caf50', icon:'💵', tipo:'recebimento'},
+    {label:'Repasse bancário', key:'repasse-bancario',color:'#e91e8c', icon:'🏦', tipo:'recebimento'},
+    {label:'Corretagem',       key:'corretagem',      color:'#e8b544', icon:'🤝', tipo:'gasto'},
+    {label:'Taxas',            key:'taxas',           color:'#555',    icon:'📋', tipo:'gasto'},
   ] : catKey==='compra-imovel' ? [
-    {label:'Proposta',        key:'proposta',        color:'#888',    icon:'📝', tipo:'doc'},
-    {label:'Contrato',        key:'contrato',        color:'#42a5f5', icon:'📄', tipo:'doc'},
-    {label:'Sinal',           key:'sinal',           color:'#9c27b0', icon:'🤝', tipo:'gasto'},
-    {label:'Entrada',         key:'entrada',         color:'#4caf50', icon:'💵', tipo:'gasto'},
-    {label:'Repasse bancário',key:'repasse-bancario',color:'#e91e8c', icon:'🏦', tipo:'gasto'},
-    {label:'FGTS',            key:'fgts',            color:'#e91e8c', icon:'💳', tipo:'gasto'},
-    {label:'Taxas',           key:'taxas',           color:'#888',    icon:'📋', tipo:'gasto'},
-  ] : [
-    {label:'Proposta',          key:'proposta',      color:'#888',    icon:'📝', tipo:'doc'},
-    {label:'Contrato',          key:'contrato',      color:'#42a5f5', icon:'📄', tipo:'doc'},
-    {label:'Pagamento',         key:'pagamento',     color:'#e8b544', icon:'💰', tipo:'gasto'},
-    {label:'Levantamento',      key:'levantamento',  color:'#888',    icon:'📏', tipo:'entrega'},
-    {label:'Estudo Preliminar', key:'estudo-prelim', color:'#9c27b0', icon:'✏️',  tipo:'entrega'},
-    {label:'Anteprojeto',       key:'anteprojeto',   color:'#42a5f5', icon:'📐', tipo:'entrega'},
-    {label:'Projeto Executivo', key:'proj-exec',     color:'#4caf50', icon:'✅', tipo:'entrega'},
-  ];
+    {label:'Proposta',         key:'proposta',        color:'#888',    icon:'📝', tipo:'doc'},
+    {label:'Contrato',         key:'contrato',        color:'#42a5f5', icon:'📄', tipo:'doc'},
+    {label:'Sinal',            key:'sinal',           color:'#9c27b0', icon:'🤝', tipo:'gasto'},
+    {label:'Entrada',          key:'entrada',         color:'#4caf50', icon:'💵', tipo:'gasto'},
+    {label:'Repasse bancário', key:'repasse-bancario',color:'#e91e8c', icon:'🏦', tipo:'gasto'},
+    {label:'FGTS',             key:'fgts',            color:'#e91e8c', icon:'💳', tipo:'gasto'},
+    {label:'Taxas',            key:'taxas',           color:'#888',    icon:'📋', tipo:'gasto'},
+  ] : catKey==='projeto-arq' ? [
+    {label:'Proposta',         key:'proposta',        color:'#888',    icon:'📝', tipo:'doc'},
+    {label:'Contrato',         key:'contrato',        color:'#42a5f5', icon:'📄', tipo:'doc'},
+    {label:'Pagamento',        key:'pagamento',       color:'#e8b544', icon:'💰', tipo:'gasto'},
+    {label:'Levantamento',     key:'levantamento',    color:'#888',    icon:'📏', tipo:'entrega'},
+    {label:'Estudo Preliminar',key:'estudo-prelim',   color:'#9c27b0', icon:'✏️',  tipo:'entrega'},
+    {label:'Anteprojeto',      key:'anteprojeto',     color:'#42a5f5', icon:'📐', tipo:'entrega'},
+    {label:'Projeto Executivo',key:'proj-exec',       color:'#4caf50', icon:'✅', tipo:'entrega'},
+  ] : catKey==='obra-bruta' ? [
+    {label:'Mão de Obra',      key:'mao-de-obra',     color:'#ef5350', icon:'👷', tipo:'gasto'},
+    {label:'Material Bruto',   key:'material-bruto',  color:'#a1887f', icon:'🧱', tipo:'gasto'},
+    {label:'Elétrica',         key:'eletrica',        color:'#ffd600', icon:'⚡', tipo:'gasto'},
+    {label:'Hidráulica',       key:'hidraulica',      color:'#42a5f5', icon:'🔧', tipo:'gasto'},
+  ] : [];
 
   if(!SUBCATS[catKey]) SUBCATS[catKey]={};
   const validKeys = summaryItems.map(i=>i.key);
