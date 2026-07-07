@@ -265,7 +265,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       </select>
     </div>
     <div class="form-group" id="f-subcat-group" style="display:none">
-      <label>Subcategoria (opcional)</label>
+      <label>Cartão (opcional)</label>
       <select id="f-subcat">
         <option value="">— Nenhuma —</option>
       </select>
@@ -274,12 +274,12 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
           style="background:#1a1200;border:1px solid #e8b544;color:#e8b544;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s"
           onmouseover="this.style.background='#e8b544';this.style.color='#111'"
           onmouseout="this.style.background='#1a1200';this.style.color='#e8b544'">
-          + nova sub
+          + novo cartão
         </button>
       </div>
     </div>
     <div id="f-create-subcat-group" style="display:none;margin-bottom:12px">
-      <label style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">Nova subcategoria</label>
+      <label style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">Novo cartão</label>
       <div style="display:flex;gap:6px">
         <input type="text" id="f-new-subcat-nome" placeholder="Ex: Sala, Quarto, Cozinha..."
           style="flex:1;background:#1a1200;border:1px solid #e8b544;border-radius:6px;padding:6px 10px;color:#e8e7e2;font-size:13px;outline:none"
@@ -293,7 +293,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       </div>
     </div>
     <div id="f-new-subcat-inline" style="display:none;margin-bottom:12px">
-      <label style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">Nova subcategoria</label>
+      <label style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">Novo cartão</label>
       <div style="display:flex;gap:6px">
         <input type="text" id="f-new-subcat-nome2" placeholder="Ex: Sala, Quarto, Cozinha..."
           style="flex:1;background:#1a1200;border:1px solid #e8b544;border-radius:6px;padding:6px 10px;color:#e8e7e2;font-size:13px;outline:none"
@@ -516,7 +516,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       </div>
     </div>
     <div class="form-group" id="e-subcat-row">
-      <label>Subcategoria (opcional)</label>
+      <label>Cartão (opcional)</label>
       <select id="e-subcat">
         <option value="">— Nenhuma —</option>
       </select>
@@ -777,12 +777,12 @@ function renderCatNav(){
         </div>
         ${!isImovel?`<button class="nav-dots" onclick="toggleCatMenu('${k}',event)" title="Opções"><i class="ti ti-dots-vertical"></i></button>
         <div class="cat-menu" id="cat-menu-${k}">
-          <div class="cat-menu-item" onclick="openModalAddSubCat('${k}')"><i class="ti ti-plus"></i> Subcategoria</div>
+          <div class="cat-menu-item" onclick="openModalAddSubCat('${k}')"><i class="ti ti-plus"></i> Cartão</div>
           <div class="cat-menu-item" onclick="openEditCat('${k}')"><i class="ti ti-pencil"></i> Renomear</div>
           <div class="cat-menu-item danger" onclick="deleteCat('${k}')"><i class="ti ti-trash"></i> Excluir</div>
         </div>`:`<button class="nav-dots" onclick="toggleCatMenu('${k}',event)" title="Opções"><i class="ti ti-dots-vertical"></i></button>
         <div class="cat-menu" id="cat-menu-${k}">
-          <div class="cat-menu-item" onclick="openModalAddSubCat('${k}')"><i class="ti ti-plus"></i> Subcategoria</div>
+          <div class="cat-menu-item" onclick="openModalAddSubCat('${k}')"><i class="ti ti-plus"></i> Cartão</div>
           <div class="cat-menu-item" onclick="openEditImovelCat('${k}')"><i class="ti ti-pencil"></i> Renomear</div>
           <div class="cat-menu-item danger" onclick="deleteImovelCat('${k}')"><i class="ti ti-trash"></i> Excluir</div>
         </div>`}
@@ -1433,7 +1433,7 @@ function populateSubCatSelect(catSelectId, subSelectId){
   // show inline create field when NO subs
   const createGroup = document.getElementById('f-create-subcat-group');
   if(createGroup) createGroup.style.display = subs.length === 0 ? '' : 'none';
-  // show + nova sub inline when HAS subs (but hidden by default until clicked)
+  // show + novo cartão inline when HAS subs (but hidden by default until clicked)
   const newInline = document.getElementById('f-new-subcat-inline');
   if(newInline) newInline.style.display = 'none';
   // reset inputs
@@ -1942,7 +1942,7 @@ function renderImovelCat(catKey, subKey){
 
   if(!SUBCATS[catKey]) SUBCATS[catKey]={};
   const validKeys = summaryItems.map(i=>i.key);
-  Object.keys(SUBCATS[catKey]).forEach(k=>{ if(!validKeys.includes(k)) delete SUBCATS[catKey][k]; });
+  // only add missing summaryItems, never delete manually created subcats
   summaryItems.forEach(item=>{ if(!SUBCATS[catKey][item.key]) SUBCATS[catKey][item.key]={label:item.label}; });
   saveSubCats();
 
@@ -2119,8 +2119,9 @@ function renderImovelCat(catKey, subKey){
     html += '<div style="padding-right:2rem"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Já pago</div><div style="font-size:22px;font-weight:800;color:'+info.color+'">'+fmt(totalGasto)+'</div></div>';
     if(totalAPagar>0) html += '<div style="border-left:1px solid #222;padding:0 0 0 2rem"><div style="font-size:10px;color:#e8b544;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">A pagar</div><div style="font-size:22px;font-weight:800;color:#e8b544">'+fmt(totalAPagar)+'</div></div>';
   }
-  html += '<div style="border-left:1px solid #222;padding:0 0 0 2rem;margin-left:auto"><div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Lançamentos</div><div style="font-size:22px;font-weight:800;color:#555">'+lista.length+'</div></div>';
+  html += '<div style="border-left:1px solid #222;padding:0 0 0 2rem"><div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Lançamentos</div><div style="font-size:22px;font-weight:800;color:#555">'+lista.length+'</div></div>';
   if(daysHtml) html += '<div style="border-left:1px solid #222;padding:0 0 0 2rem">'+daysHtml.replace('<div style="margin-left:auto;text-align:right">','<div style="text-align:right">')+'</div>';
+  html += '<div style="margin-left:auto;display:flex;align-items:center"><button onclick="openModalAddSubCat(\"'+catKey+'\")" style="background:transparent;border:1px solid '+info.color+';color:'+info.color+';padding:6px 14px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">+ Novo cartão</button></div>';
   html += '</div>';
 
   if(docItems.length)     html += makeRow(docItems,     'Documentos',  '#666',    '#666');
