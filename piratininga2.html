@@ -697,9 +697,9 @@ const DEFAULT_CATS = {
 let _savedCats = localStorage.getItem('pirati_cats');
 let CATS = _savedCats ? JSON.parse(_savedCats) : JSON.parse(JSON.stringify(DEFAULT_CATS));
 if(Object.keys(CATS).length === 0) CATS = JSON.parse(JSON.stringify(DEFAULT_CATS));
+function saveCats(){ localStorage.setItem('pirati_cats', JSON.stringify(CATS)); }
 // remove 'obra' if it exists — now it's 'obra-bruta' in IMOVEL_CATS
 if(CATS['obra']){ delete CATS['obra']; saveCats(); }
-function saveCats(){ localStorage.setItem('pirati_cats', JSON.stringify(CATS)); }
 
 function renderCatNav(){
   try{
