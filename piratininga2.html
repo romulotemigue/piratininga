@@ -2172,12 +2172,12 @@ function renderImovelCat(catKey, subKey){
     const itemGastos = lista.filter(g=>g.subcategoria===item.key);
     const itemTotal = itemGastos.reduce((s,g)=>s+getVal(g),0);
     const hasData = itemTotal > 0;
-    const isUpload = item.tipo==='doc' || item.tipo==='recibo' || item.recibo;
+    const isUpload = item.tipo==='doc' || item.tipo==='recibo' || item.tipo==='gasto' || item.recibo;
     const uploadLabel = item.tipo==='doc' ? 'documento' : 'recibo';
     const inputId = 'upload-'+catKey+'-'+item.key;
-    const showDate = true; // all cards get date + pencil
 
-    const uploadZone = isUpload ? (
+    // upload zone for all non-entrega cards
+    const uploadZone = (isUpload && item.tipo!=='entrega') ? (
       '<div onclick="event.stopPropagation();document.getElementById(\''+inputId+'\').click()" '
       +'ondragover="event.preventDefault();event.stopPropagation();this.style.borderColor=\''+item.color+'\'" '
       +'ondragleave="this.style.borderColor=\'transparent\'" '
@@ -2188,22 +2188,31 @@ function renderImovelCat(catKey, subKey){
       +'</div>'
     ) : '';
 
-    return '<div data-card-key="'+item.key+'" draggable="true" ondragstart="cardDragStart(event,\''+catKey+'\',\''+item.key+'\')" ondragover="cardDragOver(event,\''+catKey+'\',\''+item.key+'\')" ondrop="cardDragDrop(event,\''+catKey+'\',\''+item.key+'\')" ondragend="cardDragEnd(event)" onclick="navigate(\''+catKey+'__'+item.key+'\')" style="background:#0e0e0e;border:1px solid '+(hasData?item.color:'#1e1e1e')+';border-top:3px solid '+item.color+';border-radius:8px;padding:14px 16px;cursor:pointer;min-height:90px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;transition:all .15s" onmouseover="this.style.background=\'#161616\'" onmouseout="this.style.background=\'#0e0e0e\'">'
-      +'<div style="display:flex;align-items:center;justify-content:space-between">'
-      +'<div style="display:flex;align-items:center;gap:6px"><span style="color:#2a2a2a;font-size:13px;cursor:grab;user-select:none" title="Arrastar">⠿</span><span style="font-size:18px">'+item.icon+'</span></div>'
-      +'<div style="display:flex;align-items:center;gap:4px" onclick="event.stopPropagation()">'
-      +(itemGastos.length?'<button onclick="event.stopPropagation();openEdit('+itemGastos[0].id+')" title="Editar" style="background:none;border:none;color:#444;cursor:pointer;font-size:14px;padding:0 2px"><i class="ti ti-pencil"></i></button>':'<button onclick="event.stopPropagation();if(confirm(\'Remover cartão?\')){deleteImovelCard(\''+catKey+'\',\''+item.key+'\');}" title="Remover cartão" style="background:none;border:none;color:#333;cursor:pointer;font-size:14px;padding:0 2px"><i class="ti ti-trash"></i></button>')
-      +(itemGastos.length?'<button onclick="event.stopPropagation();if(confirm(\'Remover cartão?\')){deleteImovelCard(\''+catKey+'\',\''+item.key+'\');}" title="Remover cartão" style="background:none;border:none;color:#333;cursor:pointer;font-size:14px;padding:0 2px"><i class="ti ti-trash"></i></button>':'')
-      +(showDate ? dateBadge(item) : (hasData?'<span style="font-size:13px;font-weight:700;color:'+item.color+'">'+fmt(itemTotal)+'</span>':''))
+    // top row: ⠿ icon | ✏ 🗑 📅
+    const topRow =
+      '<div style="display:flex;align-items:center;justify-content:space-between" onclick="event.stopPropagation()">'
+      +'<div style="display:flex;align-items:center;gap:6px"><span style="color:#2a2a2a;font-size:13px;cursor:grab;user-select:none">⠿</span><span style="font-size:18px">'+item.icon+'</span></div>'
+      +'<div style="display:flex;align-items:center;gap:3px">'
+      +(itemGastos.length ? '<button onclick="openEdit('+itemGastos[0].id+')" title="Editar" style="background:none;border:none;color:#444;cursor:pointer;font-size:14px;padding:0 2px"><i class="ti ti-pencil"></i></button>' : '')
+      +'<button onclick="if(confirm(\'Remover cartão?\'))deleteImovelCard(\''+catKey+'\',\''+item.key+'\')" title="Remover" style="background:none;border:none;color:#333;cursor:pointer;font-size:14px;padding:0 2px"><i class="ti ti-trash"></i></button>'
+      +dateBadge(item)
       +'</div>'
-      +'</div>'
-      +(showDate && hasData ? '<div style="font-size:13px;font-weight:700;color:'+item.color+';margin-top:4px">'+fmt(itemTotal)+'</div>' : '')
-      +'<div>'
-      +'<div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.07em">'+item.label+'</div>'
-      
-      +(itemGastos.length&&itemGastos[0].link?'<div style="position:relative;display:inline-flex;margin-top:6px" onclick="event.stopPropagation()">'+'<a href="'+itemGastos[0].link+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;background:#1a2a3a;border:1px solid #2a78d6;color:#42a5f5;font-size:10px;font-weight:600;padding:4px 10px;border-radius:5px;text-decoration:none"><i class="ti ti-eye" style="font-size:11px"></i> Ver anexo</a>'+'<button onclick="event.stopPropagation();if(confirm(\'Remover anexo?\'))removeAnexo('+itemGastos[0].id+')" title="Remover anexo" style="position:absolute;top:-6px;right:-6px;width:15px;height:15px;border-radius:50%;background:#555;border:none;color:#fff;cursor:pointer;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0">×</button>'+'</div>':'')
-      +'</div>'
-      +uploadZone
+      +'</div>';
+
+    // value + label
+    const valueRow = hasData ? '<div style="font-size:14px;font-weight:700;color:'+item.color+';margin:6px 0 2px">'+fmt(itemTotal)+'</div>' : '';
+    const labelRow = '<div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.07em">'+item.label+'</div>';
+
+    // annexe view
+    const anexoRow = itemGastos.length&&itemGastos[0].link
+      ? '<div style="position:relative;display:inline-flex;margin-top:6px" onclick="event.stopPropagation()">'
+        +'<a href="'+itemGastos[0].link+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;background:#1a2a3a;border:1px solid #2a78d6;color:#42a5f5;font-size:10px;font-weight:600;padding:4px 10px;border-radius:5px;text-decoration:none"><i class="ti ti-eye" style="font-size:11px"></i> Ver anexo</a>'
+        +'<button onclick="event.stopPropagation();if(confirm(\'Remover anexo?\'))removeAnexo('+itemGastos[0].id+')" title="Remover anexo" style="position:absolute;top:-6px;right:-6px;width:15px;height:15px;border-radius:50%;background:#555;border:none;color:#fff;cursor:pointer;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0">×</button>'
+        +'</div>'
+      : '';
+
+    return '<div data-card-key="'+item.key+'" draggable="true" ondragstart="cardDragStart(event,\''+catKey+'\',\''+item.key+'\')" ondragover="cardDragOver(event,\''+catKey+'\',\''+item.key+'\')" ondrop="cardDragDrop(event,\''+catKey+'\',\''+item.key+'\')" ondragend="cardDragEnd(event)" onclick="navigate(\''+catKey+'__'+item.key+'\')" style="background:#0e0e0e;border:1px solid '+(hasData?item.color:'#1e1e1e')+';border-top:3px solid '+item.color+';border-radius:8px;padding:12px 14px;cursor:pointer;min-height:90px;box-sizing:border-box;display:flex;flex-direction:column;gap:2px;transition:all .15s" onmouseover="this.style.background=\'#161616\'" onmouseout="this.style.background=\'#0e0e0e\'">'
+      +topRow+valueRow+labelRow+anexoRow+uploadZone
       +'</div>';
   }
 
