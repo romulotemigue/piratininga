@@ -1883,8 +1883,8 @@ function renderImovelCat(catKey, subKey){
     {label:'Sinal',            key:'sinal',           color:'#9c27b0', icon:'🤝', tipo:'recibo'},
     {label:'Entrada',          key:'entrada',         color:'#4caf50', icon:'💵', tipo:'recebimento'},
     {label:'Repasse bancário', key:'repasse-bancario',color:'#e91e8c', icon:'🏦', tipo:'recebimento'},
-    {label:'Corretagem',       key:'corretagem',      color:'#e8b544', icon:'🤝', tipo:'gasto'},
-    {label:'Taxas',            key:'taxas',           color:'#555',    icon:'📋', tipo:'gasto'},
+    {label:'Corretagem',       key:'corretagem',      color:'#e8b544', icon:'🤝', tipo:'gasto', recibo:true},
+    {label:'Taxas',            key:'taxas',           color:'#555',    icon:'📋', tipo:'gasto', recibo:true},
   ] : catKey==='compra-imovel' ? [
     {label:'Proposta',         key:'proposta',        color:'#888',    icon:'📝', tipo:'doc'},
     {label:'Contrato',         key:'contrato',        color:'#42a5f5', icon:'📄', tipo:'doc'},
@@ -1986,7 +1986,7 @@ function renderImovelCat(catKey, subKey){
     const itemGastos = lista.filter(g=>g.subcategoria===item.key);
     const itemTotal = itemGastos.reduce((s,g)=>s+getVal(g),0);
     const hasData = itemTotal > 0;
-    const isUpload = item.tipo==='doc' || item.tipo==='recibo';
+    const isUpload = item.tipo==='doc' || item.tipo==='recibo' || item.recibo;
     const uploadLabel = item.tipo==='doc' ? 'documento' : 'recibo';
 
     const inputId = 'upload-'+catKey+'-'+item.key;
@@ -1996,7 +1996,7 @@ function renderImovelCat(catKey, subKey){
       +'ondragover="event.preventDefault();event.stopPropagation();this.style.borderColor=\''+item.color+'\'" '
       +'ondragleave="this.style.borderColor=\'transparent\'" '
       +'ondrop="event.preventDefault();event.stopPropagation();handleImovelDocFiles(event.dataTransfer.files,\''+catKey+'\',\''+item.key+'\')" '
-      +'style="margin-top:6px;border:1.5px dashed '+item.color+'88;border-radius:6px;padding:8px;cursor:pointer;transition:border-color .15s;text-align:center">'
+      +'style="margin-top:6px;border:1.5px dashed '+item.color+(item.color==='#888'?'':'88')+';border-radius:6px;padding:8px;cursor:pointer;transition:border-color .15s;text-align:center">'
       +'<span style="font-size:11px;color:#666">☁ arraste ou clique para adicionar '+uploadLabel+'</span>'
       +'<input type="file" id="'+inputId+'" style="display:none" multiple onchange="handleImovelDocFiles(this.files,\''+catKey+'\',\''+item.key+'\');this.value=\'\'">'
       +'</div>'
