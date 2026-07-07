@@ -1636,6 +1636,40 @@ function renderImovelCat(catKey){
   const dispensavel = lista.filter(g=>g.status==='apagar').reduce((s,g)=>s+getVal(g),0);
   const total = pago+necessario+dispensavel;
 
+  // Summary items per cat type
+  const summaryItems = catKey==='venda-imovel' ? [
+    {label:'Valor da venda', key:'valor-venda', color:'#4caf50', icon:'🏠'},
+    {label:'Corretagem', key:'corretagem', color:'#e8b544', icon:'🤝'},
+    {label:'Taxas', key:'taxas-venda', color:'#42a5f5', icon:'📋'},
+  ] : [
+    {label:'Valor do imóvel', key:'valor-imovel', color:'#42a5f5', icon:'🏠'},
+    {label:'Entrada', key:'entrada', color:'#4caf50', icon:'💵'},
+    {label:'Financiamento', key:'financiamento', color:'#e8b544', icon:'🏦'},
+    {label:'FGTS', key:'fgts', color:'#e91e8c', icon:'💳'},
+    {label:'Taxas / Cartório', key:'taxas-compra', color:'#888', icon:'📋'},
+  ];
+
+  const summaryHtml = `
+    <div style="display:grid;grid-template-columns:repeat(${summaryItems.length},1fr);gap:10px;margin-bottom:1rem">
+      ${summaryItems.map(item=>{
+        const itemGastos = lista.filter(g=>g.subcategoria===item.key);
+        const itemTotal = itemGastos.reduce((s,g)=>s+getVal(g),0);
+        return `<div style="background:#111;border:1px solid #2a2a2a;border-left:3px solid ${item.color};border-radius:8px;padding:12px 14px;cursor:pointer" onclick="navigate('${catKey}__${item.key}')">
+          <div style="font-size:16px;margin-bottom:4px">${item.icon}</div>
+          <div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">${item.label}</div>
+          <div style="font-size:16px;font-weight:700;color:${itemTotal>0?item.color:'#333'}">${itemTotal>0?fmt(itemTotal):'R$ 0'}</div>
+          <div style="font-size:10px;color:#444;margin-top:4px">${itemGastos.length} lançamento${itemGastos.length!==1?'s':''}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+
+  // Ensure subcats exist for summary items
+  if(!SUBCATS[catKey]) SUBCATS[catKey] = {};
+  summaryItems.forEach(item=>{
+    if(!SUBCATS[catKey][item.key]) SUBCATS[catKey][item.key] = {label:item.label};
+  });
+  saveSubCats();
+
   document.getElementById('content').innerHTML = `
     <div class="cat-total-card" style="border-left:3px solid ${info.color}">
       <div class="cat-stat">
@@ -1663,8 +1697,10 @@ function renderImovelCat(catKey){
         </button>
       </div>
     </div>
+    ${summaryHtml}
     ${renderColGrid(lista, catKey)}
   `;
+  renderCatNav();
 }
 
 function openModalImovel(catKey){
@@ -2159,7 +2195,7 @@ function renderContextBars(activeCatKey, activeSubKey){
 
 function renderSubCat(page){
   const [catKey, subKey] = page.split('__');
-  const info = CATS[catKey];
+  const info = CATS[catKey] || IMOVEL_CATS[catKey];
   if(!info){ navigate('geral'); return; }
   const subLabel = SUBCATS[catKey]?.[subKey]?.label || subKey;
   const lista = gastos.filter(g=>g.categoria===catKey && g.subcategoria===subKey);
@@ -2211,7 +2247,7 @@ function openModalWithSubCat(catKey, subKey){
 
 // ── CATEGORIA ────────────────────────────────────────────────────
 function renderCat(cat){
-  const info   = CATS[cat];
+  const info   = CATS[cat] || IMOVEL_CATS[cat];
   if(!info){ navigate('geral'); return; }
   const lista  = gastos.filter(g=>g.categoria===cat);
   const ativos = lista.filter(g=>g.status!=='cancel');
