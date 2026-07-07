@@ -760,7 +760,9 @@ function renderCatNav(){
       ondrop="dragDrop('${k}',event)"
       ondragend="dragEnd(event)">
       <div class="nav-item-wrap" id="nav-wrap-${k}">
-        <span class="nav-drag" draggable="false" title="Arrastar">⠿</span>
+        <span class="nav-drag" draggable="true" title="Arrastar"
+          ondragstart="dragStart('${k}',event)"
+          style="cursor:grab">⠿</span>
         <button id="chev-${k}" style="background:none;border:none;color:${hasSubs?'#555':'transparent'};cursor:${hasSubs?'pointer':'default'};padding:4px 2px;font-size:11px;transition:transform .2s;transform:rotate(${isOpen?90:0}deg)" onclick="if(${hasSubs}) toggleExpand('${k}',event)"><i class="ti ti-chevron-right"></i></button>
         <div class="nav-item" onclick="navigate('${k}')" ondblclick="toggleExpand('${k}',event)" id="nav-${k}" style="padding-left:2px;flex:1;display:flex;align-items:center;gap:6px;${imovelNavStyle}">
           <span style="width:6px;height:6px;border-radius:50%;background:${info.color};display:inline-block;flex-shrink:0"></span>${info.icon||''} ${info.label}
