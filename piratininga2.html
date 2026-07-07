@@ -735,7 +735,10 @@ function renderCatNav(){
           <div class="cat-menu-item" onclick="openModalAddSubCat('${k}')"><i class="ti ti-plus"></i> Subcategoria</div>
           <div class="cat-menu-item" onclick="openEditCat('${k}')"><i class="ti ti-pencil"></i> Renomear</div>
           <div class="cat-menu-item danger" onclick="deleteCat('${k}')"><i class="ti ti-trash"></i> Excluir</div>
-        </div>`:''}
+        </div>`:`<button class="nav-dots" onclick="toggleCatMenu('${k}',event)" title="Opções"><i class="ti ti-dots-vertical"></i></button>
+        <div class="cat-menu" id="cat-menu-${k}">
+          <div class="cat-menu-item" onclick="openModalAddSubCat('${k}')"><i class="ti ti-plus"></i> Subcategoria</div>
+        </div>`}
       </div>
       <div id="subcat-list-${k}" style="overflow:hidden;max-height:${isOpen?'500px':'0'};transition:max-height .25s ease">${subs}</div>
     </div>`;
