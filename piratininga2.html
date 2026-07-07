@@ -371,6 +371,24 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       <label>Link (opcional)</label>
       <input type="url" id="f-link" placeholder="https://...">
     </div>
+
+    <div class="form-group">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <label style="margin-bottom:0">Anexos <span style="font-size:10px;color:#555;font-weight:400;text-transform:none;letter-spacing:0">(PDF, imagem, documento)</span></label>
+      </div>
+      <div id="f-dropzone" onclick="document.getElementById('f-file-input').click()"
+        style="border:1px dashed #333;border-radius:8px;padding:14px;text-align:center;cursor:pointer;transition:border-color .15s"
+        onmouseover="this.style.borderColor='#e8b544'" onmouseout="this.style.borderColor='#333'"
+        ondragover="event.preventDefault();this.style.borderColor='#e8b544'" 
+        ondragleave="this.style.borderColor='#333'"
+        ondrop="event.preventDefault();handleFileDrop(event.dataTransfer.files)">
+        <i class="ti ti-cloud-upload" style="font-size:22px;color:#555;display:block;margin-bottom:4px"></i>
+        <div style="font-size:12px;color:#666">Arraste um arquivo ou <span style="color:#e8b544;font-weight:600">selecione</span></div>
+      </div>
+      <input type="file" id="f-file-input" multiple style="display:none" onchange="handleFileSelect(this.files)">
+      <div id="f-anexos-list" style="margin-top:8px"></div>
+    </div>
+
     <button class="btn-confirm" id="btn-confirm" onclick="addGasto()">Confirmar lançamento</button>
   </div>
 </div>
@@ -1473,6 +1491,74 @@ function openModal(cat, subcat){
 function closeModal(){ document.getElementById('modal-overlay').classList.remove('open'); }
 document.getElementById('modal-overlay').addEventListener('click',function(e){ if(e.target===this) closeModal(); });
 
+// ── ANEXOS ───────────────────────────────────────────────────────
+let pendingFiles = []; // files waiting to be uploaded with the gasto
+
+function handleFileDrop(files){ addPendingFiles(files); }
+function handleFileSelect(files){ addPendingFiles(files); }
+
+function addPendingFiles(files){
+  for(const f of files){
+    if(f.size > 10*1024*1024){ toast('Arquivo muito grande (máx 10MB): '+f.name,'err'); continue; }
+    pendingFiles.push(f);
+  }
+  renderPendingFiles();
+}
+
+function renderPendingFiles(){
+  const list = document.getElementById('f-anexos-list');
+  if(!list) return;
+  list.innerHTML = pendingFiles.map((f,i)=>`
+    <div style="background:#0d1520;border:1px solid #1a2a3a;border-radius:6px;padding:8px 10px;display:flex;align-items:center;gap:8px;margin-bottom:4px">
+      <i class="ti ti-file" style="font-size:16px;color:#42a5f5;flex-shrink:0"></i>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;color:#e8e7e2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.name}</div>
+        <div style="font-size:10px;color:#555">${(f.size/1024).toFixed(0)} KB</div>
+      </div>
+      <button onclick="removePendingFile(${i})" style="background:none;border:none;color:#555;cursor:pointer;font-size:14px;padding:2px"><i class="ti ti-x"></i></button>
+    </div>`).join('');
+}
+
+function removePendingFile(i){
+  pendingFiles.splice(i,1);
+  renderPendingFiles();
+}
+
+async function uploadAnexos(gastoId, files){
+  const urls = [];
+  for(const f of files){
+    const ext = f.name.split('.').pop();
+    const path = `${gastoId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const res = await fetch(`${SB_URL}/storage/v1/object/anexos/${path}`,{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':f.type},
+      body:f
+    });
+    if(!res.ok){ toast('Erro ao enviar: '+f.name,'err'); continue; }
+    const publicUrl = `${SB_URL}/storage/v1/object/public/anexos/${path}`;
+    urls.push({nome:f.name, url:publicUrl});
+  }
+  return urls;
+}
+
+async function saveAnexosToDb(gastoId, urls){
+  if(!urls.length) return;
+  // Store as JSON in obs field prefix, or use a separate approach
+  // We'll update the gasto's link to first file and store rest in obs
+  const g = gastos.find(x=>x.id===gastoId);
+  if(!g) return;
+  const anexoLinks = urls.map(a=>`[${a.nome}](${a.url})`).join(' | ');
+  const newLink = urls[0]?.url || g.link;
+  const newObs = g.obs ? g.obs+' | '+anexoLinks : anexoLinks;
+  await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${gastoId}`,{
+    method:'PATCH',
+    headers:{...HEADERS},
+    body:JSON.stringify({link:newLink, obs:newObs})
+  });
+  if(g){ g.link=newLink; g.obs=newObs; }
+}
+
+// ── ADDGASTO ──────────────────────────────────────────────────────
 async function addGasto(){
   const desc = document.getElementById('f-desc').value.trim();
   const cat  = document.getElementById('f-cat').value;
@@ -1487,12 +1573,21 @@ async function addGasto(){
   try{
     const subcat = document.getElementById('f-subcat')?.value || document.getElementById('modal-overlay').dataset.subcat||'';
     const link = document.getElementById('f-link').value.trim();
-    await sbInsert({descricao:desc,categoria:cat,data,valor:val,status:st,obs,orcamento,subcategoria:subcat,link,quantidade:1});
+    const inserted = await sbInsert({descricao:desc,categoria:cat,data,valor:val,status:st,obs,orcamento,subcategoria:subcat,link,quantidade:1});
+    // upload pending files
+    if(pendingFiles.length > 0 && inserted?.length){
+      btn.textContent = 'Enviando arquivos...';
+      const gastoId = inserted[0].id;
+      const urls = await uploadAnexos(gastoId, pendingFiles);
+      await saveAnexosToDb(gastoId, urls);
+    }
+    pendingFiles = [];
     delete document.getElementById('modal-overlay').dataset.subcat;
     document.getElementById('f-desc').value='';
     document.getElementById('f-valor').value='';
     document.getElementById('f-obs').value='';
     document.getElementById('f-link').value='';
+    document.getElementById('f-anexos-list').innerHTML='';
     closeModal();
     toast('Gasto salvo com sucesso!');
     await loadGastos();
