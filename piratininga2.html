@@ -1885,21 +1885,23 @@ function renderImovelCat(catKey, subKey){
     const itemGastos = lista.filter(g=>g.subcategoria===item.key);
     const itemTotal = itemGastos.reduce((s,g)=>s+getVal(g),0);
     const hasData = itemTotal > 0;
-    return '<div onclick="navigate(\''+catKey+'__'+item.key+'\')" style="flex:1;min-width:0;background:#0e0e0e;border:1px solid '+(hasData?item.color:'#222')+';border-top:3px solid '+item.color+';border-radius:8px;padding:14px 16px;cursor:pointer;transition:background .15s" onmouseover="this.style.background=\'#161616\'" onmouseout="this.style.background=\'#0e0e0e\'">'
-      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
+    return '<div onclick="navigate(\''+catKey+'__'+item.key+'\')" style="background:#0e0e0e;border:1px solid '+(hasData?item.color:'#1e1e1e')+';border-top:3px solid '+item.color+';border-radius:8px;padding:14px 16px;cursor:pointer;height:90px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;transition:background .15s" onmouseover="this.style.background=\'#161616\'" onmouseout="this.style.background=\'#0e0e0e\'">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between">'
       +'<span style="font-size:18px">'+item.icon+'</span>'
-      +(hasData?'<span style="font-size:13px;font-weight:700;color:'+item.color+'">'+fmt(itemTotal)+'</span>':'<span style="color:#333;font-size:12px">—</span>')
+      +(hasData?'<span style="font-size:13px;font-weight:700;color:'+item.color+'">'+fmt(itemTotal)+'</span>':'')
       +'</div>'
-      +'<div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">'+item.label+'</div>'
-      +(itemGastos.length?'<div style="font-size:10px;color:#444">'+itemGastos.length+' lançamento'+(itemGastos.length!==1?'s':'')+'</div>':'<div style="font-size:10px;color:#2a2a2a">—</div>')
+      +'<div>'
+      +'<div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.07em">'+item.label+'</div>'
+      +(itemGastos.length?'<div style="font-size:10px;color:#444;margin-top:2px">'+itemGastos.length+' lançamento'+(itemGastos.length!==1?'s':'')+'</div>':'')
+      +'</div>'
       +'</div>';
   }
 
   function makeRow(items, label, labelColor, borderColor){
     const cols = items.map(makeCard).join('');
-    return '<div style="margin-bottom:14px">'
+    return '<div style="margin-bottom:16px">'
       +'<div style="font-size:10px;font-weight:600;color:'+labelColor+';text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;display:flex;align-items:center;gap:6px">'
-      +'<span style="width:8px;height:8px;border-radius:50%;background:'+borderColor+';display:inline-block"></span>'+label+'</div>'
+      +'<span style="width:7px;height:7px;border-radius:50%;background:'+borderColor+';display:inline-block"></span>'+label+'</div>'
       +'<div style="display:grid;grid-template-columns:repeat('+items.length+',1fr);gap:8px">'+cols+'</div>'
       +'</div>';
   }
