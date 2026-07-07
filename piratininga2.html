@@ -249,7 +249,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
 <div class="modal-overlay" id="modal-overlay">
   <div class="modal">
     <div class="modal-header">
-      <span class="modal-title">Lançar gasto</span>
+      <span class="modal-title" id="main-modal-title">Lançar gasto</span>
       <button class="modal-close" onclick="closeModal()"><i class="ti ti-x"></i></button>
     </div>
     <div class="form-group">
@@ -401,16 +401,11 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
     </div>
     <div class="form-group">
       <label>Descrição</label>
-      <input type="text" id="g-desc" spellcheck="true" lang="pt-BR" placeholder="Ex: Venda do apartamento">
+      <input type="text" id="g-desc" spellcheck="true" lang="pt-BR" placeholder="Ex: Venda Sto. Alberto, Salário março">
     </div>
     <div class="form-group">
-      <label>Tipo</label>
-      <select id="g-tipo">
-        <option value="disponivel">🟢 Disponível — já está na minha conta</option>
-        <option value="areceber">🔵 A receber — garantido mas ainda não caiu</option>
-        <option value="direcionado">🟡 Direcionado — vai receber mas tem destino certo</option>
-        <option value="comprometido">⚫ Comprometido — já foi usado/reservado</option>
-      </select>
+      <label>Origem <span style="font-size:10px;color:#555;font-weight:400;text-transform:none;letter-spacing:0">(endereço, comprador, empresa...)</span></label>
+      <input type="text" id="g-origem" spellcheck="true" lang="pt-BR" placeholder="Ex: Rua das Flores 123, João Silva, Empresa XYZ">
     </div>
     <div class="modal-row">
       <div class="form-group">
@@ -423,8 +418,28 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       </div>
     </div>
     <div class="form-group">
+      <label>Tipo</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <label id="tipo-disponivel-btn" onclick="selectTipoGanho('disponivel')" style="background:#0d1a0d;border:2px solid #4caf50;border-radius:8px;padding:10px 12px;cursor:pointer;display:flex;align-items:center;gap:8px">
+          <span style="width:10px;height:10px;border-radius:50%;background:#4caf50;flex-shrink:0"></span>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:#4caf50">Disponível</div>
+            <div style="font-size:10px;color:#555">Já está na conta</div>
+          </div>
+        </label>
+        <label id="tipo-areceber-btn" onclick="selectTipoGanho('areceber')" style="background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:10px 12px;cursor:pointer;display:flex;align-items:center;gap:8px">
+          <span style="width:10px;height:10px;border-radius:50%;background:#42a5f5;flex-shrink:0"></span>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:#42a5f5">A receber</div>
+            <div style="font-size:10px;color:#555">Garantido, ainda não caiu</div>
+          </div>
+        </label>
+      </div>
+      <input type="hidden" id="g-tipo" value="disponivel">
+    </div>
+    <div class="form-group">
       <label>Observação (opcional)</label>
-      <input type="text" id="g-obs" spellcheck="true" lang="pt-BR" placeholder="Detalhe...">
+      <input type="text" id="g-obs" spellcheck="true" lang="pt-BR" placeholder="Detalhe adicional...">
     </div>
     <button class="btn-confirm" id="btn-confirm-ganho" onclick="addGanho()" style="background:#4caf50">Confirmar ganho</button>
   </div>
@@ -943,21 +958,38 @@ function openModalGanho(){
 function closeModalGanho(){ document.getElementById('modal-ganho-overlay').classList.remove('open'); }
 document.getElementById('modal-ganho-overlay').addEventListener('click',function(e){ if(e.target===this) closeModalGanho(); });
 
+function selectTipoGanho(tipo){
+  document.getElementById('g-tipo').value = tipo;
+  const disp = document.getElementById('tipo-disponivel-btn');
+  const arec = document.getElementById('tipo-areceber-btn');
+  if(tipo==='disponivel'){
+    disp.style.cssText='background:#0d1a0d;border:2px solid #4caf50;border-radius:8px;padding:10px 12px;cursor:pointer;display:flex;align-items:center;gap:8px';
+    arec.style.cssText='background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:10px 12px;cursor:pointer;display:flex;align-items:center;gap:8px';
+  } else {
+    arec.style.cssText='background:#0d1520;border:2px solid #42a5f5;border-radius:8px;padding:10px 12px;cursor:pointer;display:flex;align-items:center;gap:8px';
+    disp.style.cssText='background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:10px 12px;cursor:pointer;display:flex;align-items:center;gap:8px';
+  }
+}
+
 async function addGanho(){
-  const desc = document.getElementById('g-desc').value.trim();
-  const val  = parseMoney(document.getElementById('g-valor').value);
-  const data = document.getElementById('g-data').value;
-  const obs  = document.getElementById('g-obs').value.trim();
-  const tipo = document.getElementById('g-tipo').value;
+  const desc   = document.getElementById('g-desc').value.trim();
+  const origem = document.getElementById('g-origem').value.trim();
+  const val    = parseMoney(document.getElementById('g-valor').value);
+  const data   = document.getElementById('g-data').value;
+  const obs    = document.getElementById('g-obs').value.trim();
+  const tipo   = document.getElementById('g-tipo').value;
   if(!desc){ alert('Preencha a descrição.'); return; }
   if(isNaN(val)||val<=0){ alert('Preencha um valor válido.'); return; }
   const btn = document.getElementById('btn-confirm-ganho');
   btn.disabled = true; btn.textContent = 'Salvando...';
+  const obsFinal = [origem?'Origem: '+origem:'', obs].filter(Boolean).join(' | ');
   try{
-    await sbInsert({descricao:desc,categoria:'ganho',data,valor:val,status:'pago',obs,orcamento:0,quantidade:1,subcategoria:tipo});
+    await sbInsert({descricao:desc,categoria:'ganho',data,valor:val,status:'pago',obs:obsFinal,orcamento:0,quantidade:1,subcategoria:tipo});
     document.getElementById('g-desc').value='';
+    document.getElementById('g-origem').value='';
     document.getElementById('g-valor').value='';
     document.getElementById('g-obs').value='';
+    selectTipoGanho('disponivel');
     closeModalGanho();
     toast('Ganho registrado!');
     await loadGastos();
@@ -1480,6 +1512,12 @@ function applyM2(){
 function openModal(cat, subcat){
   populateCatSelect('f-cat');
   if(cat) document.getElementById('f-cat').value = cat;
+  const allInfo = {...CATS, ...IMOVEL_CATS};
+  const info = cat ? allInfo[cat] : null;
+  const subLabel = subcat && SUBCATS[cat]?.[subcat]?.label;
+  const title = subLabel ? `Lançar em ${subLabel}` : info ? `Lançar em ${info.label}` : 'Lançar gasto';
+  const titleEl = document.getElementById('main-modal-title');
+  if(titleEl) titleEl.textContent = title;
   setTimeout(()=>{
     populateSubCatSelect('f-cat','f-subcat');
     if(subcat) document.getElementById('f-subcat').value = subcat;
