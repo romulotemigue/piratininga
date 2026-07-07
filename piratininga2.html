@@ -179,6 +179,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
 ::-webkit-scrollbar{width:4px}
 ::-webkit-scrollbar-track{background:#0f0f0f}
 ::-webkit-scrollbar-thumb{background:#333;border-radius:4px}
+@keyframes progressAnim{0%{opacity:1}50%{opacity:0.7}100%{opacity:1}}
 </style>
 </head>
 <body>
@@ -2020,13 +2021,14 @@ function renderImovelCat(catKey, subKey){
   // use global getCardDate/setCardDate
 
   // date badge: small date in top right, clickable
-  function dateBadge(key){
+  function dateBadge(item){
+    const key = item.key;
     const d = getCardDate(catKey, key);
     const dateStr = d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'2-digit'}) : '';
     const inputId = 'card-date-'+catKey+'-'+key;
     return '<div style="display:flex;align-items:center;gap:4px" onclick="event.stopPropagation()">'
       +'<span style="font-size:13px;cursor:pointer" onclick="event.stopPropagation();var el=document.getElementById(\''+inputId+'\');el.dataset.catkey=\''+catKey+'\';el.dataset.key=\''+key+'\';if(el.showPicker)el.showPicker();else el.click()">📅</span>'
-      +(dateStr?'<span style="font-size:10px;color:#666">assinado em </span><span style="font-size:10px;color:#e8b544;font-weight:600">'+dateStr+'</span>':'')
+      +(dateStr?'<span style="font-size:10px;color:#666">'+(item.tipo==='doc'?'assinado em':item.tipo==='recibo'||item.tipo==='recebimento'?'recebido em':'pago em')+' </span><span style="font-size:10px;color:#e8b544;font-weight:600">'+dateStr+'</span><span style="font-size:9px;color:#555;margin-left:4px">('+Math.max(0,Math.round((new Date()-new Date(d+'T12:00:00'))/(1000*60*60*24)))+' dias)</span>':'')
       +'<input type="date" id="'+inputId+'" value="'+d+'" style="position:fixed;opacity:0;width:1px;height:1px;pointer-events:none" '
       +'onchange="var el=this;setCardDate(el.dataset.catkey,el.dataset.key,el.value)">'
       +'</div>';
@@ -2055,13 +2057,13 @@ function renderImovelCat(catKey, subKey){
     return '<div onclick="navigate(\''+catKey+'__'+item.key+'\')" style="background:#0e0e0e;border:1px solid '+(hasData?item.color:'#1e1e1e')+';border-top:3px solid '+item.color+';border-radius:8px;padding:14px 16px;cursor:pointer;min-height:90px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;transition:background .15s" onmouseover="this.style.background=\'#161616\'" onmouseout="this.style.background=\'#0e0e0e\'">'
       +'<div style="display:flex;align-items:center;justify-content:space-between">'
       +'<span style="font-size:18px">'+item.icon+'</span>'
-      +(showDate ? dateBadge(item.key) : (hasData?'<span style="font-size:13px;font-weight:700;color:'+item.color+'">'+fmt(itemTotal)+'</span>':''))
+      +(showDate ? dateBadge(item) : (hasData?'<span style="font-size:13px;font-weight:700;color:'+item.color+'">'+fmt(itemTotal)+'</span>':''))
       +'</div>'
       +(showDate && hasData ? '<div style="font-size:13px;font-weight:700;color:'+item.color+';margin-top:4px">'+fmt(itemTotal)+'</div>' : '')
       +'<div>'
       +'<div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.07em">'+item.label+'</div>'
       
-      +(itemGastos.length&&itemGastos[0].link?'<div style="position:relative;display:inline-flex;margin-top:6px" onclick="event.stopPropagation()">'+'<a href="'+itemGastos[0].link+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;background:#1a2a3a;border:1px solid #2a78d6;color:#42a5f5;font-size:10px;font-weight:600;padding:4px 10px;border-radius:5px;text-decoration:none"><i class="ti ti-eye" style="font-size:11px"></i> Ver anexo</a>'+'<button onclick="event.stopPropagation();removeAnexo('+itemGastos[0].id+')" title="Remover anexo" style="position:absolute;top:-6px;right:-6px;width:15px;height:15px;border-radius:50%;background:#555;border:none;color:#fff;cursor:pointer;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0">×</button>'+'</div>':'')
+      +(itemGastos.length&&itemGastos[0].link?'<div style="position:relative;display:inline-flex;margin-top:6px" onclick="event.stopPropagation()">'+'<a href="'+itemGastos[0].link+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;background:#1a2a3a;border:1px solid #2a78d6;color:#42a5f5;font-size:10px;font-weight:600;padding:4px 10px;border-radius:5px;text-decoration:none"><i class="ti ti-eye" style="font-size:11px"></i> Ver anexo</a>'+'<button onclick="event.stopPropagation();if(confirm(\'Remover anexo?\'))removeAnexo('+itemGastos[0].id+')" title="Remover anexo" style="position:absolute;top:-6px;right:-6px;width:15px;height:15px;border-radius:50%;background:#555;border:none;color:#fff;cursor:pointer;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0">×</button>'+'</div>':'')
       +'</div>'
       +uploadZone
       +'</div>';
@@ -2085,9 +2087,10 @@ function renderImovelCat(catKey, subKey){
     const now = new Date(); const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const days = Math.round((today-start)/(1000*60*60*24));
     const propostaFmt = start.toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+    const daysLabel = days < 0 ? '0' : String(days);
     daysHtml = '<div style="text-align:right">'
       +'<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Proposta assinada em '+propostaFmt+'</div>'
-      +'<div style="font-size:20px;font-weight:800;color:'+info.color+'">'+days+' <span style="font-size:11px;font-weight:500;color:#888">dias corridos</span></div>'
+      +'<div style="font-size:20px;font-weight:800;color:'+info.color+'">'+daysLabel+' <span style="font-size:11px;font-weight:500;color:#888">dias corridos</span></div>'
       +'</div>';
   }
 
@@ -3385,28 +3388,54 @@ async function handleImovelDocSelect(files, catKey, subKey){
 }
 async function handleImovelDocFiles(files, catKey, subKey){
   if(!files.length) return;
-  const info = IMOVEL_CATS[catKey];
-  const subLabel = SUBCATS[catKey]?.[subKey]?.label || subKey;
   for(const f of files){
     if(f.size > 20*1024*1024){ toast('Arquivo muito grande (máx 20MB): '+f.name,'err'); continue; }
-    const btn = document.getElementById('imovel-doc-dropzone');
-    if(btn) btn.innerHTML = '<i class="ti ti-loader" style="font-size:24px;color:#555;animation:spin 1s linear infinite"></i>';
+
+    // show progress bar
+    const progressId = 'upload-progress-'+catKey+'-'+subKey;
+    const existingProgress = document.getElementById(progressId);
+    let progressEl = existingProgress;
+    if(!progressEl){
+      progressEl = document.createElement('div');
+      progressEl.id = progressId;
+      progressEl.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#111;border:1px solid #333;border-radius:8px;padding:12px 20px;z-index:9999;min-width:280px;box-shadow:0 4px 20px rgba(0,0,0,.8)';
+      document.body.appendChild(progressEl);
+    }
+    progressEl.innerHTML = '<div style="font-size:11px;color:#888;margin-bottom:8px">Enviando '+f.name+'...</div>'
+      +'<div style="background:#222;border-radius:20px;height:4px;overflow:hidden">'
+      +'<div id="progress-bar-'+progressId+'" style="height:100%;background:linear-gradient(90deg,#42a5f5,#4caf50);border-radius:20px;width:0%;transition:width .3s;animation:progressAnim 1.5s ease infinite"></div>'
+      +'</div>';
+
+    // animate bar
+    let w = 0;
+    const interval = setInterval(()=>{ w = Math.min(w+3, 85); const bar = document.getElementById('progress-bar-'+progressId); if(bar) bar.style.width=w+'%'; }, 50);
+
     try{
       const ext = f.name.split('.').pop();
       const path = catKey+'/'+subKey+'/'+Date.now()+'-'+f.name;
       const res = await fetch(`${SB_URL}/storage/v1/object/Anexos/${path}`,{
         method:'POST', headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':f.type}, body:f
       });
+      clearInterval(interval);
       if(!res.ok){
         const errBody = await res.text();
         console.error('Storage error:', res.status, errBody);
         throw new Error(res.status+': '+errBody.slice(0,100));
       }
+      // complete bar
+      const bar = document.getElementById('progress-bar-'+progressId);
+      if(bar){ bar.style.width='100%'; bar.style.background='#4caf50'; }
+      setTimeout(()=>{ progressEl.remove(); }, 800);
+
       const url = `${SB_URL}/storage/v1/object/public/Anexos/${path}`;
       await sbInsert({descricao:f.name, categoria:catKey, subcategoria:subKey, data:new Date().toISOString().slice(0,10), valor:0, status:'pago', obs:'', link:url, quantidade:1, orcamento:0});
       toast('Documento enviado: '+f.name);
       await loadGastos();
-    } catch(e){ toast('Erro ao enviar: '+e.message,'err'); }
+    } catch(e){
+      clearInterval(interval);
+      if(progressEl) progressEl.remove();
+      toast('Erro ao enviar: '+e.message,'err');
+    }
   }
 }
 
