@@ -563,14 +563,32 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
 <div class="modal-overlay" id="modal-add-subcat-overlay">
   <div class="modal">
     <div class="modal-header">
-      <span class="modal-title">Criar subcategoria</span>
+      <span class="modal-title" id="modal-add-subcat-title">Novo cartão</span>
       <button class="modal-close" onclick="closeModalAddSubCat()"><i class="ti ti-x"></i></button>
     </div>
     <div class="form-group">
-      <label>Nome da subcategoria</label>
-      <input type="text" id="nsc-nome" placeholder="Ex: Mão de obra">
+      <label>Nome do cartão</label>
+      <input type="text" id="nsc-nome" placeholder="Ex: Escritura, ITBI...">
     </div>
-    <button class="btn-confirm" onclick="addSubCat()">Criar subcategoria</button>
+    <div class="form-group" id="nsc-grupo-group" style="display:none">
+      <label>Grupo</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px" id="nsc-grupo-options">
+        <label id="nsc-g-doc" onclick="selectGrupoCartao('doc')" style="background:#111;border:1px solid #333;border-radius:8px;padding:10px;cursor:pointer;text-align:center">
+          <div style="font-size:18px;margin-bottom:4px">📋</div>
+          <div style="font-size:11px;color:#888">Documento</div>
+        </label>
+        <label id="nsc-g-rec" onclick="selectGrupoCartao('recibo')" style="background:#111;border:1px solid #333;border-radius:8px;padding:10px;cursor:pointer;text-align:center">
+          <div style="font-size:18px;margin-bottom:4px">💵</div>
+          <div style="font-size:11px;color:#888">Recebimento</div>
+        </label>
+        <label id="nsc-g-gasto" onclick="selectGrupoCartao('gasto')" style="background:#111;border:1px solid #333;border-radius:8px;padding:10px;cursor:pointer;text-align:center">
+          <div style="font-size:18px;margin-bottom:4px">💸</div>
+          <div style="font-size:11px;color:#888">Pagamento</div>
+        </label>
+      </div>
+      <input type="hidden" id="nsc-grupo" value="doc">
+    </div>
+    <button class="btn-confirm" onclick="addSubCat()">Criar cartão</button>
   </div>
 </div>
 
@@ -1127,9 +1145,27 @@ function ensureSubCats(){
 let addingSubCatFor = null;
 let editingSubCat = {catKey:null, subKey:null};
 
+function selectGrupoCartao(tipo){
+  document.getElementById('nsc-grupo').value = tipo;
+  ['doc','rec','gasto'].forEach(g=>{
+    const el = document.getElementById('nsc-g-'+g);
+    if(el) el.style.cssText = 'background:#111;border:1px solid #333;border-radius:8px;padding:10px;cursor:pointer;text-align:center';
+  });
+  const map = {doc:'nsc-g-doc', recibo:'nsc-g-rec', gasto:'nsc-g-gasto'};
+  const colors = {doc:'#888', recibo:'#4caf50', gasto:'#ef5350'};
+  const el = document.getElementById(map[tipo]);
+  if(el) el.style.cssText = 'background:#1a1a1a;border:2px solid '+colors[tipo]+';border-radius:8px;padding:10px;cursor:pointer;text-align:center';
+}
+
 function openModalAddSubCat(catKey){
   addingSubCatFor = catKey;
   document.getElementById('nsc-nome').value = '';
+  const isImovel = !!IMOVEL_CATS[catKey];
+  const grupoGroup = document.getElementById('nsc-grupo-group');
+  if(grupoGroup) grupoGroup.style.display = isImovel ? '' : 'none';
+  const title = document.getElementById('modal-add-subcat-title');
+  if(title) title.textContent = isImovel ? 'Novo cartão' : 'Nova subcategoria';
+  selectGrupoCartao('doc');
   document.getElementById('modal-add-subcat-overlay').classList.add('open');
   setTimeout(()=>document.getElementById('nsc-nome').focus(),100);
   document.querySelectorAll('.cat-menu').forEach(m=>m.classList.remove('open'));
@@ -1142,7 +1178,17 @@ function addSubCat(){
   if(!nome){ alert('Preencha o nome.'); return; }
   const key = nome.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');
   if(!SUBCATS[addingSubCatFor]) SUBCATS[addingSubCatFor] = {};
-  SUBCATS[addingSubCatFor][key] = {label:nome};
+  const isImovel = !!IMOVEL_CATS[addingSubCatFor];
+  const tipo = isImovel ? (document.getElementById('nsc-grupo').value||'doc') : null;
+  SUBCATS[addingSubCatFor][key] = tipo ? {label:nome, tipo} : {label:nome};
+  if(isImovel){
+    const colors = {doc:'#888', recibo:'#4caf50', gasto:'#ef5350'};
+    const icons = {doc:'📋', recibo:'💵', gasto:'💸'};
+    const customCards = JSON.parse(localStorage.getItem('imovel-custom-cards-'+addingSubCatFor)||'[]');
+    if(!customCards.find(c=>c.key===key))
+      customCards.push({label:nome, key, color:colors[tipo]||'#888', icon:icons[tipo]||'📋', tipo, recibo:tipo==='recibo'||undefined});
+    localStorage.setItem('imovel-custom-cards-'+addingSubCatFor, JSON.stringify(customCards));
+  }
   saveSubCats();
   const expanded = JSON.parse(localStorage.getItem('pirati_expanded')||'{}');
   expanded[addingSubCatFor] = true;
@@ -1940,6 +1986,10 @@ function renderImovelCat(catKey, subKey){
     {label:'Hidráulica',       key:'hidraulica',      color:'#42a5f5', icon:'🔧', tipo:'gasto'},
   ] : [];
 
+  // add custom user-created cards
+  const customCards = JSON.parse(localStorage.getItem('imovel-custom-cards-'+catKey)||'[]');
+  customCards.forEach(c=>{ if(!summaryItems.find(i=>i.key===c.key)) summaryItems.push(c); });
+
   if(!SUBCATS[catKey]) SUBCATS[catKey]={};
   const validKeys = summaryItems.map(i=>i.key);
   // only add missing summaryItems, never delete manually created subcats
@@ -2121,7 +2171,7 @@ function renderImovelCat(catKey, subKey){
   }
   html += '<div style="border-left:1px solid #222;padding:0 0 0 2rem"><div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Lançamentos</div><div style="font-size:22px;font-weight:800;color:#555">'+lista.length+'</div></div>';
   if(daysHtml) html += '<div style="border-left:1px solid #222;padding:0 0 0 2rem">'+daysHtml.replace('<div style="margin-left:auto;text-align:right">','<div style="text-align:right">')+'</div>';
-  html += '<div style="margin-left:auto;display:flex;align-items:center"><button onclick="openModalAddSubCat(\"'+catKey+'\")" style="background:transparent;border:1px solid '+info.color+';color:'+info.color+';padding:6px 14px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">+ Novo cartão</button></div>';
+  html += '<div style="margin-left:auto;display:flex;align-items:center"><button id="btn-novo-cartao-'+catKey+'" style="background:transparent;border:1px solid '+info.color+';color:'+info.color+';padding:6px 14px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">+ Novo cartão</button></div>';
   html += '</div>';
 
   if(docItems.length)     html += makeRow(docItems,     'Documentos',  '#666',    '#666');
@@ -2131,6 +2181,9 @@ function renderImovelCat(catKey, subKey){
 
   el.innerHTML = html;
   renderCatNav();
+  // attach novo cartão button
+  const btnNovoCartao = document.getElementById('btn-novo-cartao-'+catKey);
+  if(btnNovoCartao) btnNovoCartao.onclick = ()=>openModalAddSubCat(catKey);
 }
 
 function openModalImovel(catKey){
