@@ -721,6 +721,16 @@ function saveCats(){ localStorage.setItem('pirati_cats', JSON.stringify(CATS)); 
 // remove 'obra' if it exists — now it's 'obra-bruta' in IMOVEL_CATS
 if(CATS['obra']){ delete CATS['obra']; saveCats(); }
 
+// Mapeia categorias antigas mescladas (ex.: "metais" -> "loucas") para a categoria
+// sobrevivente, sem nunca alterar/apagar o campo 'categoria' no Supabase.
+let CAT_MERGE_ALIASES = JSON.parse(localStorage.getItem('cat_merge_aliases')||'{}');
+function saveCatMergeAliases(){ localStorage.setItem('cat_merge_aliases', JSON.stringify(CAT_MERGE_ALIASES)); }
+function catKeysFor(catKey){
+  const keys = [catKey];
+  Object.keys(CAT_MERGE_ALIASES).forEach(k=>{ if(CAT_MERGE_ALIASES[k]===catKey) keys.push(k); });
+  return keys;
+}
+
 function renderCatNav(){
   try{
   const list = document.getElementById('cat-nav-list');
@@ -1888,7 +1898,6 @@ function render(){
   else if(currentPage==='venda-imovel') renderImovelCat('venda-imovel', null);
   else if(currentPage==='compra-imovel') renderImovelCat('compra-imovel', null);
   else if(currentPage==='projeto-arq') renderImovelCat('projeto-arq', null);
-  else if(currentPage==='obra-bruta') renderImovelCat('obra-bruta', null);
   else if(currentPage.includes('__')){
     const [catKey, subKey] = currentPage.split('__');
     if(IMOVEL_CATS[catKey]) renderImovelCat(catKey, subKey);
@@ -1962,12 +1971,11 @@ const IMOVEL_CATS = {
   'venda-imovel':  { label:'Venda do Imóvel',        color:'#4caf50', icon:'🏠' },
   'compra-imovel': { label:'Compra do Imóvel',        color:'#42a5f5', icon:'🔑' },
   'projeto-arq':   { label:'Projeto de Arquitetura',  color:'#e8b544', icon:'📐' },
-  'obra-bruta':    { label:'Execução de Obra',              color:'#ff7043', icon:'🔨' },
 };
 
 // Categorias normais "promovidas" visualmente a etapa (numeração + fundo colorido no menu),
 // mas que continuam usando o SUBCATS/renderCat normal — conteúdo interno não muda.
-const EXTRA_PINNED_STAGES = ['moveis'];
+const EXTRA_PINNED_STAGES = ['moveis','obra-bruta','planejados','decoracao','iluminacao','eletro','loucas','revestimentos-piso','revestimentos-paredes','marmoraria','mudanca','camamesabanho','outroscustos'];
 function getPinnedStageKeys(){
   const allPinned = [...Object.keys(IMOVEL_CATS), ...EXTRA_PINNED_STAGES.filter(k=>CATS[k])];
   let saved = JSON.parse(localStorage.getItem('pinned_stage_order')||'null');
@@ -1982,7 +1990,7 @@ function getPinnedStageKeys(){
 function savePinnedStageOrder(order){ localStorage.setItem('pinned_stage_order', JSON.stringify(order)); }
 function getStageColor(k){ return IMOVEL_CATS[k]?.color || CATS[k]?.color || '#e8b544'; }
 
-let imovelOrder = JSON.parse(localStorage.getItem('imovel_order')||'["venda-imovel","compra-imovel","projeto-arq","obra-bruta"]');
+let imovelOrder = JSON.parse(localStorage.getItem('imovel_order')||'["venda-imovel","compra-imovel","projeto-arq"]');
 let imovelDragKey = null;
 
 function saveImovelOrder(){ localStorage.setItem('imovel_order', JSON.stringify(imovelOrder)); }
@@ -1997,6 +2005,82 @@ try{
     if(SUBCATS[k]) Object.keys(SUBCATS[k]).forEach(sk=>{ if(!SUBCATS[k][sk]||typeof SUBCATS[k][sk]!=='object') delete SUBCATS[k][sk]; });
   });
 }catch(e){ console.warn('SUBCATS cleanup error',e); }
+
+// ── MIGRAÇÃO DE ETAPAS (roda uma única vez) ───────────────────────
+// Regra crítica: nunca escreve/apaga nada no Supabase. Só ajusta CATS/IMOVEL_CATS/
+// SUBCATS (definições locais). Lançamentos antigos continuam intactos no banco.
+(function migrateStagesJuly2026(){
+  if(localStorage.getItem('stage_migration_v1')) return;
+  try{
+    function normLabel(s){
+      return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+    }
+    function findCatKey(guessKey, keywords){
+      if(CATS[guessKey]) return guessKey;
+      const kws = keywords.map(normLabel);
+      return Object.keys(CATS).find(k=>{
+        const nl = normLabel(CATS[k].label);
+        return kws.every(kw=>nl.includes(kw));
+      }) || null;
+    }
+
+    // 1) Mesclar "Louças" + "Metais" em uma única categoria "Louças e Metais"
+    const loucasKey = findCatKey('loucas', ['loucas']);
+    const metaisKey = findCatKey('metais', ['metais']);
+    if(loucasKey && metaisKey && loucasKey!==metaisKey){
+      CATS[loucasKey].label = 'Louças e Metais';
+      if(SUBCATS[metaisKey]){
+        SUBCATS[loucasKey] = SUBCATS[loucasKey] || {};
+        Object.keys(SUBCATS[metaisKey]).forEach(sk=>{
+          let nk = sk, i=1;
+          while(SUBCATS[loucasKey][nk]) nk = sk+'-'+(i++);
+          SUBCATS[loucasKey][nk] = SUBCATS[metaisKey][sk];
+        });
+      }
+      // "metais" some do menu, mas seus lançamentos continuam no Supabase e
+      // aparecem juntos na etapa mesclada via CAT_MERGE_ALIASES (ver renderCat)
+      CAT_MERGE_ALIASES[metaisKey] = loucasKey;
+      saveCatMergeAliases();
+      delete SUBCATS[metaisKey];
+      delete CATS[metaisKey];
+    }
+
+    // 2) Remover categorias não usadas (lançamentos antigos NÃO são apagados do Supabase,
+    //    só deixam de ter uma categoria "ativa" no menu — igual ao botão Excluir já existente)
+    ['arcondicionado','lavanderia','taxas'].forEach((guess,i)=>{
+      const kws = [['ar','condicionado'],['lavanderia'],['taxas']][i];
+      const k = findCatKey(guess, kws);
+      if(k) delete CATS[k];
+    });
+
+    // 3) Garantir que "Execução de Obra" exista como categoria normal (ela já usava
+    //    SUBCATS/gastos com a chave 'obra-bruta', então os lançamentos batem certinho)
+    if(!CATS['obra-bruta']){
+      CATS['obra-bruta'] = {label:'Execução de Obra', icon:'🔨', color:'#ff7043'};
+    }
+
+    // 4) Segurança extra: se alguma chave "adivinhada" em EXTRA_PINNED_STAGES não bater
+    //    com a categoria real do usuário, tenta resolver pelo rótulo (nome exibido)
+    const stageLabelHints = {
+      'moveis':['moveis'], 'obra-bruta':['execucao'], 'planejados':['planejados'],
+      'decoracao':['decoracao'], 'iluminacao':['iluminacao'], 'eletro':['eletrodomesticos'],
+      'loucas':['loucas'], 'revestimentos-piso':['revestimento','piso'],
+      'revestimentos-paredes':['revestimento','pared'], 'marmoraria':['marmoraria'],
+      'mudanca':['mudanca'], 'camamesabanho':['banho'], 'outroscustos':['outros']
+    };
+    EXTRA_PINNED_STAGES.forEach((k,idx)=>{
+      if(CATS[k]) return;
+      const hint = stageLabelHints[k];
+      if(!hint) return;
+      const resolved = findCatKey(k, hint);
+      if(resolved) EXTRA_PINNED_STAGES[idx] = resolved;
+    });
+
+    saveCats();
+    saveSubCats();
+    localStorage.setItem('stage_migration_v1','1');
+  }catch(e){ console.warn('Erro na migração de etapas:', e); }
+})();
 
 function openEditImovelCat(k){
   const info = IMOVEL_CATS[k];
@@ -2816,7 +2900,8 @@ function renderSubCat(page){
   const info = CATS[catKey] || IMOVEL_CATS[catKey];
   if(!info){ navigate('geral'); return; }
   const subLabel = SUBCATS[catKey]?.[subKey]?.label || subKey;
-  const lista = gastos.filter(g=>g.categoria===catKey && g.subcategoria===subKey);
+  const catAliasKeys = catKeysFor(catKey);
+  const lista = gastos.filter(g=>catAliasKeys.includes(g.categoria) && g.subcategoria===subKey);
   const getValSub = g => (g.valor||0) * (g.quantidade||1);
   const total = lista.filter(g=>g.status!=='cancel').reduce((s,g)=>s+getValSub(g),0);
   const pago  = lista.filter(g=>g.status==='pago').reduce((s,g)=>s+getValSub(g),0);
@@ -2867,7 +2952,8 @@ function openModalWithSubCat(catKey, subKey){
 function renderCat(cat){
   const info   = CATS[cat] || IMOVEL_CATS[cat];
   if(!info){ navigate('geral'); return; }
-  const lista  = gastos.filter(g=>g.categoria===cat);
+  const catAliasKeys = catKeysFor(cat);
+  const lista  = gastos.filter(g=>catAliasKeys.includes(g.categoria));
   const ativos = lista.filter(g=>g.status!=='cancel');
   const getValCat = g => (g.valor||0) * (g.quantidade||1);
   const total  = ativos.reduce((s,g)=>s+getValCat(g),0);
