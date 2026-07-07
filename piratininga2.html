@@ -1968,7 +1968,7 @@ function renderImovelCat(catKey, subKey){
   }
 
   // MAIN SUMMARY VIEW
-  const recKeys = summaryItems.filter(i=>i.tipo==='recebimento').map(i=>i.key);
+  const recKeys = summaryItems.filter(i=>i.tipo==='recebimento'||i.tipo==='recibo').map(i=>i.key);
   const gastoKeys = summaryItems.filter(i=>i.tipo==='gasto').map(i=>i.key);
   const recLista = lista.filter(g=>recKeys.includes(g.subcategoria));
   const gastoLista = lista.filter(g=>gastoKeys.includes(g.subcategoria));
@@ -1978,7 +1978,7 @@ function renderImovelCat(catKey, subKey){
   const liquido = totalRecebido - totalGasto;
 
   const docItems     = summaryItems.filter(i=>i.tipo==='doc');
-  const recItems     = summaryItems.filter(i=>i.tipo==='recebimento');
+  const recItems     = summaryItems.filter(i=>i.tipo==='recebimento'||i.tipo==='recibo');
   const gastoItems   = summaryItems.filter(i=>i.tipo==='gasto');
   const entregaItems = summaryItems.filter(i=>i.tipo==='entrega');
 
@@ -1986,15 +1986,32 @@ function renderImovelCat(catKey, subKey){
     const itemGastos = lista.filter(g=>g.subcategoria===item.key);
     const itemTotal = itemGastos.reduce((s,g)=>s+getVal(g),0);
     const hasData = itemTotal > 0;
-    return '<div onclick="navigate(\''+catKey+'__'+item.key+'\')" style="background:#0e0e0e;border:1px solid '+(hasData?item.color:'#1e1e1e')+';border-top:3px solid '+item.color+';border-radius:8px;padding:14px 16px;cursor:pointer;height:90px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;transition:background .15s" onmouseover="this.style.background=\'#161616\'" onmouseout="this.style.background=\'#0e0e0e\'">'
+    const isUpload = item.tipo==='doc' || item.tipo==='recibo';
+    const uploadLabel = item.tipo==='doc' ? 'documento' : 'recibo';
+
+    const inputId = 'upload-'+catKey+'-'+item.key;
+
+    const uploadZone = isUpload ? (
+      '<div onclick="event.stopPropagation();document.getElementById(\''+inputId+'\').click()" '
+      +'ondragover="event.preventDefault();event.stopPropagation();this.style.borderColor=\''+item.color+'\'" '
+      +'ondragleave="this.style.borderColor=\'transparent\'" '
+      +'ondrop="event.preventDefault();event.stopPropagation();handleImovelDocFiles(event.dataTransfer.files,\''+catKey+'\',\''+item.key+'\')" '
+      +'style="margin-top:6px;border:1px dashed '+item.color+'55;border-radius:6px;padding:5px 8px;cursor:pointer;transition:border-color .15s;text-align:center">'
+      +'<span style="font-size:9px;color:#555">☁ arraste ou clique para adicionar '+uploadLabel+'</span>'
+      +'<input type="file" id="'+inputId+'" style="display:none" multiple onchange="handleImovelDocFiles(this.files,\''+catKey+'\',\''+item.key+'\');this.value=\'\'">'
+      +'</div>'
+    ) : '';
+
+    return '<div onclick="navigate(\''+catKey+'__'+item.key+'\')" style="background:#0e0e0e;border:1px solid '+(hasData?item.color:'#1e1e1e')+';border-top:3px solid '+item.color+';border-radius:8px;padding:14px 16px;cursor:pointer;min-height:90px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;transition:background .15s" onmouseover="this.style.background=\'#161616\'" onmouseout="this.style.background=\'#0e0e0e\'">'
       +'<div style="display:flex;align-items:center;justify-content:space-between">'
       +'<span style="font-size:18px">'+item.icon+'</span>'
       +(hasData?'<span style="font-size:13px;font-weight:700;color:'+item.color+'">'+fmt(itemTotal)+'</span>':'')
       +'</div>'
       +'<div>'
       +'<div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.07em">'+item.label+'</div>'
-      +(itemGastos.length?'<div style="font-size:10px;color:#444;margin-top:2px">'+itemGastos.length+' lançamento'+(itemGastos.length!==1?'s':'')+'</div>':'')
+      +(itemGastos.length?'<div style="font-size:10px;color:#444;margin-top:2px">'+itemGastos.length+' arquivo'+(itemGastos.length!==1?'s':'')+'</div>':'')
       +'</div>'
+      +uploadZone
       +'</div>';
   }
 
