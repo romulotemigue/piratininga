@@ -2160,7 +2160,7 @@ function renderImovelCat(catKey, subKey){
     const isUpload = item.tipo==='doc' || item.tipo==='recibo' || item.recibo;
     const uploadLabel = item.tipo==='doc' ? 'documento' : 'recibo';
     const inputId = 'upload-'+catKey+'-'+item.key;
-    const showDate = ['proposta','contrato','sinal','entrada','entrada-venda','repasse-bancario','corretagem'].includes(item.key);
+    const showDate = true; // all cards get date + pencil
 
     const uploadZone = isUpload ? (
       '<div onclick="event.stopPropagation();document.getElementById(\''+inputId+'\').click()" '
@@ -2175,7 +2175,7 @@ function renderImovelCat(catKey, subKey){
 
     return '<div data-card-key="'+item.key+'" draggable="true" ondragstart="cardDragStart(event,\''+catKey+'\',\''+item.key+'\')" ondragover="cardDragOver(event,\''+catKey+'\',\''+item.key+'\')" ondrop="cardDragDrop(event,\''+catKey+'\',\''+item.key+'\')" ondragend="cardDragEnd(event)" onclick="navigate(\''+catKey+'__'+item.key+'\')" style="background:#0e0e0e;border:1px solid '+(hasData?item.color:'#1e1e1e')+';border-top:3px solid '+item.color+';border-radius:8px;padding:14px 16px;cursor:pointer;min-height:90px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;transition:all .15s" onmouseover="this.style.background=\'#161616\'" onmouseout="this.style.background=\'#0e0e0e\'">'
       +'<div style="display:flex;align-items:center;justify-content:space-between">'
-      +'<span style="font-size:18px">'+item.icon+'</span>'
+      +'<div style="display:flex;align-items:center;gap:6px"><span style="color:#2a2a2a;font-size:13px;cursor:grab;user-select:none" title="Arrastar">⠿</span><span style="font-size:18px">'+item.icon+'</span></div>'
       +'<div style="display:flex;align-items:center;gap:4px">'+(itemGastos.length?'<button onclick="event.stopPropagation();openEdit('+itemGastos[0].id+')" title="Editar" style="background:none;border:none;color:#444;cursor:pointer;font-size:15px;padding:0 4px;line-height:1"><i class="ti ti-pencil"></i></button>':'')+(showDate ? dateBadge(item) : (hasData?'<span style="font-size:13px;font-weight:700;color:'+item.color+'">'+fmt(itemTotal)+'</span>':''))+'</div>'
       +'</div>'
       +(showDate && hasData ? '<div style="font-size:13px;font-weight:700;color:'+item.color+';margin-top:4px">'+fmt(itemTotal)+'</div>' : '')
