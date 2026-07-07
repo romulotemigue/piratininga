@@ -134,7 +134,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
 .nav-cat-wrap{transition:opacity .2s, transform .2s, box-shadow .2s, filter .2s}
 .nav-cat-wrap.dragging{opacity:.2;transform:scale(0.93) rotate(-1deg);filter:blur(1px)}
 .nav-cat-wrap.drag-over{border-top:3px solid #e8b544;transform:translateY(6px) scale(1.02);box-shadow:0 -4px 12px rgba(232,181,68,0.4);background:rgba(232,181,68,0.05)}
-.nav-cat-wrap.imovel-dimmed{opacity:.3;filter:saturate(0.2)}
+.nav-cat-wrap.imovel-dimmed{opacity:.62;filter:saturate(0.65)}
 .subcat-row:hover .subcat-dots-btn{opacity:1!important;color:#e8b544}
 .subcat-dots-btn{opacity:0}
 .cat-chevron{background:none;border:none;color:#555;cursor:pointer;padding:4px 6px;font-size:12px;transition:transform .2s;flex-shrink:0;line-height:1}
@@ -1317,20 +1317,18 @@ function dragLeave(k, e){
 function dragDrop(k, e){
   e.preventDefault();
   if(k===dragKey) return;
-  const savedImovelOrder = JSON.parse(localStorage.getItem('imovel_order')||'null');
-  const imovelKeys = savedImovelOrder ? savedImovelOrder.filter(k2=>IMOVEL_CATS[k2]) : Object.keys(IMOVEL_CATS);
-  Object.keys(IMOVEL_CATS).forEach(k2=>{ if(!imovelKeys.includes(k2)) imovelKeys.push(k2); });
-  const catKeys = Object.keys(CATS);
-  const fromIsImovel = imovelKeys.includes(dragKey);
-  const toIsImovel = imovelKeys.includes(k);
+  const pinnedKeys = getPinnedStageKeys();
+  const fromIsPinned = pinnedKeys.includes(dragKey);
+  const toIsPinned = pinnedKeys.includes(k);
+  const catKeys = Object.keys(CATS).filter(k2=>!EXTRA_PINNED_STAGES.includes(k2));
 
-  if(fromIsImovel && toIsImovel){
-    const arr = [...imovelKeys];
+  if(fromIsPinned && toIsPinned){
+    const arr = [...pinnedKeys];
     const fi = arr.indexOf(dragKey);
     const ti = arr.indexOf(k);
     arr.splice(fi,1); arr.splice(ti,0,dragKey);
-    localStorage.setItem('imovel_order', JSON.stringify(arr));
-  } else if(!fromIsImovel && !toIsImovel){
+    savePinnedStageOrder(arr);
+  } else if(!fromIsPinned && !toIsPinned){
     const allOrder = JSON.parse(localStorage.getItem('all_cat_order')||'null') || [...catKeys];
     const catOrder = allOrder.filter(k2=>catKeys.includes(k2));
     catKeys.forEach(k2=>{ if(!catOrder.includes(k2)) catOrder.push(k2); });
@@ -1971,11 +1969,17 @@ const IMOVEL_CATS = {
 // mas que continuam usando o SUBCATS/renderCat normal — conteúdo interno não muda.
 const EXTRA_PINNED_STAGES = ['moveis'];
 function getPinnedStageKeys(){
-  const savedImovelOrder = JSON.parse(localStorage.getItem('imovel_order')||'null');
-  const imovelKeys = savedImovelOrder ? savedImovelOrder.filter(k=>IMOVEL_CATS[k]) : Object.keys(IMOVEL_CATS);
-  Object.keys(IMOVEL_CATS).forEach(k=>{ if(!imovelKeys.includes(k)) imovelKeys.push(k); });
-  return [...imovelKeys, ...EXTRA_PINNED_STAGES.filter(k=>CATS[k])];
+  const allPinned = [...Object.keys(IMOVEL_CATS), ...EXTRA_PINNED_STAGES.filter(k=>CATS[k])];
+  let saved = JSON.parse(localStorage.getItem('pinned_stage_order')||'null');
+  if(!saved){
+    const legacyImovelOrder = JSON.parse(localStorage.getItem('imovel_order')||'null');
+    saved = legacyImovelOrder ? [...legacyImovelOrder] : [...Object.keys(IMOVEL_CATS)];
+  }
+  const order = saved.filter(k=>allPinned.includes(k));
+  allPinned.forEach(k=>{ if(!order.includes(k)) order.push(k); });
+  return order;
 }
+function savePinnedStageOrder(order){ localStorage.setItem('pinned_stage_order', JSON.stringify(order)); }
 function getStageColor(k){ return IMOVEL_CATS[k]?.color || CATS[k]?.color || '#e8b544'; }
 
 let imovelOrder = JSON.parse(localStorage.getItem('imovel_order')||'["venda-imovel","compra-imovel","projeto-arq","obra-bruta"]');
