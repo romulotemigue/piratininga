@@ -2197,11 +2197,15 @@ function renderImovelCat(catKey, subKey){
     ) : '';
 
     // top row: ⠿ icon | ✏ 🗑 📅
+    const canLaunch = item.tipo !== 'doc';
+    const pencilBtn = itemGastos.length
+      ? '<button onclick="event.stopPropagation();openEdit('+itemGastos[0].id+')" title="Editar" style="background:none;border:none;color:#444;cursor:pointer;font-size:14px;padding:0 2px"><i class="ti ti-pencil"></i></button>'
+      : (canLaunch ? '<button onclick="event.stopPropagation();openModal(\''+catKey+'\',\''+item.key+'\')" title="Lançar" style="background:none;border:none;color:#444;cursor:pointer;font-size:14px;padding:0 2px"><i class="ti ti-pencil"></i></button>' : '');
     const topRow =
       '<div style="display:flex;align-items:center;justify-content:space-between" onclick="event.stopPropagation()">'
       +'<div style="display:flex;align-items:center;gap:6px"><span style="color:#2a2a2a;font-size:13px;cursor:grab;user-select:none">⠿</span><span style="font-size:18px">'+item.icon+'</span></div>'
       +'<div style="display:flex;align-items:center;gap:3px">'
-      +(itemGastos.length ? '<button onclick="openEdit('+itemGastos[0].id+')" title="Editar" style="background:none;border:none;color:#444;cursor:pointer;font-size:14px;padding:0 2px"><i class="ti ti-pencil"></i></button>' : '')
+      +pencilBtn
       +'<button onclick="if(confirm(\'Remover cartão?\'))deleteImovelCard(\''+catKey+'\',\''+item.key+'\')" title="Remover" style="background:none;border:none;color:#333;cursor:pointer;font-size:14px;padding:0 2px"><i class="ti ti-trash"></i></button>'
       +dateBadge(item)
       +'</div>'
@@ -2219,7 +2223,7 @@ function renderImovelCat(catKey, subKey){
         +'</div>'
       : '';
 
-    return '<div data-card-key="'+item.key+'" draggable="true" ondragstart="cardDragStart(event,\''+catKey+'\',\''+item.key+'\')" ondragover="cardDragOver(event,\''+catKey+'\',\''+item.key+'\')" ondrop="cardDragDrop(event,\''+catKey+'\',\''+item.key+'\')" ondragend="cardDragEnd(event)" onclick="navigate(\''+catKey+'__'+item.key+'\')" style="background:#0e0e0e;border:1px solid '+(hasData?item.color:'#1e1e1e')+';border-top:3px solid '+item.color+';border-radius:8px;padding:12px 14px;cursor:pointer;min-height:90px;box-sizing:border-box;display:flex;flex-direction:column;gap:2px;transition:all .15s" onmouseover="this.style.background=\'#161616\'" onmouseout="this.style.background=\'#0e0e0e\'">'
+    return '<div data-card-key="'+item.key+'" draggable="true" ondragstart="cardDragStart(event,\''+catKey+'\',\''+item.key+'\')" ondragover="cardDragOver(event,\''+catKey+'\',\''+item.key+'\')" ondrop="cardDragDrop(event,\''+catKey+'\',\''+item.key+'\')" ondragend="cardDragEnd(event)" onclick="navigate(\''+catKey+'__'+item.key+'\')" style="background:#0e0e0e;border:1px solid '+(hasData?item.color:'#1e1e1e')+';border-top:3px solid '+item.color+';border-radius:8px;padding:12px 14px;cursor:pointer;min-height:90px;height:100%;box-sizing:border-box;display:flex;flex-direction:column;gap:2px;transition:all .15s" onmouseover="this.style.background=\'#161616\'" onmouseout="this.style.background=\'#0e0e0e\'">'
       +topRow+valueRow+labelRow+anexoRow+uploadZone
       +'</div>';
   }
@@ -2229,7 +2233,7 @@ function renderImovelCat(catKey, subKey){
     return '<div style="margin-bottom:16px">'
       +'<div style="font-size:10px;font-weight:600;color:'+labelColor+';text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;display:flex;align-items:center;gap:6px">'
       +'<span style="width:7px;height:7px;border-radius:50%;background:'+borderColor+';display:inline-block"></span>'+label+'</div>'
-      +'<div style="display:grid;grid-template-columns:repeat('+items.length+',1fr);gap:8px">'+cols+'</div>'
+      +'<div style="display:grid;grid-template-columns:repeat('+items.length+',1fr);align-items:stretch;gap:8px">'+cols+'</div>'
       +'</div>';
   }
 
