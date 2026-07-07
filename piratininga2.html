@@ -696,8 +696,9 @@ const DEFAULT_CATS = {
 };
 let _savedCats = localStorage.getItem('pirati_cats');
 let CATS = _savedCats ? JSON.parse(_savedCats) : JSON.parse(JSON.stringify(DEFAULT_CATS));
-// if saved but empty, reset to defaults
 if(Object.keys(CATS).length === 0) CATS = JSON.parse(JSON.stringify(DEFAULT_CATS));
+// remove 'obra' if it exists — now it's 'obra-bruta' in IMOVEL_CATS
+if(CATS['obra']){ delete CATS['obra']; saveCats(); }
 function saveCats(){ localStorage.setItem('pirati_cats', JSON.stringify(CATS)); }
 
 function renderCatNav(){
@@ -3197,15 +3198,7 @@ try{
 
 // force rebuild all_cat_order to include imovel cats and remove old keys
 try{
-  const savedOrder = JSON.parse(localStorage.getItem('all_cat_order')||'null');
-  if(savedOrder){
-    const imovelKeys = Object.keys(IMOVEL_CATS);
-    const validCatKeys = [...Object.keys(CATS), ...imovelKeys];
-    // remove stale keys (like old 'obra'), add missing ones
-    const cleaned = savedOrder.filter(k=>validCatKeys.includes(k));
-    validCatKeys.forEach(k=>{ if(!cleaned.includes(k)) cleaned.push(k); });
-    localStorage.setItem('all_cat_order', JSON.stringify(cleaned));
-  }
+  localStorage.removeItem('all_cat_order');
 }catch(e){}
 
 renderCatNav();
