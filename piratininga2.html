@@ -1882,10 +1882,14 @@ function getCardDate(catKey, key){ return localStorage.getItem('imovel-date-'+ca
 function setCardDate(catKey, key, val){ localStorage.setItem('imovel-date-'+catKey+'-'+key, val); console.log('setCardDate',catKey,key,val,localStorage.getItem('imovel-date-'+catKey+'-'+key)); renderImovelCat(catKey, null); }
 
 function deleteImovelCard(catKey, key){
-  // remove from custom cards
+  // remove from custom cards if it's there
   const customCards = JSON.parse(localStorage.getItem('imovel-custom-cards-'+catKey)||'[]');
   const filtered = customCards.filter(c=>c.key!==key);
   localStorage.setItem('imovel-custom-cards-'+catKey, JSON.stringify(filtered));
+  // for fixed cards: store a "hidden" list
+  const hidden = JSON.parse(localStorage.getItem('imovel-hidden-cards-'+catKey)||'[]');
+  if(!hidden.includes(key)) hidden.push(key);
+  localStorage.setItem('imovel-hidden-cards-'+catKey, JSON.stringify(hidden));
   // remove from subcats
   if(SUBCATS[catKey]) delete SUBCATS[catKey][key];
   saveSubCats();
@@ -2060,26 +2064,30 @@ function renderImovelCat(catKey, subKey){
   const customCards = JSON.parse(localStorage.getItem('imovel-custom-cards-'+catKey)||'[]');
   customCards.forEach(c=>{ if(!summaryItems.find(i=>i.key===c.key)) summaryItems.push(c); });
 
+  // filter out hidden (deleted) cards
+  const hiddenCards = JSON.parse(localStorage.getItem('imovel-hidden-cards-'+catKey)||'[]');
+  const visibleItems = summaryItems.filter(i=>!hiddenCards.includes(i.key));
+
   // apply saved card order
   const savedCardOrder = JSON.parse(localStorage.getItem('imovel-card-order-'+catKey)||'null');
   if(savedCardOrder){
-    summaryItems.sort((a,b)=>{
+    visibleItems.sort((a,b)=>{
       const ai = savedCardOrder.indexOf(a.key); const bi = savedCardOrder.indexOf(b.key);
       return (ai===-1?999:ai) - (bi===-1?999:bi);
     });
   }
 
   if(!SUBCATS[catKey]) SUBCATS[catKey]={};
-  const validKeys = summaryItems.map(i=>i.key);
+  const validKeys = visibleItems.map(i=>i.key);
   // only add missing summaryItems, never delete manually created subcats
-  summaryItems.forEach(item=>{ if(!SUBCATS[catKey][item.key]) SUBCATS[catKey][item.key]={label:item.label}; });
+  visibleItems.forEach(item=>{ if(!SUBCATS[catKey][item.key]) SUBCATS[catKey][item.key]={label:item.label}; });
   saveSubCats();
 
   const el = document.getElementById('content');
 
   // SUBCAT DETAIL VIEW
   if(subKey){
-    const item = summaryItems.find(i=>i.key===subKey)||{label:subKey,color:info.color,icon:'📋'};
+    const item = visibleItems.find(i=>i.key===subKey)||{label:subKey,color:info.color,icon:'📋'};
     const itemGastos = lista.filter(g=>g.subcategoria===subKey);
     const itemTotal = itemGastos.reduce((s,g)=>s+getVal(g),0);
     let rowsHtml = '';
@@ -2135,8 +2143,8 @@ function renderImovelCat(catKey, subKey){
   }
 
   // MAIN SUMMARY VIEW
-  const recKeys = summaryItems.filter(i=>i.tipo==='recebimento'||i.tipo==='recibo').map(i=>i.key);
-  const gastoKeys = summaryItems.filter(i=>i.tipo==='gasto').map(i=>i.key);
+  const recKeys = visibleItems.filter(i=>i.tipo==='recebimento'||i.tipo==='recibo').map(i=>i.key);
+  const gastoKeys = visibleItems.filter(i=>i.tipo==='gasto').map(i=>i.key);
   // only count items that belong to this catKey AND match the subcategoria keys
   const recLista = lista.filter(g=>recKeys.includes(g.subcategoria));
   const gastoLista = lista.filter(g=>gastoKeys.includes(g.subcategoria)||g.recibo);
@@ -2147,10 +2155,10 @@ function renderImovelCat(catKey, subKey){
   const totalAPagar = gastoLista.filter(g=>gastoKeys.includes(g.subcategoria)&&g.status!=='pago').reduce((s,g)=>s+getVal(g),0);
   const liquido = totalRecebido - totalGasto;
 
-  const docItems     = summaryItems.filter(i=>i.tipo==='doc');
-  const recItems     = summaryItems.filter(i=>i.tipo==='recebimento'||i.tipo==='recibo');
-  const gastoItems   = summaryItems.filter(i=>i.tipo==='gasto');
-  const entregaItems = summaryItems.filter(i=>i.tipo==='entrega');
+  const docItems     = visibleItems.filter(i=>i.tipo==='doc');
+  const recItems     = visibleItems.filter(i=>i.tipo==='recebimento'||i.tipo==='recibo');
+  const gastoItems   = visibleItems.filter(i=>i.tipo==='gasto');
+  const entregaItems = visibleItems.filter(i=>i.tipo==='entrega');
 
   // use global getCardDate/setCardDate
 
