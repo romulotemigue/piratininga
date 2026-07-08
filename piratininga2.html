@@ -2053,11 +2053,11 @@ const IMOVEL_DEFAULT_CARDS = {
     {label:'Contrato',                  key:'contrato',           color:'#42a5f5', icon:'📄',  tipo:'doc'},
     {label:'Contrato de Financiamento', key:'contrato-financ',    color:'#9c27b0', icon:'🏦',  tipo:'doc'},
     {label:'Documentação do Imóvel',    key:'doc-imovel',         color:'#ff7043', icon:'🗂️',  tipo:'doc'},
-    {label:'Sinal',                     key:'sinal',              color:'#9c27b0', icon:'🤝',  tipo:'gasto', recibo:true},
-    {label:'Entrada',                   key:'entrada',            color:'#4caf50', icon:'💵',  tipo:'gasto', recibo:true},
-    {label:'Repasse bancário',          key:'repasse-bancario',   color:'#e91e8c', icon:'🏦',  tipo:'gasto', recibo:true, financiamento:true},
-    {label:'FGTS',                      key:'fgts',               color:'#e91e8c', icon:'💳',  tipo:'gasto', recibo:true, financiamento:true},
-    {label:'Taxas',                     key:'taxas',              color:'#888',    icon:'📋',  tipo:'gasto', recibo:true},
+    {label:'Sinal',                     key:'sinal',              color:'#9c27b0', icon:'🤝',  tipo:'gasto', recibo:true, grupo:'documentacao'},
+    {label:'Entrada',                   key:'entrada',            color:'#4caf50', icon:'💵',  tipo:'gasto', recibo:true, grupo:'valor-imovel'},
+    {label:'Repasse bancário',          key:'repasse-bancario',   color:'#e91e8c', icon:'🏦',  tipo:'gasto', recibo:true, financiamento:true, grupo:'valor-imovel'},
+    {label:'FGTS',                      key:'fgts',               color:'#e91e8c', icon:'💳',  tipo:'gasto', recibo:true, financiamento:true, grupo:'documentacao'},
+    {label:'Taxas',                     key:'taxas',              color:'#888',    icon:'📋',  tipo:'gasto', recibo:true, grupo:'documentacao'},
   ],
   'projeto-arq': [
     {label:'Proposta',         key:'proposta',        color:'#888',    icon:'📝', tipo:'doc'},
@@ -2080,6 +2080,19 @@ function getImovelCardDefs(catKey){
 // (entra na sua conta) ou pagamento (sai do seu bolso) — considera cartões
 // personalizados também. 'financiamento:true' = passagem direta banco→vendedor,
 // não é seu dinheiro entrando nem saindo.
+// Classifica um lançamento como parte do "valor do imóvel" (entrada/repasse/por fora —
+// o preço em si) ou "documentação e custos" (o resto: sinal, taxas, ITBI, vistoria, FGTS...).
+// Cartões personalizados sem essa marcação caem em 'documentacao' por padrão, exceto se o
+// nome sugerir claramente que é parte do valor do imóvel (ex.: "por fora").
+function getImovelCardGroup(catKey, subKey){
+  const def = getImovelCardDefs(catKey).find(i=>i.key===subKey);
+  if(!def || def.tipo==='doc' || def.tipo==='entrega') return null;
+  if(def.grupo) return def.grupo;
+  const nl = (def.label||'').toLowerCase();
+  if(nl.includes('por fora')) return 'valor-imovel';
+  return 'documentacao';
+}
+
 function getImovelCardKind(catKey, subKey){
   const def = getImovelCardDefs(catKey).find(i=>i.key===subKey);
   if(!def) return 'outro';
@@ -2858,6 +2871,11 @@ function renderImovelCat(catKey, subKey){
   }
 
   // Summary bar
+  const valorImovelKeys = visibleItems.filter(i=>getImovelCardGroup(catKey,i.key)==='valor-imovel').map(i=>i.key);
+  const documentacaoKeys = visibleItems.filter(i=>getImovelCardGroup(catKey,i.key)==='documentacao').map(i=>i.key);
+  const totalValorImovel = lista.filter(g=>valorImovelKeys.includes(g.subcategoria)).reduce((s,g)=>s+getVal(g),0);
+  const totalDocumentacao = lista.filter(g=>documentacaoKeys.includes(g.subcategoria)).reduce((s,g)=>s+getVal(g),0);
+
   let html = '<div style="background:#0e0e0e;border:1px solid #222;border-left:3px solid '+info.color+';border-radius:10px;padding:1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:0;flex-wrap:wrap">';
 
   // LEFT: financial numbers
@@ -2882,6 +2900,13 @@ function renderImovelCat(catKey, subKey){
   html += '</div>';
 
   html += '</div>';
+
+  if(valorImovelKeys.length || documentacaoKeys.length){
+    html += '<div style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;gap:0;flex-wrap:wrap">';
+    if(valorImovelKeys.length) html += '<div style="padding-right:2rem"><div style="font-size:10px;color:#4caf50;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Valor do imóvel</div><div style="font-size:18px;font-weight:700;color:#4caf50">'+fmt(totalValorImovel)+'</div></div>';
+    if(documentacaoKeys.length) html += '<div style="border-left:1px solid #1a1a1a;padding:0 2rem"><div style="font-size:10px;color:#e8b544;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Documentação e custos</div><div style="font-size:18px;font-weight:700;color:#e8b544">'+fmt(totalDocumentacao)+'</div></div>';
+    html += '</div>';
+  }
 
   if(docItems.length)     html += makeRow(docItems,     'Documentos',  '#666',    '#666');
   if(recItems.length)     html += makeRow(recItems,     'Recebimentos','#4caf50', '#4caf50');
@@ -2969,6 +2994,10 @@ function renderGeral(){
   // Saldo projetado = saldo real + o que ainda falta entrar/sair dos dois lados
   const saldoProjetado = saldoReal + vendaAReceber - vendaAPagar - compraAPagar - necessario;
   const saldo = saldoReal; // mantém o nome usado no resto da função (blocos de cenário abaixo)
+  // Saldo "só reforma vs só aportes" — cenário mais conservador, ignora a grana da
+  // venda/compra do imóvel de propósito (usado só nos 3 blocos de cenário abaixo)
+  const saldoReforma = dispGanhos - pago;
+  const pctReforma = dispGanhos>0?Math.round(total/dispGanhos*100):0;
 
   document.getElementById('content').innerHTML = `
 
@@ -3055,16 +3084,16 @@ function renderGeral(){
     </div>
 
 
-    <!-- BLOCO 1: PAGO -->
+    <!-- BLOCO 1: PAGO (cenário conservador — só reforma vs só aportes, sem contar venda/compra) -->
     <div style="background:#111;border:1px solid #1e3a1e;border-left:3px solid #4caf50;border-radius:10px;padding:1.25rem;margin-bottom:1rem">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem">
         <span style="width:8px;height:8px;border-radius:50%;background:#4caf50;display:inline-block"></span>
-        <span style="font-size:11px;font-weight:600;color:#4caf50;text-transform:uppercase;letter-spacing:.08em">Saldo real — já pago</span>
-        <span style="margin-left:auto;font-size:15px;font-weight:600;color:${saldo<0?'#ef5350':'#4caf50'}">${fmt(saldo)}</span>
-        <span style="font-size:11px;color:${pct>100?'#ef5350':pct>90?'#ef5350':pct>70?'#e8b544':'#4caf50'}">${pct}%${pct>100?' ⚠ estourou':'  gasto'}</span>
+        <span style="font-size:11px;font-weight:600;color:#4caf50;text-transform:uppercase;letter-spacing:.08em">Saldo real — já pago <span style="color:#555;font-weight:400;text-transform:none">(só reforma vs. só aportes)</span></span>
+        <span style="margin-left:auto;font-size:15px;font-weight:600;color:${saldoReforma<0?'#ef5350':'#4caf50'}">${fmt(saldoReforma)}</span>
+        <span style="font-size:11px;color:${pctReforma>100?'#ef5350':pctReforma>90?'#ef5350':pctReforma>70?'#e8b544':'#4caf50'}">${pctReforma}%${pctReforma>100?' ⚠ estourou':'  gasto'}</span>
       </div>
-      <div class="progress-bar-bg" style="margin-bottom:6px"><div class="progress-bar-fill" style="width:${pct}%;background:${pct>90?'#ef5350':pct>70?'#e8b544':'#4caf50'}"></div></div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:1rem"><span>Pago: ${fmt(pago)}</span><span>Saldo: <strong style="color:${saldo<0?'#ef5350':'#4caf50'}">${fmt(saldo)}</strong></span></div>
+      <div class="progress-bar-bg" style="margin-bottom:6px"><div class="progress-bar-fill" style="width:${pctReforma}%;background:${pctReforma>90?'#ef5350':pctReforma>70?'#e8b544':'#4caf50'}"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:1rem"><span>Pago: ${fmt(pago)}</span><span>Saldo: <strong style="color:${saldoReforma<0?'#ef5350':'#4caf50'}">${fmt(saldoReforma)}</strong></span></div>
       <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:12px">
         <div class="chart-card" style="background:#0d1a0d;border-color:#1e3a1e">
           <div class="chart-title" style="color:#4caf50">Por categoria</div>
@@ -3079,12 +3108,12 @@ function renderGeral(){
       </div>
     </div>
 
-    <!-- BLOCO 2: PAGO + NECESSÁRIOS -->
-    ${(()=>{const s2=saldo-necessario;const p2=dispGanhos>0?Math.round((pago+necessario)/dispGanhos*100):0;const c2=p2>90?'#ef5350':p2>70?'#e8b544':'#42a5f5';return `
+    <!-- BLOCO 2: PAGO + NECESSÁRIOS (cenário conservador — só reforma vs só aportes) -->
+    ${(()=>{const s2=saldoReforma-necessario;const p2=dispGanhos>0?Math.round((pago+necessario)/dispGanhos*100):0;const c2=p2>90?'#ef5350':p2>70?'#e8b544':'#42a5f5';return `
     <div style="background:#111;border:1px solid #1a2a3a;border-left:3px solid #42a5f5;border-radius:10px;padding:1.25rem;margin-bottom:1rem">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem">
         <span style="width:8px;height:8px;border-radius:50%;background:#42a5f5;display:inline-block"></span>
-        <span style="font-size:11px;font-weight:600;color:#42a5f5;text-transform:uppercase;letter-spacing:.08em">Saldo com necessários — pago + necessários</span>
+        <span style="font-size:11px;font-weight:600;color:#42a5f5;text-transform:uppercase;letter-spacing:.08em">Saldo com necessários — pago + necessários <span style="color:#555;font-weight:400;text-transform:none">(só reforma vs. só aportes)</span></span>
         <span style="margin-left:auto;font-size:15px;font-weight:600;color:${s2<0?'#ef5350':'#42a5f5'}">${fmt(s2)}</span>
         <span style="font-size:11px;color:${c2}">${p2}%${p2>100?' ⚠ estourou':' comprometido'}</span>
       </div>
@@ -3105,12 +3134,12 @@ function renderGeral(){
     </div>
     `;})()} 
 
-    <!-- BLOCO 3: TUDO -->
-    ${(()=>{const s3=saldo-necessario-dispensavel;const p3=dispGanhos>0?Math.round((pago+necessario+dispensavel)/dispGanhos*100):0;const c3=p3>90?'#ef5350':p3>70?'#e8b544':'#888';return `
+    <!-- BLOCO 3: TUDO (cenário conservador — só reforma vs só aportes) -->
+    ${(()=>{const s3=saldoReforma-necessario-dispensavel;const p3=dispGanhos>0?Math.round((pago+necessario+dispensavel)/dispGanhos*100):0;const c3=p3>90?'#ef5350':p3>70?'#e8b544':'#888';return `
     <div style="background:#111;border:1px solid #2a2000;border-left:3px solid #e8b544;border-radius:10px;padding:1.25rem;margin-bottom:1.25rem">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem">
         <span style="width:8px;height:8px;border-radius:50%;background:#e8b544;display:inline-block"></span>
-        <span style="font-size:11px;font-weight:600;color:#e8b544;text-transform:uppercase;letter-spacing:.08em">Saldo comprando tudo — pago + necessários + dispensáveis</span>
+        <span style="font-size:11px;font-weight:600;color:#e8b544;text-transform:uppercase;letter-spacing:.08em">Saldo comprando tudo — pago + necessários + dispensáveis <span style="color:#555;font-weight:400;text-transform:none">(só reforma vs. só aportes)</span></span>
         <span style="margin-left:auto;font-size:15px;font-weight:600;color:${s3<0?'#ef5350':'#4caf50'}">${fmt(s3)}</span>
         <span style="font-size:11px;color:${c3}">${p3}%${p3>100?' ⚠ estourou':' comprometido'}</span>
       </div>
