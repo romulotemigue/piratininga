@@ -2736,16 +2736,18 @@ function renderImovelCat(catKey, subKey){
   }
 
   // MAIN SUMMARY VIEW
-  const recKeys = visibleItems.filter(i=>i.tipo==='recebimento'||i.tipo==='recibo').map(i=>i.key);
-  const gastoKeys = visibleItems.filter(i=>i.tipo==='gasto').map(i=>i.key);
+  const recKeys = visibleItems.filter(i=>i.tipo==='recebimento'||i.tipo==='recibo'||i.tipo==='aporte').map(i=>i.key);
+  const financiadoKeys = visibleItems.filter(i=>i.financiamento).map(i=>i.key);
+  const gastoKeys = visibleItems.filter(i=>i.tipo==='gasto' && !i.financiamento).map(i=>i.key);
   // only count items that belong to this catKey AND match the subcategoria keys
   const recLista = lista.filter(g=>recKeys.includes(g.subcategoria));
-  const gastoLista = lista.filter(g=>gastoKeys.includes(g.subcategoria)||g.recibo);
+  const gastoLista = lista.filter(g=>gastoKeys.includes(g.subcategoria));
+  const financiadoLista = lista.filter(g=>financiadoKeys.includes(g.subcategoria));
   const totalRecebido = recLista.filter(g=>g.status==='pago').reduce((s,g)=>s+getVal(g),0);
   const totalAReceber = recLista.filter(g=>g.status!=='pago').reduce((s,g)=>s+getVal(g),0);
-  // for compra: only count items with matching subcategoria keys as paid
-  const totalGasto = gastoLista.filter(g=>gastoKeys.includes(g.subcategoria)&&g.status==='pago').reduce((s,g)=>s+getVal(g),0);
-  const totalAPagar = gastoLista.filter(g=>gastoKeys.includes(g.subcategoria)&&g.status!=='pago').reduce((s,g)=>s+getVal(g),0);
+  const totalGasto = gastoLista.filter(g=>g.status==='pago').reduce((s,g)=>s+getVal(g),0);
+  const totalAPagar = gastoLista.filter(g=>g.status!=='pago').reduce((s,g)=>s+getVal(g),0);
+  const totalFinanciado = financiadoLista.reduce((s,g)=>s+getVal(g),0);
   const liquido = totalRecebido - totalGasto;
 
   const docItems     = visibleItems.filter(i=>i.tipo==='doc');
@@ -2866,8 +2868,9 @@ function renderImovelCat(catKey, subKey){
     html += '<div style="border-left:1px solid #222;padding:0 2rem"><div style="font-size:10px;color:#ef5350;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Gastos</div><div style="font-size:22px;font-weight:800;color:#ef5350">'+fmt(totalGasto)+'</div></div>';
     html += '<div style="border-left:1px solid #222;padding:0 2rem"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Líquido</div><div style="font-size:22px;font-weight:800;color:'+(liquido>=0?'#4caf50':'#ef5350')+'">'+fmt(liquido)+'</div></div>';
   } else {
-    html += '<div style="padding-right:2rem"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Já pago</div><div style="font-size:22px;font-weight:800;color:'+info.color+'">'+fmt(totalGasto)+'</div></div>';
-    if(totalAPagar>0) html += '<div style="border-left:1px solid #222;padding:0 2rem"><div style="font-size:10px;color:#e8b544;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">A pagar</div><div style="font-size:22px;font-weight:800;color:#e8b544">'+fmt(totalAPagar)+'</div></div>';
+    html += '<div style="padding-right:2rem"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Já pago (seu bolso)</div><div style="font-size:22px;font-weight:800;color:'+info.color+'">'+fmt(totalGasto)+'</div></div>';
+    if(totalAPagar>0) html += '<div style="border-left:1px solid #222;padding:0 2rem"><div style="font-size:10px;color:#e8b544;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">A pagar (seu bolso)</div><div style="font-size:22px;font-weight:800;color:#e8b544">'+fmt(totalAPagar)+'</div></div>';
+    if(totalFinanciado>0) html += '<div style="border-left:1px solid #222;padding:0 2rem"><div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Financiado (banco/FGTS)</div><div style="font-size:22px;font-weight:800;color:#888">'+fmt(totalFinanciado)+'</div><div style="font-size:9px;color:#555;margin-top:3px">não é seu dinheiro</div></div>';
   }
   html += '<div style="border-left:1px solid #222;padding:0 0 0 2rem"><div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Lançamentos</div><div style="font-size:22px;font-weight:800;color:#555">'+lista.length+'</div></div>';
   html += '</div>';
