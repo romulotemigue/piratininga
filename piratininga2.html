@@ -754,7 +754,12 @@ function renderCatNav(){
   }
   const allKeys = [...pinnedKeys, ...catOrder];
   let imovelCount = 0;
-  console.log('[piratininga][chevron-debug] renderCatNav rodou às', new Date().toLocaleTimeString(), '— pinnedKeys:', pinnedKeys, '— SUBCATS keys com dados:', Object.keys(SUBCATS).filter(k=>SUBCATS[k]&&Object.keys(SUBCATS[k]).length>0));
+  console.log('[piratininga][chevron-debug] renderCatNav rodou às', new Date().toLocaleTimeString(),
+    '| venda-imovel tem subs?', !!(SUBCATS['venda-imovel'] && Object.keys(SUBCATS['venda-imovel']).length>0), '(', SUBCATS['venda-imovel']?Object.keys(SUBCATS['venda-imovel']).length:'undefined', ')',
+    '| compra-imovel tem subs?', !!(SUBCATS['compra-imovel'] && Object.keys(SUBCATS['compra-imovel']).length>0), '(', SUBCATS['compra-imovel']?Object.keys(SUBCATS['compra-imovel']).length:'undefined', ')',
+    '| projeto-arq tem subs?', !!(SUBCATS['projeto-arq'] && Object.keys(SUBCATS['projeto-arq']).length>0), '(', SUBCATS['projeto-arq']?Object.keys(SUBCATS['projeto-arq']).length:'undefined', ')',
+    '| pinnedKeys inclui venda-imovel?', pinnedKeys.includes('venda-imovel'),
+    '| allKeys inclui venda-imovel?', allKeys.includes('venda-imovel'));
 
   list.innerHTML = allKeys.map(k=>{
     const isImovel = !!IMOVEL_CATS[k];
@@ -765,6 +770,9 @@ function renderCatNav(){
     const isOpen = !!expanded[k];
     const subColor = info.color||'#e8b544';
     const etapaNum = isPinnedStage ? ++imovelCount : null;
+    if(['venda-imovel','compra-imovel','projeto-arq'].includes(k)){
+      console.log('[piratininga][row-debug] k=', k, '| hasSubs=', hasSubs, '| isOpen=', isOpen, '| SUBCATS[k]=', SUBCATS[k]);
+    }
 
     const subs = hasSubs ? Object.keys(SUBCATS[k]).map(sk=>`
       <div class="subcat-row" id="subcat-row-${k}-${sk}" draggable="true"
