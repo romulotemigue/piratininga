@@ -754,6 +754,7 @@ function renderCatNav(){
   }
   const allKeys = [...pinnedKeys, ...catOrder];
   let imovelCount = 0;
+  console.log('[piratininga][chevron-debug] renderCatNav rodou às', new Date().toLocaleTimeString(), '— pinnedKeys:', pinnedKeys, '— SUBCATS keys com dados:', Object.keys(SUBCATS).filter(k=>SUBCATS[k]&&Object.keys(SUBCATS[k]).length>0));
 
   list.innerHTML = allKeys.map(k=>{
     const isImovel = !!IMOVEL_CATS[k];
@@ -2292,14 +2293,22 @@ function openNativeStageColorPicker(){
     picker.type = 'color';
     picker.id = 'stage-color-picker';
     picker.style.position = 'fixed';
-    picker.style.left = '-100px';
-    picker.style.top = '-100px';
+    picker.style.width = '1px';
+    picker.style.height = '1px';
     picker.style.opacity = '0';
+    picker.style.pointerEvents = 'none';
     document.body.appendChild(picker);
   }
+  const menu = document.getElementById('global-color-menu');
+  const menuRect = menu.getBoundingClientRect();
+  picker.style.left = Math.max(0, menuRect.left) + 'px';
+  picker.style.top = Math.max(0, menuRect.top) + 'px';
   picker.value = info.color || '#e8b544';
-  picker.oninput = (ev)=>applyStageColor(ev.target.value);
-  document.getElementById('global-color-menu').classList.remove('open');
+  // 'change' só dispara quando o usuário confirma a escolha (não a cada arraste),
+  // evitando re-renderizar a página inteira dezenas de vezes enquanto ele escolhe
+  picker.oninput = null;
+  picker.onchange = (ev)=>applyStageColor(ev.target.value);
+  menu.classList.remove('open');
   picker.click();
 }
 
