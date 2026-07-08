@@ -805,11 +805,13 @@ function renderCatNav(){
         <div class="cat-menu" id="cat-menu-${k}">
           <div class="cat-menu-item" onclick="openModalAddSubCat('${k}')"><i class="ti ti-plus"></i> Cartão</div>
           <div class="cat-menu-item" onclick="openEditCat('${k}')"><i class="ti ti-pencil"></i> Renomear</div>
+          ${isPinnedStage?`<div class="cat-menu-item" onclick="openStageColorPicker('${k}',false,event)"><i class="ti ti-palette"></i> Cor</div>`:''}
           <div class="cat-menu-item danger" onclick="deleteCat('${k}')"><i class="ti ti-trash"></i> Excluir</div>
         </div>`:`<button class="nav-dots" onclick="toggleCatMenu('${k}',event)" title="Opções"><i class="ti ti-dots-vertical"></i></button>
         <div class="cat-menu" id="cat-menu-${k}">
           <div class="cat-menu-item" onclick="openModalAddSubCat('${k}')"><i class="ti ti-plus"></i> Cartão</div>
           <div class="cat-menu-item" onclick="openEditImovelCat('${k}')"><i class="ti ti-pencil"></i> Renomear</div>
+          <div class="cat-menu-item" onclick="openStageColorPicker('${k}',true,event)"><i class="ti ti-palette"></i> Cor</div>
           <div class="cat-menu-item danger" onclick="deleteImovelCat('${k}')"><i class="ti ti-trash"></i> Excluir</div>
         </div>`}
       </div>
@@ -1972,6 +1974,18 @@ const IMOVEL_CATS = {
   'compra-imovel': { label:'Compra do Imóvel',        color:'#db7d43', icon:'🔑' },
   'projeto-arq':   { label:'Projeto de Arquitetura',  color:'#dbb543', icon:'📐' },
 };
+// aplica customizações salvas (cor/rótulo) por cima dos valores padrão
+try{
+  const imovelCustom = JSON.parse(localStorage.getItem('imovel_cats_custom')||'{}');
+  Object.keys(imovelCustom).forEach(k=>{
+    if(IMOVEL_CATS[k]) Object.assign(IMOVEL_CATS[k], imovelCustom[k]);
+  });
+}catch(e){ console.warn('imovel_cats_custom load error', e); }
+function saveImovelCatsCustom(){
+  const store = {};
+  Object.keys(IMOVEL_CATS).forEach(k=>{ store[k] = {label:IMOVEL_CATS[k].label, color:IMOVEL_CATS[k].color}; });
+  localStorage.setItem('imovel_cats_custom', JSON.stringify(store));
+}
 
 // Categorias normais "promovidas" visualmente a etapa (numeração + fundo colorido no menu),
 // mas que continuam usando o SUBCATS/renderCat normal — conteúdo interno não muda.
@@ -2192,15 +2206,42 @@ try{
   }catch(e){ console.warn('Erro no ajuste v3 de etapas:', e); }
 })();
 
+function openStageColorPicker(k, isImovelStage, e){
+  if(e) e.stopPropagation();
+  const info = isImovelStage ? IMOVEL_CATS[k] : CATS[k];
+  if(!info) return;
+  let picker = document.getElementById('stage-color-picker');
+  if(!picker){
+    picker = document.createElement('input');
+    picker.type = 'color';
+    picker.id = 'stage-color-picker';
+    picker.style.position = 'fixed';
+    picker.style.left = '-100px';
+    picker.style.top = '-100px';
+    picker.style.opacity = '0';
+    document.body.appendChild(picker);
+  }
+  picker.value = info.color || '#e8b544';
+  picker.oninput = (ev)=>{
+    const newColor = ev.target.value;
+    info.color = newColor;
+    if(isImovelStage) saveImovelCatsCustom();
+    else saveCats();
+    renderCatNav();
+    // atualiza o conteúdo à direita (fundo/detalhes) na hora, sem precisar navegar de novo
+    applyContentColor(currentPage);
+    render();
+  };
+  picker.click();
+}
+
 function openEditImovelCat(k){
   const info = IMOVEL_CATS[k];
   if(!info) return;
   const nome = prompt('Novo nome para "'+info.label+'":', info.label);
   if(!nome || !nome.trim()) return;
   IMOVEL_CATS[k].label = nome.trim();
-  localStorage.setItem('imovel_cats_custom', JSON.stringify(
-    Object.fromEntries(Object.entries(IMOVEL_CATS).map(([k,v])=>[k,{label:v.label}]))
-  ));
+  saveImovelCatsCustom();
   renderCatNav();
 }
 
