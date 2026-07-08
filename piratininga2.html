@@ -895,10 +895,12 @@ function toggleCatMenu(k, isImovel, isPinnedStage, e){
        <div class="cat-menu-item danger" onclick="deleteCat('${k}')"><i class="ti ti-trash"></i> Excluir</div>`;
   const btn = e.currentTarget;
   const rect = btn.getBoundingClientRect();
+  lastDotsAnchorRect = rect;
   menu.style.top = rect.bottom + 'px';
   menu.style.left = (rect.right - 140) + 'px';
   menu.classList.add('open');
 }
+let lastDotsAnchorRect = null;
 document.addEventListener('click', ()=>document.querySelectorAll('.cat-menu,.subcat-menu').forEach(m=>m.classList.remove('open')));
 
 // Add cat
@@ -2283,23 +2285,59 @@ function openStageColorPicker(k, isImovelStage, e){
   if(!info) return;
   colorPickerTarget = {k, isImovelStage};
   const menu = document.getElementById('global-color-menu');
-  const current = (info.color||'#e8b544').toLowerCase();
   document.querySelectorAll('.cat-menu,.subcat-menu').forEach(m=>{ if(m!==menu) m.classList.remove('open'); });
-  menu.innerHTML = `
-    <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;padding:0 2px">Cores padrão</div>
-    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:10px">
-      ${STAGE_COLOR_PRESETS.map(c=>`<button onclick="event.stopPropagation();applyStageColor('${c}')" title="${c}" style="width:26px;height:26px;border-radius:6px;border:2px solid ${c.toLowerCase()===current?'#fff':'transparent'};background:${c};cursor:pointer;padding:0"></button>`).join('')}
-    </div>
-    <button onclick="event.stopPropagation();openNativeStageColorPicker()" style="width:100%;padding:7px;border-radius:6px;border:1px solid #333;background:#1a1a1a;color:#ccc;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:8px">
-      <span style="width:16px;height:16px;border-radius:50%;background:conic-gradient(red,orange,yellow,green,blue,violet,red);flex-shrink:0"></span> Cor personalizada...
-    </button>`;
-  const btn = e ? e.currentTarget : null;
-  if(btn){
-    const rect = btn.getBoundingClientRect();
-    menu.style.top = rect.bottom + 'px';
-    menu.style.left = Math.max(8, rect.right-212) + 'px';
+  renderColorMenuContent('preset');
+
+  // sempre abre à direita dos 3 pontinhos, e não muda de lugar ao trocar de aba
+  const rect = lastDotsAnchorRect;
+  if(rect){
+    let left = rect.right + 8;
+    const menuWidth = 212;
+    if(left + menuWidth > window.innerWidth - 8) left = Math.max(8, rect.left - menuWidth - 8);
+    menu.style.left = left + 'px';
+    menu.style.top = Math.max(8, rect.top) + 'px';
   }
   menu.classList.add('open');
+}
+
+function renderColorMenuContent(activeTab){
+  if(!colorPickerTarget) return;
+  const {k, isImovelStage} = colorPickerTarget;
+  const info = isImovelStage ? IMOVEL_CATS[k] : CATS[k];
+  if(!info) return;
+  const current = (info.color||'#e8b544').toLowerCase();
+  const menu = document.getElementById('global-color-menu');
+  menu.dataset.activeTab = activeTab;
+  menu.innerHTML = `
+    <div style="display:flex;gap:2px;margin-bottom:10px;border-bottom:1px solid #2a2a2a">
+      <button onclick="event.stopPropagation();renderColorMenuContent('preset')" style="flex:1;padding:6px 0;background:none;border:none;font-size:10px;font-weight:600;letter-spacing:.03em;cursor:pointer;color:${activeTab==='preset'?'#e8e7e2':'#666'};border-bottom:2px solid ${activeTab==='preset'?info.color:'transparent'}">PADRÃO</button>
+      <button onclick="event.stopPropagation();renderColorMenuContent('custom')" style="flex:1;padding:6px 0;background:none;border:none;font-size:10px;font-weight:600;letter-spacing:.03em;cursor:pointer;color:${activeTab==='custom'?'#e8e7e2':'#666'};border-bottom:2px solid ${activeTab==='custom'?info.color:'transparent'}">PERSONALIZADA</button>
+    </div>
+    ${activeTab==='preset' ? `
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px">
+        ${STAGE_COLOR_PRESETS.map(c=>`<button onclick="event.stopPropagation();applyStageColor('${c}')" title="${c}" style="width:26px;height:26px;border-radius:6px;border:2px solid ${c.toLowerCase()===current?'#fff':'transparent'};background:${c};cursor:pointer;padding:0"></button>`).join('')}
+      </div>
+    ` : `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px" onclick="event.stopPropagation()">
+        <button onclick="event.stopPropagation();openNativeStageColorPicker()" title="Abrir seletor" style="width:34px;height:34px;border-radius:8px;border:2px solid #444;background:${current};cursor:pointer;padding:0;flex-shrink:0"></button>
+        <input id="color-hex-input" type="text" value="${current}" maxlength="7" spellcheck="false"
+          style="flex:1;min-width:0;background:#111;border:1px solid #333;border-radius:6px;padding:7px 8px;color:#eee;font-size:12px;font-family:monospace"
+          onclick="event.stopPropagation()" onkeydown="event.stopPropagation();if(event.key==='Enter')applyHexColorInput()">
+      </div>
+      <button onclick="event.stopPropagation();applyHexColorInput()" style="width:100%;padding:7px;border-radius:6px;border:1px solid #333;background:#1a1a1a;color:#ccc;font-size:11px;cursor:pointer">Aplicar</button>
+    `}`;
+}
+
+function applyHexColorInput(){
+  const input = document.getElementById('color-hex-input');
+  if(!input) return;
+  let val = input.value.trim();
+  if(!val.startsWith('#')) val = '#'+val;
+  if(!/^#[0-9a-fA-F]{6}$/.test(val)){
+    input.style.border = '1px solid #ef5350';
+    return;
+  }
+  applyStageColor(val);
 }
 
 function applyStageColor(color){
@@ -2311,11 +2349,14 @@ function applyStageColor(color){
     info.color = color;
     if(isImovelStage) saveImovelCatsCustom();
     else saveCats();
-    const menu = document.getElementById('global-color-menu');
-    if(menu) menu.classList.remove('open');
     renderCatNav();
     applyContentColor(currentPage);
     render();
+    // mantém o popover aberto na mesma aba, só atualiza o preview (não fecha, não move)
+    const menu = document.getElementById('global-color-menu');
+    if(menu && menu.classList.contains('open')){
+      renderColorMenuContent(menu.dataset.activeTab||'preset');
+    }
   }catch(e){ console.error('Erro ao aplicar cor da etapa:', e); }
 }
 
@@ -2335,6 +2376,7 @@ function openNativeStageColorPicker(){
     picker.style.opacity = '0';
     document.body.appendChild(picker);
   }
+  // posiciona junto do popover, sem fechar ou mover ele
   const menu = document.getElementById('global-color-menu');
   const menuRect = menu.getBoundingClientRect();
   picker.style.left = Math.max(0, menuRect.left) + 'px';
@@ -2344,7 +2386,6 @@ function openNativeStageColorPicker(){
   // evitando re-renderizar a página inteira dezenas de vezes enquanto ele escolhe
   picker.oninput = null;
   picker.onchange = (ev)=>applyStageColor(ev.target.value);
-  menu.classList.remove('open');
   picker.click();
 }
 
