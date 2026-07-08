@@ -2319,7 +2319,7 @@ function renderColorMenuContent(activeTab){
       </div>
     ` : `
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px" onclick="event.stopPropagation()">
-        <button onclick="event.stopPropagation();openNativeStageColorPicker()" title="Abrir seletor" style="width:34px;height:34px;border-radius:8px;border:2px solid #444;background:${current};cursor:pointer;padding:0;flex-shrink:0"></button>
+        <button onclick="event.stopPropagation();openNativeStageColorPicker(event)" title="Abrir seletor" style="width:34px;height:34px;border-radius:8px;border:2px solid #444;background:${current};cursor:pointer;padding:0;flex-shrink:0"></button>
         <input id="color-hex-input" type="text" value="${current}" maxlength="7" spellcheck="false"
           style="flex:1;min-width:0;background:#111;border:1px solid #333;border-radius:6px;padding:7px 8px;color:#eee;font-size:12px;font-family:monospace"
           onclick="event.stopPropagation()" onkeydown="event.stopPropagation();if(event.key==='Enter')applyHexColorInput()">
@@ -2360,7 +2360,7 @@ function applyStageColor(color){
   }catch(e){ console.error('Erro ao aplicar cor da etapa:', e); }
 }
 
-function openNativeStageColorPicker(){
+function openNativeStageColorPicker(e){
   if(!colorPickerTarget) return;
   const {k, isImovelStage} = colorPickerTarget;
   const info = isImovelStage ? IMOVEL_CATS[k] : CATS[k];
@@ -2376,11 +2376,12 @@ function openNativeStageColorPicker(){
     picker.style.opacity = '0';
     document.body.appendChild(picker);
   }
-  // posiciona junto do popover, sem fechar ou mover ele
-  const menu = document.getElementById('global-color-menu');
-  const menuRect = menu.getBoundingClientRect();
-  picker.style.left = Math.max(0, menuRect.left) + 'px';
-  picker.style.top = Math.max(0, menuRect.top) + 'px';
+  // ancora exatamente no quadradinho clicado (não no canto do popover),
+  // pra o seletor nativo abrir sempre perto de onde o dedo/mouse está
+  const anchorEl = e ? e.currentTarget : null;
+  const anchorRect = anchorEl ? anchorEl.getBoundingClientRect() : document.getElementById('global-color-menu').getBoundingClientRect();
+  picker.style.left = Math.max(0, anchorRect.left) + 'px';
+  picker.style.top = Math.max(0, anchorRect.top) + 'px';
   picker.value = info.color || '#e8b544';
   // 'change' só dispara quando o usuário confirma a escolha (não a cada arraste),
   // evitando re-renderizar a página inteira dezenas de vezes enquanto ele escolhe
