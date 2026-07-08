@@ -2956,6 +2956,14 @@ function renderGeral(){
   const compraAPagar     = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && g.status!=='pago').reduce((s,g)=>s+getVal(g),0);
   const compraFinanciado = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='financiamento').reduce((s,g)=>s+getVal(g),0);
 
+  // Já pago / Necessários "gerais" = reforma + venda + compra somados (sem financiamento,
+  // que nunca é dinheiro seu). Dispensável fica só reforma (venda/compra não tem opcional).
+  const pagoTudo = pago + vendaPago + compraPago;
+  const necessarioTudo = necessario + vendaAPagar + compraAPagar;
+  const lancamentosPagoTudo = ativos.length
+    + vendaItems.filter(g=>getImovelCardKind('venda-imovel',g.subcategoria)==='pagamento' && g.status==='pago').length
+    + compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && g.status==='pago').length;
+
   // Saldo final = tudo que já entrou/saiu de verdade, sem contar o que ainda está pendente
   const saldoReal = vendaRecebido - vendaPago + dispGanhos - compraPago - pago;
   // Saldo projetado = saldo real + o que ainda falta entrar/sair dos dois lados
@@ -2974,27 +2982,27 @@ function renderGeral(){
         </div>
       </div>
       <div class="card" style="border-left:3px solid #4caf50;background:#0d1a0d">
-        <div class="card-label"><i class="ti ti-circle-check" style="font-size:13px;color:#4caf50"></i> Já pago (reforma)</div>
-        <div class="card-value green">${fmt(pago)}</div>
-        <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #1e3a1e;color:#555;font-size:10px">${ativos.length} lançamentos</div>
+        <div class="card-label"><i class="ti ti-circle-check" style="font-size:13px;color:#4caf50"></i> Já pago</div>
+        <div class="card-value green">${fmt(pagoTudo)}</div>
+        <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #1e3a1e;color:#555;font-size:10px">${lancamentosPagoTudo} lançamentos · reforma + venda + compra</div>
       </div>
       <div class="card" style="border-left:3px solid #42a5f5;background:#0d1520">
-        <div class="card-label"><i class="ti ti-alert-circle" style="font-size:13px;color:#42a5f5"></i> Necessários (reforma)</div>
-        <div class="card-value" style="color:#42a5f5">${fmt(necessario)}</div>
+        <div class="card-label"><i class="ti ti-alert-circle" style="font-size:13px;color:#42a5f5"></i> Necessários</div>
+        <div class="card-value" style="color:#42a5f5">${fmt(necessarioTudo)}</div>
         <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #1a2a3a">
-          <span style="color:#555;font-size:10px">Saldo se usar necessários:</span><br>
-          <span style="font-size:13px;font-weight:600;color:${(saldo-necessario)<0?'#ef5350':'#42a5f5'}">${fmt(saldo-necessario)}</span>
+          <span style="color:#555;font-size:10px">Saldo se usar necessários (reforma + venda + compra):</span><br>
+          <span style="font-size:13px;font-weight:600;color:${(saldo-necessarioTudo)<0?'#ef5350':'#42a5f5'}">${fmt(saldo-necessarioTudo)}</span>
         </div>
       </div>
       <div class="card" style="border-left:3px solid #e8b544;background:#1a1500">
         <div class="card-label" style="display:flex;align-items:center;justify-content:space-between">
-          <span><i class="ti ti-clock" style="font-size:13px;color:#e8b544"></i> Dispensáveis (reforma)</span>
+          <span><i class="ti ti-clock" style="font-size:13px;color:#e8b544"></i> Dispensáveis (só reforma)</span>
           <button onclick="openBulkModal('apagar','')" title="Mover todos em massa" style="background:none;border:none;color:#555;cursor:pointer;font-size:13px;padding:0 2px;transition:color .15s" onmouseover="this.style.color='#e8b544'" onmouseout="this.style.color='#555'"><i class="ti ti-arrows-transfer-down"></i></button>
         </div>
         <div class="card-value yellow">${fmt(dispensavel)}</div>
         <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #2a2000">
           <span style="color:#555;font-size:10px">Saldo comprando necessários e dispensáveis:</span><br>
-          <span style="font-size:13px;font-weight:600;color:${(saldo-necessario-dispensavel)<0?'#ef5350':'#4caf50'}">${fmt(saldo-necessario-dispensavel)}</span>
+          <span style="font-size:13px;font-weight:600;color:${(saldo-necessarioTudo-dispensavel)<0?'#ef5350':'#4caf50'}">${fmt(saldo-necessarioTudo-dispensavel)}</span>
         </div>
       </div>
       <div class="card" style="border-left:3px solid #555">
