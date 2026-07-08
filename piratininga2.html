@@ -572,11 +572,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
     </div>
     <div class="form-group" id="nsc-grupo-group" style="display:none">
       <label>Grupo</label>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px" id="nsc-grupo-options">
-        <label id="nsc-g-doc" onclick="selectGrupoCartao('doc')" style="background:#111;border:1px solid #333;border-radius:8px;padding:10px;cursor:pointer;text-align:center">
-          <div style="font-size:18px;margin-bottom:4px">📋</div>
-          <div style="font-size:11px;color:#888">Documento</div>
-        </label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px" id="nsc-grupo-options">
         <label id="nsc-g-rec" onclick="selectGrupoCartao('recibo')" style="background:#111;border:1px solid #333;border-radius:8px;padding:10px;cursor:pointer;text-align:center">
           <div style="font-size:18px;margin-bottom:4px">💵</div>
           <div style="font-size:11px;color:#888">Recebimento</div>
@@ -584,6 +580,14 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <label id="nsc-g-gasto" onclick="selectGrupoCartao('gasto')" style="background:#111;border:1px solid #333;border-radius:8px;padding:10px;cursor:pointer;text-align:center">
           <div style="font-size:18px;margin-bottom:4px">💸</div>
           <div style="font-size:11px;color:#888">Pagamento</div>
+        </label>
+        <label id="nsc-g-aporte" onclick="selectGrupoCartao('aporte')" style="background:#111;border:1px solid #333;border-radius:8px;padding:10px;cursor:pointer;text-align:center">
+          <div style="font-size:18px;margin-bottom:4px">🟢</div>
+          <div style="font-size:11px;color:#888">Aporte</div>
+        </label>
+        <label id="nsc-g-doc" onclick="selectGrupoCartao('doc')" style="background:#111;border:1px solid #333;border-radius:8px;padding:10px;cursor:pointer;text-align:center">
+          <div style="font-size:18px;margin-bottom:4px">📋</div>
+          <div style="font-size:11px;color:#888">Documento</div>
         </label>
       </div>
       <input type="hidden" id="nsc-grupo" value="doc">
@@ -1211,12 +1215,12 @@ let editingSubCat = {catKey:null, subKey:null};
 
 function selectGrupoCartao(tipo){
   document.getElementById('nsc-grupo').value = tipo;
-  ['doc','rec','gasto'].forEach(g=>{
+  ['doc','rec','gasto','aporte'].forEach(g=>{
     const el = document.getElementById('nsc-g-'+g);
     if(el) el.style.cssText = 'background:#111;border:1px solid #333;border-radius:8px;padding:10px;cursor:pointer;text-align:center';
   });
-  const map = {doc:'nsc-g-doc', recibo:'nsc-g-rec', gasto:'nsc-g-gasto'};
-  const colors = {doc:'#888', recibo:'#4caf50', gasto:'#ef5350'};
+  const map = {doc:'nsc-g-doc', recibo:'nsc-g-rec', gasto:'nsc-g-gasto', aporte:'nsc-g-aporte'};
+  const colors = {doc:'#888', recibo:'#4caf50', gasto:'#ef5350', aporte:'#26c6da'};
   const el = document.getElementById(map[tipo]);
   if(el) el.style.cssText = 'background:#1a1a1a;border:2px solid '+colors[tipo]+';border-radius:8px;padding:10px;cursor:pointer;text-align:center';
 }
@@ -1246,8 +1250,8 @@ function addSubCat(){
   const tipo = isImovel ? (document.getElementById('nsc-grupo').value||'doc') : null;
   SUBCATS[addingSubCatFor][key] = tipo ? {label:nome, tipo} : {label:nome};
   if(isImovel){
-    const colors = {doc:'#888', recibo:'#4caf50', gasto:'#ef5350'};
-    const icons = {doc:'📋', recibo:'💵', gasto:'💸'};
+    const colors = {doc:'#888', recibo:'#4caf50', gasto:'#ef5350', aporte:'#26c6da'};
+    const icons = {doc:'📋', recibo:'💵', gasto:'💸', aporte:'🟢'};
     const customCards = JSON.parse(localStorage.getItem('imovel-custom-cards-'+addingSubCatFor)||'[]');
     if(!customCards.find(c=>c.key===key))
       customCards.push({label:nome, key, color:colors[tipo]||'#888', icon:icons[tipo]||'📋', tipo, recibo:tipo==='recibo'||undefined});
@@ -2058,10 +2062,13 @@ function getImovelCardKind(catKey, subKey){
   const def = getImovelCardDefs(catKey).find(i=>i.key===subKey);
   if(!def) return 'outro';
   if(def.financiamento) return 'financiamento';
+  if(def.tipo==='aporte') return 'aporte';
   if(def.tipo==='recibo'||def.tipo==='recebimento') return 'recebimento';
   if(def.tipo==='gasto') return 'pagamento';
   return 'outro';
 }
+// Dinheiro entrando = recebimento OU aporte, sempre somados juntos
+function isIncomeKind(kind){ return kind==='recebimento' || kind==='aporte'; }
 
 // aplica customizações salvas (cor/rótulo) por cima dos valores padrão
 try{
@@ -2720,7 +2727,7 @@ function renderImovelCat(catKey, subKey){
   const liquido = totalRecebido - totalGasto;
 
   const docItems     = visibleItems.filter(i=>i.tipo==='doc');
-  const recItems     = visibleItems.filter(i=>i.tipo==='recebimento'||i.tipo==='recibo');
+  const recItems     = visibleItems.filter(i=>i.tipo==='recebimento'||i.tipo==='recibo'||i.tipo==='aporte');
   const gastoItems   = visibleItems.filter(i=>i.tipo==='gasto');
   const entregaItems = visibleItems.filter(i=>i.tipo==='entrega');
 
@@ -2744,7 +2751,7 @@ function renderImovelCat(catKey, subKey){
     const itemGastos = lista.filter(g=>g.subcategoria===item.key);
     const itemTotal = itemGastos.reduce((s,g)=>s+getVal(g),0);
     const hasData = itemTotal > 0;
-    const isUpload = item.tipo==='doc' || item.tipo==='recibo' || item.tipo==='gasto' || item.recibo;
+    const isUpload = item.tipo==='doc' || item.tipo==='recibo' || item.tipo==='gasto' || item.tipo==='aporte' || item.tipo==='recebimento' || item.recibo;
     const uploadLabel = item.tipo==='doc' ? 'documento' : 'recibo';
     const inputId = 'upload-'+catKey+'-'+item.key;
 
@@ -2894,10 +2901,11 @@ function renderGeral(){
   const pct    = dispGanhos>0?Math.round(total/dispGanhos*100):0;
   const barColor = pct>90?'#ef5350':pct>70?'#e8b544':'#4caf50';
 
-  // Venda do Imóvel: recebimento (Sinal/Entrada/Repasse) x pagamento (Corretagem/Taxas/etc — inclusive cartões criados por você, como Laudêmio)
+  // Venda do Imóvel: recebimento/aporte (Sinal/Entrada/Repasse/etc) x pagamento (Corretagem/Taxas/etc — inclusive cartões criados por você, como Laudêmio)
   const vendaItems = gastos.filter(g=>g.categoria==='venda-imovel');
-  const vendaRecebido   = vendaItems.filter(g=>getImovelCardKind('venda-imovel',g.subcategoria)==='recebimento' && g.status==='pago').reduce((s,g)=>s+getVal(g),0);
-  const vendaAReceber   = vendaItems.filter(g=>getImovelCardKind('venda-imovel',g.subcategoria)==='recebimento' && g.status!=='pago').reduce((s,g)=>s+getVal(g),0);
+  const vendaRecebido   = vendaItems.filter(g=>isIncomeKind(getImovelCardKind('venda-imovel',g.subcategoria)) && g.status==='pago').reduce((s,g)=>s+getVal(g),0);
+  const vendaAReceber   = vendaItems.filter(g=>isIncomeKind(getImovelCardKind('venda-imovel',g.subcategoria)) && g.status!=='pago').reduce((s,g)=>s+getVal(g),0);
+  const vendaTotalPrevisto = vendaRecebido + vendaAReceber;
   const vendaPago       = vendaItems.filter(g=>getImovelCardKind('venda-imovel',g.subcategoria)==='pagamento' && g.status==='pago').reduce((s,g)=>s+getVal(g),0);
   const vendaAPagar     = vendaItems.filter(g=>getImovelCardKind('venda-imovel',g.subcategoria)==='pagamento' && g.status!=='pago').reduce((s,g)=>s+getVal(g),0);
 
@@ -2958,7 +2966,7 @@ function renderGeral(){
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.5rem">
       <div class="card" style="border-left:3px solid ${IMOVEL_CATS['venda-imovel']?.color||'#db4343'};cursor:pointer" onclick="navigate('venda-imovel')">
         <div class="card-label"><span style="font-size:13px">${IMOVEL_CATS['venda-imovel']?.icon||'🏠'}</span> Venda do Imóvel</div>
-        <div style="display:flex;gap:1.5rem;margin-top:6px">
+        <div style="display:flex;gap:1.5rem;margin-top:6px;flex-wrap:wrap">
           <div>
             <div style="font-size:10px;color:#555">Recebido</div>
             <div style="font-size:18px;font-weight:700;color:#4caf50">${fmt(vendaRecebido)}</div>
@@ -2972,7 +2980,10 @@ function renderGeral(){
             <div style="font-size:18px;font-weight:700;color:#ef5350">${fmt(vendaPago)}</div>
           </div>
         </div>
-        <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #222;color:#555;font-size:10px">${vendaItems.length} lançamentos · já contabilizado no saldo final</div>
+        <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #222">
+          <span style="color:#555;font-size:10px">Total previsto (recebido + a receber):</span>
+          <span style="font-size:13px;font-weight:600;color:#e8e7e2;margin-left:4px">${fmt(vendaTotalPrevisto)}</span>
+        </div>
       </div>
       <div class="card" style="border-left:3px solid ${IMOVEL_CATS['compra-imovel']?.color||'#db7d43'};cursor:pointer" onclick="navigate('compra-imovel')">
         <div class="card-label"><span style="font-size:13px">${IMOVEL_CATS['compra-imovel']?.icon||'🔑'}</span> Compra do Imóvel</div>
