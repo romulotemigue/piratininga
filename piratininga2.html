@@ -774,22 +774,7 @@ function renderCatNav(){
       console.log('[piratininga][row-debug] k=', k, '| hasSubs=', hasSubs, '| isOpen=', isOpen, '| SUBCATS[k]=', SUBCATS[k]);
     }
 
-    const subs = hasSubs ? Object.keys(SUBCATS[k]).map(sk=>`
-      <div class="subcat-row" id="subcat-row-${k}-${sk}" draggable="true"
-        ondragstart="subDragStart('${k}','${sk}',event)"
-        ondragover="subDragOver('${k}','${sk}',event)"
-        ondragleave="subDragLeave('${k}','${sk}',event)"
-        ondrop="subDragDrop('${k}','${sk}',event)"
-        ondragend="subDragEnd(event)">
-        <span style="color:#2a2a2a;cursor:grab;font-size:11px;padding:0 4px 0 1rem;user-select:none" title="Arrastar">⠿</span>
-        <div class="nav-item" style="padding-left:0;font-size:11px;color:#555;flex:1;border-left:2px solid #2a2a2a;padding-left:8px;margin:2px 0;border-radius:0" onclick="navigate('${k}__${sk}')" id="nav-${k}__${sk}"
-          onmouseover="this.style.borderColor='${subColor}';this.style.color='#999'"
-          onmouseout="this.style.borderColor='#2a2a2a';this.style.color='#555'">
-          ${SUBCATS[k][sk].label}
-        </div>
-        <button class="subcat-dots-btn" style="background:none;border:none;color:#444;cursor:pointer;padding:4px 6px;font-size:13px;transition:opacity .15s" onclick="toggleSubCatMenu('${k}','${sk}',event)"><i class="ti ti-dots-vertical"></i></button>
-      </div>
-    `).join('') : '';
+    const subs = hasSubs ? buildSubcatRowsHtml(k) : '';
 
     const imovelStyle = isPinnedStage ? `background:${info.color}18;border:1px solid ${info.color}44;border-left:3px solid ${info.color};border-radius:8px;margin:4px 6px;` : '';
     const imovelNavStyle = isPinnedStage ? `color:${info.color};font-weight:600;font-size:12px;` : '';
@@ -836,6 +821,28 @@ function handleNavItemClick(k, e){
   }
 }
 
+function buildSubcatRowsHtml(k){
+  const info = IMOVEL_CATS[k] || CATS[k];
+  const subColor = info?.color||'#e8b544';
+  if(!SUBCATS[k]) return '';
+  return Object.keys(SUBCATS[k]).map(sk=>`
+    <div class="subcat-row" id="subcat-row-${k}-${sk}" draggable="true"
+      ondragstart="subDragStart('${k}','${sk}',event)"
+      ondragover="subDragOver('${k}','${sk}',event)"
+      ondragleave="subDragLeave('${k}','${sk}',event)"
+      ondrop="subDragDrop('${k}','${sk}',event)"
+      ondragend="subDragEnd(event)">
+      <span style="color:#2a2a2a;cursor:grab;font-size:11px;padding:0 4px 0 1rem;user-select:none" title="Arrastar">⠿</span>
+      <div class="nav-item" style="padding-left:0;font-size:11px;color:#555;flex:1;border-left:2px solid #2a2a2a;padding-left:8px;margin:2px 0;border-radius:0" onclick="navigate('${k}__${sk}')" id="nav-${k}__${sk}"
+        onmouseover="this.style.borderColor='${subColor}';this.style.color='#999'"
+        onmouseout="this.style.borderColor='#2a2a2a';this.style.color='#555'">
+        ${SUBCATS[k][sk].label}
+      </div>
+      <button class="subcat-dots-btn" style="background:none;border:none;color:#444;cursor:pointer;padding:4px 6px;font-size:13px;transition:opacity .15s" onclick="toggleSubCatMenu('${k}','${sk}',event)"><i class="ti ti-dots-vertical"></i></button>
+    </div>
+  `).join('');
+}
+
 function toggleExpand(k, e){
   e.stopPropagation();
   const expanded = JSON.parse(localStorage.getItem('pirati_expanded')||'{}');
@@ -845,7 +852,10 @@ function toggleExpand(k, e){
   const chev = document.getElementById('chev-'+k);
   if(!list) return;
   if(expanded[k]){
-    list.style.maxHeight = '500px';
+    // reconstrói a lista na hora, direto dos dados atuais — não depende
+    // do que foi gravado na última vez que o menu inteiro foi desenhado
+    list.innerHTML = buildSubcatRowsHtml(k);
+    list.style.maxHeight = '1000px';
     if(chev) chev.style.transform='rotate(90deg)';
   } else {
     list.style.maxHeight = '0px';
