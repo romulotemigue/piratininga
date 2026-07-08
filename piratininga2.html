@@ -797,7 +797,7 @@ function renderCatNav(){
         <span class="nav-drag" draggable="true" title="Arrastar"
           ondragstart="dragStart('${k}',event)"
           style="cursor:grab">⠿</span>
-        <button id="chev-${k}" style="background:none;border:none;color:${hasSubs?'#777':'#2a2a2a'};cursor:${hasSubs?'pointer':'default'};padding:4px 2px;font-size:11px;transition:transform .2s;transform:rotate(${isOpen?90:0}deg)" onclick="if(${hasSubs}) toggleExpand('${k}',event)"><i class="ti ti-chevron-right"></i></button>
+        <button id="chev-${k}" style="background:none;border:none;color:#777;cursor:pointer;padding:4px 2px;font-size:11px;transition:transform .2s;transform:rotate(${isOpen?90:0}deg)" onclick="toggleExpand('${k}',event)"><i class="ti ti-chevron-right"></i></button>
         <div class="nav-item" onclick="handleNavItemClick('${k}',event)" id="nav-${k}" style="padding-left:2px;flex:1;display:flex;align-items:center;gap:6px;${imovelNavStyle}">
           ${etapaNum ? `<span style="width:16px;height:16px;border-radius:50%;background:${info.color};color:#111;font-size:9px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">${etapaNum}</span>` : `<span style="width:6px;height:6px;border-radius:50%;background:${info.color};display:inline-block;flex-shrink:0"></span>`}${info.icon||''} ${info.label}
         </div>
@@ -2247,6 +2247,7 @@ try{
       });
     });
     saveSubCats();
+    console.log('[piratininga][subcats-debug] venda-imovel:', SUBCATS['venda-imovel'], '| compra-imovel:', SUBCATS['compra-imovel'], '| projeto-arq:', SUBCATS['projeto-arq']);
   }catch(e){ console.warn('Erro ao pré-popular subcats imóvel:', e); }
 })();
 
