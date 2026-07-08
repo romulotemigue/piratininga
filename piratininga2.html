@@ -2146,6 +2146,52 @@ try{
   }catch(e){ console.warn('Erro no ajuste v2 de etapas:', e); }
 })();
 
+// ── AJUSTES v3: garantir "Revestimentos (piso)" como etapa (busca mais ampla) ──
+(function stagesFixupV3(){
+  try{
+    function normLabel(s){
+      return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+    }
+    console.log('[piratininga] Categorias atuais:', Object.keys(CATS).map(k=>k+' => "'+CATS[k].label+'"'));
+    console.log('[piratininga] Etapas extras atuais:', EXTRA_PINNED_STAGES);
+
+    // remove chaves "fantasma" de EXTRA_PINNED_STAGES que não existem de verdade em CATS
+    for(let i=EXTRA_PINNED_STAGES.length-1;i>=0;i--){
+      if(!CATS[EXTRA_PINNED_STAGES[i]]) EXTRA_PINNED_STAGES.splice(i,1);
+    }
+
+    // busca ampla: qualquer categoria cujo rótulo OU chave contenha "piso"
+    const pisoKey = Object.keys(CATS).find(k=>{
+      const nl = normLabel(CATS[k].label);
+      const nk = normLabel(k);
+      return nl.includes('piso') || nk.includes('piso');
+    });
+    console.log('[piratininga] pisoKey encontrado:', pisoKey);
+    if(pisoKey && !EXTRA_PINNED_STAGES.includes(pisoKey)){
+      EXTRA_PINNED_STAGES.push(pisoKey);
+    }
+
+    // recolore com a paleta de ângulo dourado, incluindo a mudança acima
+    function hsl2hex(h,s,l){
+      s/=100; l/=100;
+      const k = n => (n + h/30) % 12;
+      const a = s * Math.min(l, 1-l);
+      const f = n => l - a*Math.max(-1, Math.min(k(n)-3, Math.min(9-k(n),1)));
+      const toHex = x => Math.round(255*x).toString(16).padStart(2,'0');
+      return '#'+toHex(f(0))+toHex(f(8))+toHex(f(4));
+    }
+    const GOLDEN = 137.508;
+    const order = getPinnedStageKeys();
+    console.log('[piratininga] ordem final de etapas:', order);
+    order.forEach((k,i)=>{
+      const color = hsl2hex(Math.round((i*GOLDEN)%360), 68, 56);
+      if(IMOVEL_CATS[k]) IMOVEL_CATS[k].color = color;
+      else if(CATS[k]) CATS[k].color = color;
+    });
+    saveCats();
+  }catch(e){ console.warn('Erro no ajuste v3 de etapas:', e); }
+})();
+
 function openEditImovelCat(k){
   const info = IMOVEL_CATS[k];
   if(!info) return;
