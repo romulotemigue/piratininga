@@ -1077,7 +1077,7 @@ async function addGanho(){
   const obs    = document.getElementById('g-obs').value.trim();
   const tipo   = document.getElementById('g-tipo').value;
   if(!desc){ alert('Preencha a descrição.'); return; }
-  if(isNaN(val)||val<=0){ alert('Preencha um valor válido.'); return; }
+  if(isNaN(val)||val<0){ alert('Preencha um valor válido.'); return; }
   const btn = document.getElementById('btn-confirm-ganho');
   btn.disabled = true; btn.textContent = 'Salvando...';
   const obsFinal = [origem?'Origem: '+origem:'', obs].filter(Boolean).join(' | ');
@@ -1147,7 +1147,7 @@ async function saveEdit(){
   const val  = parseMoney(document.getElementById('e-valor').value);
   const obs  = document.getElementById('e-obs').value.trim();
   if(!desc){ alert('Preencha a descrição.'); return; }
-  if(isNaN(val)||val<=0){ alert('Preencha um valor válido.'); return; }
+  if(isNaN(val)||val<0){ alert('Preencha um valor válido.'); return; }
 
   const btn = document.getElementById('btn-confirm-edit');
   btn.disabled=true; btn.textContent='Salvando...';
@@ -1816,7 +1816,7 @@ async function addGasto(){
   const st   = document.getElementById('f-status').value;
   const obs  = document.getElementById('f-obs').value.trim();
   if(!desc){ alert('Preencha a descrição.'); return; }
-  if(isNaN(val)||val<=0){ alert('Preencha um valor válido.'); return; }
+  if(isNaN(val)||val<0){ alert('Preencha um valor válido.'); return; }
   const btn = document.getElementById('btn-confirm');
   btn.disabled = true; btn.textContent = 'Salvando...';
   try{
@@ -3332,7 +3332,7 @@ async function addGastoSubCat(){
   const st   = document.getElementById('sl-status').value;
   const obs  = document.getElementById('sl-obs').value.trim();
   if(!desc){ alert('Preencha a descrição.'); return; }
-  if(isNaN(val)||val<=0){ alert('Preencha um valor válido.'); return; }
+  if(isNaN(val)||val<0){ alert('Preencha um valor válido.'); return; }
   const btn = document.getElementById('btn-confirm-sl');
   btn.disabled=true; btn.textContent='Salvando...';
   try{
