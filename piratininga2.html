@@ -2009,6 +2009,60 @@ const IMOVEL_CATS = {
   'compra-imovel': { label:'Compra do Imóvel',        color:'#db7d43', icon:'🔑' },
   'projeto-arq':   { label:'Projeto de Arquitetura',  color:'#dbb543', icon:'📐' },
 };
+
+// Cartões padrão de cada etapa especial de imóvel — fonte única, usada tanto
+// pra desenhar os cartões quanto pra classificar recebimento x pagamento na Visão Geral
+const IMOVEL_DEFAULT_CARDS = {
+  'venda-imovel': [
+    {label:'Proposta',         key:'proposta',        color:'#888',    icon:'📝', tipo:'doc'},
+    {label:'Contrato',         key:'contrato',        color:'#42a5f5', icon:'📄', tipo:'doc'},
+    {label:'Sinal',            key:'sinal',           color:'#9c27b0', icon:'🤝', tipo:'recibo'},
+    {label:'Entrada',          key:'entrada',         color:'#4caf50', icon:'💵', tipo:'recibo'},
+    {label:'Repasse bancário', key:'repasse-bancario',color:'#e91e8c', icon:'🏦', tipo:'recebimento'},
+    {label:'Corretagem',       key:'corretagem',      color:'#e8b544', icon:'🤝', tipo:'gasto', recibo:true},
+    {label:'Taxas',            key:'taxas',           color:'#555',    icon:'📋', tipo:'gasto', recibo:true},
+  ],
+  'compra-imovel': [
+    {label:'Proposta',                  key:'proposta',           color:'#888',    icon:'📝',  tipo:'doc'},
+    {label:'Contrato',                  key:'contrato',           color:'#42a5f5', icon:'📄',  tipo:'doc'},
+    {label:'Contrato de Financiamento', key:'contrato-financ',    color:'#9c27b0', icon:'🏦',  tipo:'doc'},
+    {label:'Documentação do Imóvel',    key:'doc-imovel',         color:'#ff7043', icon:'🗂️',  tipo:'doc'},
+    {label:'Sinal',                     key:'sinal',              color:'#9c27b0', icon:'🤝',  tipo:'gasto', recibo:true},
+    {label:'Entrada',                   key:'entrada',            color:'#4caf50', icon:'💵',  tipo:'gasto', recibo:true},
+    {label:'Repasse bancário',          key:'repasse-bancario',   color:'#e91e8c', icon:'🏦',  tipo:'gasto', recibo:true, financiamento:true},
+    {label:'FGTS',                      key:'fgts',               color:'#e91e8c', icon:'💳',  tipo:'gasto', recibo:true},
+    {label:'Taxas',                     key:'taxas',              color:'#888',    icon:'📋',  tipo:'gasto', recibo:true},
+  ],
+  'projeto-arq': [
+    {label:'Proposta',         key:'proposta',        color:'#888',    icon:'📝', tipo:'doc'},
+    {label:'Contrato',         key:'contrato',        color:'#42a5f5', icon:'📄', tipo:'doc'},
+    {label:'Pagamento',        key:'pagamento',       color:'#e8b544', icon:'💰', tipo:'gasto'},
+    {label:'Levantamento',     key:'levantamento',    color:'#888',    icon:'📏', tipo:'entrega'},
+    {label:'Estudo Preliminar',key:'estudo-prelim',   color:'#9c27b0', icon:'✏️',  tipo:'entrega'},
+    {label:'Anteprojeto',      key:'anteprojeto',     color:'#42a5f5', icon:'📐', tipo:'entrega'},
+    {label:'Projeto Executivo',key:'proj-exec',       color:'#4caf50', icon:'✅', tipo:'entrega'},
+  ],
+};
+// Retorna a lista de cartões (padrão + criados pelo usuário) de uma etapa de imóvel
+function getImovelCardDefs(catKey){
+  const defs = [...(IMOVEL_DEFAULT_CARDS[catKey]||[])];
+  const customCards = JSON.parse(localStorage.getItem('imovel-custom-cards-'+catKey)||'[]');
+  customCards.forEach(c=>{ if(!defs.find(i=>i.key===c.key)) defs.push(c); });
+  return defs;
+}
+// Classifica um lançamento (subcategoria) de uma etapa de imóvel como recebimento
+// (entra na sua conta) ou pagamento (sai do seu bolso) — considera cartões
+// personalizados também. 'financiamento:true' = passagem direta banco→vendedor,
+// não é seu dinheiro entrando nem saindo.
+function getImovelCardKind(catKey, subKey){
+  const def = getImovelCardDefs(catKey).find(i=>i.key===subKey);
+  if(!def) return 'outro';
+  if(def.financiamento) return 'financiamento';
+  if(def.tipo==='recibo'||def.tipo==='recebimento') return 'recebimento';
+  if(def.tipo==='gasto') return 'pagamento';
+  return 'outro';
+}
+
 // aplica customizações salvas (cor/rótulo) por cima dos valores padrão
 try{
   const imovelCustom = JSON.parse(localStorage.getItem('imovel_cats_custom')||'{}');
@@ -2573,42 +2627,7 @@ function renderImovelCat(catKey, subKey){
   const lista = gastos.filter(g=>g.categoria===catKey);
   const getVal = g=>(g.valor||0)*(g.quantidade||1);
 
-  const summaryItems = catKey==='venda-imovel' ? [
-    {label:'Proposta',         key:'proposta',        color:'#888',    icon:'📝', tipo:'doc'},
-    {label:'Contrato',         key:'contrato',        color:'#42a5f5', icon:'📄', tipo:'doc'},
-    {label:'Sinal',            key:'sinal',           color:'#9c27b0', icon:'🤝', tipo:'recibo'},
-    {label:'Entrada',          key:'entrada',         color:'#4caf50', icon:'💵', tipo:'recibo'},
-    {label:'Repasse bancário', key:'repasse-bancario',color:'#e91e8c', icon:'🏦', tipo:'recebimento'},
-    {label:'Corretagem',       key:'corretagem',      color:'#e8b544', icon:'🤝', tipo:'gasto', recibo:true},
-    {label:'Taxas',            key:'taxas',           color:'#555',    icon:'📋', tipo:'gasto', recibo:true},
-  ] : catKey==='compra-imovel' ? [
-    {label:'Proposta',                  key:'proposta',           color:'#888',    icon:'📝',  tipo:'doc'},
-    {label:'Contrato',                  key:'contrato',           color:'#42a5f5', icon:'📄',  tipo:'doc'},
-    {label:'Contrato de Financiamento', key:'contrato-financ',    color:'#9c27b0', icon:'🏦',  tipo:'doc'},
-    {label:'Documentação do Imóvel',    key:'doc-imovel',         color:'#ff7043', icon:'🗂️',  tipo:'doc'},
-    {label:'Sinal',                     key:'sinal',              color:'#9c27b0', icon:'🤝',  tipo:'gasto', recibo:true},
-    {label:'Entrada',                   key:'entrada',            color:'#4caf50', icon:'💵',  tipo:'gasto', recibo:true},
-    {label:'Repasse bancário',          key:'repasse-bancario',   color:'#e91e8c', icon:'🏦',  tipo:'gasto', recibo:true},
-    {label:'FGTS',                      key:'fgts',               color:'#e91e8c', icon:'💳',  tipo:'gasto', recibo:true},
-    {label:'Taxas',                     key:'taxas',              color:'#888',    icon:'📋',  tipo:'gasto', recibo:true},
-  ] : catKey==='projeto-arq' ? [
-    {label:'Proposta',         key:'proposta',        color:'#888',    icon:'📝', tipo:'doc'},
-    {label:'Contrato',         key:'contrato',        color:'#42a5f5', icon:'📄', tipo:'doc'},
-    {label:'Pagamento',        key:'pagamento',       color:'#e8b544', icon:'💰', tipo:'gasto'},
-    {label:'Levantamento',     key:'levantamento',    color:'#888',    icon:'📏', tipo:'entrega'},
-    {label:'Estudo Preliminar',key:'estudo-prelim',   color:'#9c27b0', icon:'✏️',  tipo:'entrega'},
-    {label:'Anteprojeto',      key:'anteprojeto',     color:'#42a5f5', icon:'📐', tipo:'entrega'},
-    {label:'Projeto Executivo',key:'proj-exec',       color:'#4caf50', icon:'✅', tipo:'entrega'},
-  ] : catKey==='obra-bruta' ? [
-    {label:'Mão de Obra',      key:'mao-de-obra',     color:'#ef5350', icon:'👷', tipo:'gasto'},
-    {label:'Material Bruto',   key:'material-bruto',  color:'#a1887f', icon:'🧱', tipo:'gasto'},
-    {label:'Elétrica',         key:'eletrica',        color:'#ffd600', icon:'⚡', tipo:'gasto'},
-    {label:'Hidráulica',       key:'hidraulica',      color:'#42a5f5', icon:'🔧', tipo:'gasto'},
-  ] : [];
-
-  // add custom user-created cards
-  const customCards = JSON.parse(localStorage.getItem('imovel-custom-cards-'+catKey)||'[]');
-  customCards.forEach(c=>{ if(!summaryItems.find(i=>i.key===c.key)) summaryItems.push(c); });
+  const summaryItems = getImovelCardDefs(catKey);
 
   // filter out hidden (deleted) cards
   const hiddenCards = JSON.parse(localStorage.getItem('imovel-hidden-cards-'+catKey)||'[]');
@@ -2860,48 +2879,58 @@ function renderGeral(){
   // ficam de fora dos totais/gráficos de reforma pra não distorcer os números
   const REAL_ESTATE_CATS = ['venda-imovel','compra-imovel'];
   const isReforma = g => g.categoria!=='ganho' && !REAL_ESTATE_CATS.includes(g.categoria);
+  const getVal = g => (g.valor||0) * (g.quantidade||1);
 
   const ganhos  = gastos.filter(g=>g.categoria==='ganho');
   const totalGanhos = ganhos.reduce((s,g)=>s+(g.valor||0),0);
   // Só disponível conta como base real — direcionado/a receber não passa pela conta
   const dispGanhos = ganhos.filter(g=>g.subcategoria==='disponivel'||!g.subcategoria).reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
   const aReceberGanhos = ganhos.filter(g=>g.subcategoria==='areceber').reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
-  const getVal = g => (g.valor||0) * (g.quantidade||1);
   const ativos = gastos.filter(g=>g.status==='pago'&&isReforma(g));
   const total  = ativos.reduce((s,g)=>s+getVal(g),0);
   const pago   = gastos.filter(g=>g.status==='pago'&&isReforma(g)).reduce((s,g)=>s+getVal(g),0);
   const dispensavel = gastos.filter(g=>g.status==='apagar'&&isReforma(g)).reduce((s,g)=>s+getVal(g),0);
   const necessario  = gastos.filter(g=>g.status==='necessario'&&isReforma(g)).reduce((s,g)=>s+getVal(g),0);
-  const saldo  = dispGanhos - pago;
   const pct    = dispGanhos>0?Math.round(total/dispGanhos*100):0;
   const barColor = pct>90?'#ef5350':pct>70?'#e8b544':'#4caf50';
 
-  // Resumo da transação imobiliária (separado, não entra no saldo da reforma)
-  const imovelResumo = REAL_ESTATE_CATS.map(catKey=>{
-    const items = gastos.filter(g=>g.categoria===catKey);
-    const pagoImovel = items.filter(g=>g.status==='pago').reduce((s,g)=>s+getVal(g),0);
-    const pendenteImovel = items.filter(g=>g.status==='necessario').reduce((s,g)=>s+getVal(g),0);
-    return {catKey, info: IMOVEL_CATS[catKey], pago: pagoImovel, pendente: pendenteImovel, lancamentos: items.length};
-  }).filter(r=>r.info && r.lancamentos>0);
+  // Venda do Imóvel: recebimento (Sinal/Entrada/Repasse) x pagamento (Corretagem/Taxas/etc — inclusive cartões criados por você, como Laudêmio)
+  const vendaItems = gastos.filter(g=>g.categoria==='venda-imovel');
+  const vendaRecebido   = vendaItems.filter(g=>getImovelCardKind('venda-imovel',g.subcategoria)==='recebimento' && g.status==='pago').reduce((s,g)=>s+getVal(g),0);
+  const vendaAReceber   = vendaItems.filter(g=>getImovelCardKind('venda-imovel',g.subcategoria)==='recebimento' && g.status!=='pago').reduce((s,g)=>s+getVal(g),0);
+  const vendaPago       = vendaItems.filter(g=>getImovelCardKind('venda-imovel',g.subcategoria)==='pagamento' && g.status==='pago').reduce((s,g)=>s+getVal(g),0);
+  const vendaAPagar     = vendaItems.filter(g=>getImovelCardKind('venda-imovel',g.subcategoria)==='pagamento' && g.status!=='pago').reduce((s,g)=>s+getVal(g),0);
+
+  // Compra do Imóvel: pagamento do seu bolso (Sinal/Entrada/FGTS/Taxas) x financiamento (Repasse — passagem direta banco→vendedor, não é seu dinheiro)
+  const compraItems = gastos.filter(g=>g.categoria==='compra-imovel');
+  const compraPago       = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && g.status==='pago').reduce((s,g)=>s+getVal(g),0);
+  const compraAPagar     = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && g.status!=='pago').reduce((s,g)=>s+getVal(g),0);
+  const compraFinanciado = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='financiamento').reduce((s,g)=>s+getVal(g),0);
+
+  // Saldo final = tudo que já entrou/saiu de verdade, sem contar o que ainda está pendente
+  const saldoReal = vendaRecebido - vendaPago + dispGanhos - compraPago - pago;
+  // Saldo projetado = saldo real + o que ainda falta entrar/sair dos dois lados
+  const saldoProjetado = saldoReal + vendaAReceber - vendaAPagar - compraAPagar - necessario;
+  const saldo = saldoReal; // mantém o nome usado no resto da função (blocos de cenário abaixo)
 
   document.getElementById('content').innerHTML = `
 
-    <div class="cards-row" style="grid-template-columns:repeat(5,1fr);margin-bottom:1.5rem">
+    <div class="cards-row" style="grid-template-columns:1.3fr 1fr repeat(3,1fr);margin-bottom:1.5rem">
       <div class="card" style="border-left:3px solid #e91e8c;background:#1a0d14">
-        <div class="card-label"><i class="ti ti-wallet" style="font-size:13px;color:#e91e8c"></i> Saldo restante real</div>
-        <div class="card-value" style="color:#e91e8c">${fmt(saldo)}</div>
+        <div class="card-label"><i class="ti ti-wallet" style="font-size:13px;color:#e91e8c"></i> Saldo final real (hoje)</div>
+        <div class="card-value" style="color:#e91e8c">${fmt(saldoReal)}</div>
         <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #2a1a22">
-          <span style="color:#555;font-size:10px">Projetado (+ a receber):</span><br>
-          <span style="font-size:13px;font-weight:600;color:${(saldo+aReceberGanhos)<0?'#ef5350':'#42a5f5'}">${fmt(saldo+aReceberGanhos)}</span>
+          <span style="color:#555;font-size:10px">Projetado (recebendo/pagando o resto):</span><br>
+          <span style="font-size:13px;font-weight:600;color:${saldoProjetado<0?'#ef5350':'#42a5f5'}">${fmt(saldoProjetado)}</span>
         </div>
       </div>
       <div class="card" style="border-left:3px solid #4caf50;background:#0d1a0d">
-        <div class="card-label"><i class="ti ti-circle-check" style="font-size:13px;color:#4caf50"></i> Já pago</div>
+        <div class="card-label"><i class="ti ti-circle-check" style="font-size:13px;color:#4caf50"></i> Já pago (reforma)</div>
         <div class="card-value green">${fmt(pago)}</div>
         <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #1e3a1e;color:#555;font-size:10px">${ativos.length} lançamentos</div>
       </div>
       <div class="card" style="border-left:3px solid #42a5f5;background:#0d1520">
-        <div class="card-label"><i class="ti ti-alert-circle" style="font-size:13px;color:#42a5f5"></i> Necessários</div>
+        <div class="card-label"><i class="ti ti-alert-circle" style="font-size:13px;color:#42a5f5"></i> Necessários (reforma)</div>
         <div class="card-value" style="color:#42a5f5">${fmt(necessario)}</div>
         <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #1a2a3a">
           <span style="color:#555;font-size:10px">Saldo se usar necessários:</span><br>
@@ -2910,7 +2939,7 @@ function renderGeral(){
       </div>
       <div class="card" style="border-left:3px solid #e8b544;background:#1a1500">
         <div class="card-label" style="display:flex;align-items:center;justify-content:space-between">
-          <span><i class="ti ti-clock" style="font-size:13px;color:#e8b544"></i> Dispensáveis</span>
+          <span><i class="ti ti-clock" style="font-size:13px;color:#e8b544"></i> Dispensáveis (reforma)</span>
           <button onclick="openBulkModal('apagar','')" title="Mover todos em massa" style="background:none;border:none;color:#555;cursor:pointer;font-size:13px;padding:0 2px;transition:color .15s" onmouseover="this.style.color='#e8b544'" onmouseout="this.style.color='#555'"><i class="ti ti-arrows-transfer-down"></i></button>
         </div>
         <div class="card-value yellow">${fmt(dispensavel)}</div>
@@ -2926,26 +2955,45 @@ function renderGeral(){
       </div>
     </div>
 
-    ${imovelResumo.length ? `
-    <div style="display:grid;grid-template-columns:repeat(${imovelResumo.length},1fr);gap:12px;margin-bottom:1.5rem">
-      ${imovelResumo.map(r=>`
-        <div class="card" style="border-left:3px solid ${r.info.color};cursor:pointer" onclick="navigate('${r.catKey}')">
-          <div class="card-label"><span style="font-size:13px">${r.info.icon}</span> ${r.info.label} <span style="color:#444;font-weight:400;font-size:10px;margin-left:4px">— transação do imóvel</span></div>
-          <div style="display:flex;gap:1.5rem;margin-top:6px">
-            <div>
-              <div style="font-size:10px;color:#555">${r.catKey==='venda-imovel'?'Recebido':'Pago'}</div>
-              <div style="font-size:18px;font-weight:700;color:${r.info.color}">${fmt(r.pago)}</div>
-            </div>
-            ${r.pendente>0?`<div>
-              <div style="font-size:10px;color:#555">Pendente</div>
-              <div style="font-size:18px;font-weight:700;color:#888">${fmt(r.pendente)}</div>
-            </div>`:''}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.5rem">
+      <div class="card" style="border-left:3px solid ${IMOVEL_CATS['venda-imovel']?.color||'#db4343'};cursor:pointer" onclick="navigate('venda-imovel')">
+        <div class="card-label"><span style="font-size:13px">${IMOVEL_CATS['venda-imovel']?.icon||'🏠'}</span> Venda do Imóvel</div>
+        <div style="display:flex;gap:1.5rem;margin-top:6px">
+          <div>
+            <div style="font-size:10px;color:#555">Recebido</div>
+            <div style="font-size:18px;font-weight:700;color:#4caf50">${fmt(vendaRecebido)}</div>
           </div>
-          <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #222;color:#555;font-size:10px">${r.lancamentos} lançamento${r.lancamentos>1?'s':''} · não entra no saldo da reforma abaixo</div>
+          <div>
+            <div style="font-size:10px;color:#555">A receber</div>
+            <div style="font-size:18px;font-weight:700;color:#888">${fmt(vendaAReceber)}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:#555">Pago (corretagem/taxas)</div>
+            <div style="font-size:18px;font-weight:700;color:#ef5350">${fmt(vendaPago)}</div>
+          </div>
         </div>
-      `).join('')}
+        <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #222;color:#555;font-size:10px">${vendaItems.length} lançamentos · já contabilizado no saldo final</div>
+      </div>
+      <div class="card" style="border-left:3px solid ${IMOVEL_CATS['compra-imovel']?.color||'#db7d43'};cursor:pointer" onclick="navigate('compra-imovel')">
+        <div class="card-label"><span style="font-size:13px">${IMOVEL_CATS['compra-imovel']?.icon||'🔑'}</span> Compra do Imóvel</div>
+        <div style="display:flex;gap:1.5rem;margin-top:6px">
+          <div>
+            <div style="font-size:10px;color:#555">Pago (seu bolso)</div>
+            <div style="font-size:18px;font-weight:700;color:#ef5350">${fmt(compraPago)}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:#555">A pagar</div>
+            <div style="font-size:18px;font-weight:700;color:#888">${fmt(compraAPagar)}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:#555">Financiado (banco → vendedor)</div>
+            <div style="font-size:18px;font-weight:700;color:#666">${fmt(compraFinanciado)}</div>
+          </div>
+        </div>
+        <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #222;color:#555;font-size:10px">${compraItems.length} lançamentos · financiado não entra no saldo (não é seu dinheiro)</div>
+      </div>
     </div>
-    ` : ''}
+
 
     <!-- BLOCO 1: PAGO -->
     <div style="background:#111;border:1px solid #1e3a1e;border-left:3px solid #4caf50;border-radius:10px;padding:1.25rem;margin-bottom:1rem">
