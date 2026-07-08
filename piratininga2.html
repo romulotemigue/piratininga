@@ -2856,20 +2856,33 @@ function openModalImovel(catKey){
 
 // ── GERAL ────────────────────────────────────────────────────────
 function renderGeral(){
+  // Venda/Compra do Imóvel são transações imobiliárias, não orçamento de reforma —
+  // ficam de fora dos totais/gráficos de reforma pra não distorcer os números
+  const REAL_ESTATE_CATS = ['venda-imovel','compra-imovel'];
+  const isReforma = g => g.categoria!=='ganho' && !REAL_ESTATE_CATS.includes(g.categoria);
+
   const ganhos  = gastos.filter(g=>g.categoria==='ganho');
   const totalGanhos = ganhos.reduce((s,g)=>s+(g.valor||0),0);
   // Só disponível conta como base real — direcionado/a receber não passa pela conta
   const dispGanhos = ganhos.filter(g=>g.subcategoria==='disponivel'||!g.subcategoria).reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
   const aReceberGanhos = ganhos.filter(g=>g.subcategoria==='areceber').reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
   const getVal = g => (g.valor||0) * (g.quantidade||1);
-  const ativos = gastos.filter(g=>g.status==='pago'&&g.categoria!=='ganho');
+  const ativos = gastos.filter(g=>g.status==='pago'&&isReforma(g));
   const total  = ativos.reduce((s,g)=>s+getVal(g),0);
-  const pago   = gastos.filter(g=>g.status==='pago'&&g.categoria!=='ganho').reduce((s,g)=>s+getVal(g),0);
-  const dispensavel = gastos.filter(g=>g.status==='apagar'&&g.categoria!=='ganho').reduce((s,g)=>s+getVal(g),0);
-  const necessario  = gastos.filter(g=>g.status==='necessario'&&g.categoria!=='ganho').reduce((s,g)=>s+getVal(g),0);
+  const pago   = gastos.filter(g=>g.status==='pago'&&isReforma(g)).reduce((s,g)=>s+getVal(g),0);
+  const dispensavel = gastos.filter(g=>g.status==='apagar'&&isReforma(g)).reduce((s,g)=>s+getVal(g),0);
+  const necessario  = gastos.filter(g=>g.status==='necessario'&&isReforma(g)).reduce((s,g)=>s+getVal(g),0);
   const saldo  = dispGanhos - pago;
   const pct    = dispGanhos>0?Math.round(total/dispGanhos*100):0;
   const barColor = pct>90?'#ef5350':pct>70?'#e8b544':'#4caf50';
+
+  // Resumo da transação imobiliária (separado, não entra no saldo da reforma)
+  const imovelResumo = REAL_ESTATE_CATS.map(catKey=>{
+    const items = gastos.filter(g=>g.categoria===catKey);
+    const pagoImovel = items.filter(g=>g.status==='pago').reduce((s,g)=>s+getVal(g),0);
+    const pendenteImovel = items.filter(g=>g.status==='necessario').reduce((s,g)=>s+getVal(g),0);
+    return {catKey, info: IMOVEL_CATS[catKey], pago: pagoImovel, pendente: pendenteImovel, lancamentos: items.length};
+  }).filter(r=>r.info && r.lancamentos>0);
 
   document.getElementById('content').innerHTML = `
 
@@ -2912,6 +2925,27 @@ function renderGeral(){
         <div class="card-sub" style="font-size:10px;color:#555">🟢 Disponível: ${fmt(dispGanhos)}</div>
       </div>
     </div>
+
+    ${imovelResumo.length ? `
+    <div style="display:grid;grid-template-columns:repeat(${imovelResumo.length},1fr);gap:12px;margin-bottom:1.5rem">
+      ${imovelResumo.map(r=>`
+        <div class="card" style="border-left:3px solid ${r.info.color};cursor:pointer" onclick="navigate('${r.catKey}')">
+          <div class="card-label"><span style="font-size:13px">${r.info.icon}</span> ${r.info.label} <span style="color:#444;font-weight:400;font-size:10px;margin-left:4px">— transação do imóvel</span></div>
+          <div style="display:flex;gap:1.5rem;margin-top:6px">
+            <div>
+              <div style="font-size:10px;color:#555">${r.catKey==='venda-imovel'?'Recebido':'Pago'}</div>
+              <div style="font-size:18px;font-weight:700;color:${r.info.color}">${fmt(r.pago)}</div>
+            </div>
+            ${r.pendente>0?`<div>
+              <div style="font-size:10px;color:#555">Pendente</div>
+              <div style="font-size:18px;font-weight:700;color:#888">${fmt(r.pendente)}</div>
+            </div>`:''}
+          </div>
+          <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #222;color:#555;font-size:10px">${r.lancamentos} lançamento${r.lancamentos>1?'s':''} · não entra no saldo da reforma abaixo</div>
+        </div>
+      `).join('')}
+    </div>
+    ` : ''}
 
     <!-- BLOCO 1: PAGO -->
     <div style="background:#111;border:1px solid #1e3a1e;border-left:3px solid #4caf50;border-radius:10px;padding:1.25rem;margin-bottom:1rem">
@@ -3002,7 +3036,7 @@ function renderGeral(){
             <th style="padding:7px 6px;color:#555;font-weight:500;font-size:10px;border-bottom:1px solid #1e3a1e">Qtd</th>
             <th style="padding:7px 6px;border-bottom:1px solid #1e3a1e"></th>
           </tr></thead>
-          <tbody>${renderRowsGeral(gastos.filter(g=>g.status==='pago'&&g.categoria!=='ganho'),'#1e3a1e')}</tbody>
+          <tbody>${renderRowsGeral(gastos.filter(g=>g.status==='pago'&&isReforma(g)),'#1e3a1e')}</tbody>
         </table>
       </div>
 
@@ -3017,7 +3051,7 @@ function renderGeral(){
             <th style="padding:7px 6px;color:#555;font-weight:500;font-size:10px;border-bottom:1px solid #1a2a3a">Qtd</th>
             <th style="padding:7px 6px;border-bottom:1px solid #1a2a3a"></th>
           </tr></thead>
-          <tbody>${renderRowsGeral(gastos.filter(g=>g.status==='necessario'&&g.categoria!=='ganho'),'#1a2a3a')}</tbody>
+          <tbody>${renderRowsGeral(gastos.filter(g=>g.status==='necessario'&&isReforma(g)),'#1a2a3a')}</tbody>
         </table>
       </div>
 
@@ -3032,7 +3066,7 @@ function renderGeral(){
             <th style="padding:7px 6px;color:#555;font-weight:500;font-size:10px;border-bottom:1px solid #2a2000">Qtd</th>
             <th style="padding:7px 6px;border-bottom:1px solid #2a2000"></th>
           </tr></thead>
-          <tbody>${renderRowsGeral(gastos.filter(g=>g.status==='apagar'&&g.categoria!=='ganho'),'#2a2000')}</tbody>
+          <tbody>${renderRowsGeral(gastos.filter(g=>g.status==='apagar'&&isReforma(g)),'#2a2000')}</tbody>
         </table>
       </div>
 
@@ -3040,7 +3074,7 @@ function renderGeral(){
   `;
 
   function buildCharts(canvasBarId, canvasPieId, barLegendId, pieLegendId, filterStatuses){
-    const items = gastos.filter(g=>filterStatuses.includes(g.status)&&g.categoria!=='ganho');
+    const items = gastos.filter(g=>filterStatuses.includes(g.status)&&isReforma(g));
     const values = Object.keys(CATS).map(k=>items.filter(g=>g.categoria===k).reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0));
     const colors = Object.values(CATS).map(c=>c.color);
     const labels = Object.values(CATS).map(c=>c.label.split('/')[0].trim());
