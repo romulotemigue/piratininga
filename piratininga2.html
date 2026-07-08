@@ -1585,7 +1585,7 @@ function populateCatSelect(id){
   sel.innerHTML = Object.keys(allCats).map(k=>`<option value="${k}"${k===cur?' selected':''}>${allCats[k].label}</option>`).join('');
 }
 
-const M2_CATS = ['revestimentos-piso','revestimentos-paredes','obra-bruta','marmoraria'];
+const M2_CATS = ['revestimentos','revestimentos-paredes','obra-bruta','marmoraria'];
 
 function checkM2Section(catKey){
   const section = document.getElementById('f-m2-section');
@@ -1975,7 +1975,7 @@ const IMOVEL_CATS = {
 
 // Categorias normais "promovidas" visualmente a etapa (numeração + fundo colorido no menu),
 // mas que continuam usando o SUBCATS/renderCat normal — conteúdo interno não muda.
-const EXTRA_PINNED_STAGES = ['moveis','obra-bruta','planejados','decoracao','iluminacao','eletro','loucas','revestimentos-piso','revestimentos-paredes','marmoraria','mudanca','camamesabanho','outroscustos'];
+const EXTRA_PINNED_STAGES = ['moveis','obra-bruta','planejados','decoracao','iluminacao','eletro','loucas','revestimentos','revestimentos-paredes','marmoraria','mudanca','camamesabanho','outroscustos'];
 function getPinnedStageKeys(){
   const allPinned = [...Object.keys(IMOVEL_CATS), ...EXTRA_PINNED_STAGES.filter(k=>CATS[k])];
   let saved = JSON.parse(localStorage.getItem('pinned_stage_order')||'null');
@@ -2064,7 +2064,7 @@ try{
     const stageLabelHints = {
       'moveis':['moveis'], 'obra-bruta':['execucao'], 'planejados':['planejados'],
       'decoracao':['decoracao'], 'iluminacao':['iluminacao'], 'eletro':['eletrodomesticos'],
-      'loucas':['loucas'], 'revestimentos-piso':['revestimento','piso'],
+      'loucas':['loucas'], 'revestimentos':['revestimento','piso'],
       'revestimentos-paredes':['revestimento','pared'], 'marmoraria':['marmoraria'],
       'mudanca':['mudanca'], 'camamesabanho':['banho'], 'outroscustos':['outros']
     };
