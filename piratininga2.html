@@ -2885,7 +2885,22 @@ function renderGeral(){
   // Venda/Compra do Imóvel são transações imobiliárias, não orçamento de reforma —
   // ficam de fora dos totais/gráficos de reforma pra não distorcer os números
   const REAL_ESTATE_CATS = ['venda-imovel','compra-imovel'];
-  const isReforma = g => g.categoria!=='ganho' && !REAL_ESTATE_CATS.includes(g.categoria);
+  // Conta como "reforma" só quem tem uma categoria normal válida hoje (existe em CATS).
+  // Isso automaticamente deixa de fora 'ganho', as etapas especiais de imóvel (que vivem
+  // em IMOVEL_CATS, não em CATS) e qualquer chave órfã/antiga que não bate com nada mais —
+  // mais seguro do que tentar adivinhar uma lista de chaves pra excluir.
+  const isReforma = g => g.categoria!=='ganho' && !!CATS[g.categoria];
+
+  // Diagnóstico: mostra no console qualquer categoria "órfã" usada em lançamentos
+  // que não corresponde a nenhuma categoria/etapa válida hoje
+  try{
+    const categoriasUsadas = [...new Set(gastos.map(g=>g.categoria))];
+    const orfas = categoriasUsadas.filter(c=>c && c!=='ganho' && !CATS[c] && !IMOVEL_CATS[c]);
+    if(orfas.length){
+      console.warn('[piratininga][categorias-orfas] Essas categorias aparecem em lançamentos mas não existem mais:', orfas,
+        '— exemplos de lançamentos:', orfas.map(c=>gastos.filter(g=>g.categoria===c).slice(0,2).map(g=>({id:g.id,descricao:g.descricao,valor:g.valor,status:g.status}))));
+    }
+  }catch(e){ console.warn('Erro no diagnóstico de categorias órfãs:', e); }
   const getVal = g => (g.valor||0) * (g.quantidade||1);
 
   const ganhos  = gastos.filter(g=>g.categoria==='ganho');
@@ -3081,55 +3096,6 @@ function renderGeral(){
       </div>
     </div>
     `;})()} 
-
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:1.25rem">
-
-      <div style="background:#0d1a0d;border:1px solid #1e3a1e;border-left:3px solid #4caf50;border-radius:10px;position:relative">
-        ${tableCardHeader('Pago','#4caf50','ti-circle-check','pago','')}
-        <table style="width:100%;border-collapse:collapse;font-size:12px">
-          <thead><tr style="background:#0a130a">
-            <th style="padding:7px 10px;color:#555;font-weight:500;font-size:10px;text-align:left;border-bottom:1px solid #1e3a1e"></th>
-            <th style="padding:7px 6px;color:#555;font-weight:500;font-size:10px;text-align:left;border-bottom:1px solid #1e3a1e">Data</th>
-            <th style="padding:7px 6px;color:#555;font-weight:500;font-size:10px;text-align:left;border-bottom:1px solid #1e3a1e">Descrição</th>
-            <th style="padding:7px 6px;color:#555;font-weight:500;font-size:10px;text-align:right;border-bottom:1px solid #1e3a1e">Valor</th>
-            <th style="padding:7px 6px;color:#555;font-weight:500;font-size:10px;border-bottom:1px solid #1e3a1e">Qtd</th>
-            <th style="padding:7px 6px;border-bottom:1px solid #1e3a1e"></th>
-          </tr></thead>
-          <tbody>${renderRowsGeral(gastos.filter(g=>g.status==='pago'&&isReforma(g)),'#1e3a1e')}</tbody>
-        </table>
-      </div>
-
-      <div style="background:#0d1520;border:1px solid #1a2a3a;border-left:3px solid #42a5f5;border-radius:10px;position:relative">
-        ${tableCardHeader('Necessários','#42a5f5','ti-alert-circle','necessario','')}
-        <table style="width:100%;border-collapse:collapse;font-size:12px">
-          <thead><tr style="background:#0a1018">
-            <th style="padding:7px 10px;color:#555;font-weight:500;font-size:10px;text-align:left;border-bottom:1px solid #1a2a3a"></th>
-            <th style="padding:7px 6px;color:#555;font-weight:500;font-size:10px;text-align:left;border-bottom:1px solid #1a2a3a">Data</th>
-            <th style="padding:7px 6px;color:#555;font-weight:500;font-size:10px;text-align:left;border-bottom:1px solid #1a2a3a">Descrição</th>
-            <th style="padding:7px 6px;color:#555;font-weight:500;font-size:10px;text-align:right;border-bottom:1px solid #1a2a3a">Valor</th>
-            <th style="padding:7px 6px;color:#555;font-weight:500;font-size:10px;border-bottom:1px solid #1a2a3a">Qtd</th>
-            <th style="padding:7px 6px;border-bottom:1px solid #1a2a3a"></th>
-          </tr></thead>
-          <tbody>${renderRowsGeral(gastos.filter(g=>g.status==='necessario'&&isReforma(g)),'#1a2a3a')}</tbody>
-        </table>
-      </div>
-
-      <div style="background:#1a1500;border:1px solid #2a2000;border-left:3px solid #e8b544;border-radius:10px;position:relative">
-        ${tableCardHeader('Dispensáveis','#e8b544','ti-clock','apagar','')}
-        <table style="width:100%;border-collapse:collapse;font-size:12px">
-          <thead><tr style="background:#120f00">
-            <th style="padding:7px 10px;color:#555;font-weight:500;font-size:10px;text-align:left;border-bottom:1px solid #2a2000"></th>
-            <th style="padding:7px 6px;color:#555;font-weight:500;font-size:10px;text-align:left;border-bottom:1px solid #2a2000">Data</th>
-            <th style="padding:7px 6px;color:#555;font-weight:500;font-size:10px;text-align:left;border-bottom:1px solid #2a2000">Descrição</th>
-            <th style="padding:7px 6px;color:#555;font-weight:500;font-size:10px;text-align:right;border-bottom:1px solid #2a2000">Valor</th>
-            <th style="padding:7px 6px;color:#555;font-weight:500;font-size:10px;border-bottom:1px solid #2a2000">Qtd</th>
-            <th style="padding:7px 6px;border-bottom:1px solid #2a2000"></th>
-          </tr></thead>
-          <tbody>${renderRowsGeral(gastos.filter(g=>g.status==='apagar'&&isReforma(g)),'#2a2000')}</tbody>
-        </table>
-      </div>
-
-    </div>
   `;
 
   function buildCharts(canvasBarId, canvasPieId, barLegendId, pieLegendId, filterStatuses){
