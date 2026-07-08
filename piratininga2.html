@@ -1539,6 +1539,7 @@ async function loadGastos(){
     gastos = await sbFetch();
     await migrateSubcats(gastos);
     await migrateGanhoTipos(gastos);
+    restoreOrphanCategoriesWithData();
     renderCatNav();
     const initialPage = location.hash ? location.hash.slice(1) : 'geral';
     navigate(initialPage, true);
@@ -1547,6 +1548,27 @@ async function loadGastos(){
     console.error(e);
     document.getElementById('content').innerHTML = '<div class="loading" style="color:#ef5350">Erro ao conectar ao banco de dados.<br><small>'+e.message+'</small></div>';
   }
+}
+
+// Se algum lançamento aponta pra uma categoria que não existe mais (foi excluída,
+// mesclada errado, ou tem uma chave com erro de digitação antigo), ela fica "órfã"
+// e some dos totais silenciosamente. Isso restaura essas categorias como visíveis
+// (marcadas "revisar") pra nenhum dinheiro real desaparecer da conta sem avisar.
+function restoreOrphanCategoriesWithData(){
+  if(localStorage.getItem('orphan_restore_v1')) return;
+  try{
+    const usadas = [...new Set(gastos.map(g=>g.categoria))];
+    const orfas = usadas.filter(c=>c && c!=='ganho' && !CATS[c] && !IMOVEL_CATS[c] && !CAT_MERGE_ALIASES[c]);
+    if(orfas.length){
+      orfas.forEach((key,i)=>{
+        const labelBase = key.split(/[-_]/).map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
+        CATS[key] = {label: labelBase+' (revisar)', icon:'⚠️', color: STAGE_COLOR_PRESETS[i%STAGE_COLOR_PRESETS.length]};
+      });
+      saveCats();
+      console.warn('[piratininga] Categorias restauradas porque tinham lançamentos reais e tinham sumido dos totais:', orfas, '— procure "(revisar)" no menu lateral pra decidir o que fazer com cada uma (renomear, mesclar ou excluir de vez).');
+    }
+    localStorage.setItem('orphan_restore_v1','1');
+  }catch(e){ console.warn('Erro ao restaurar categorias órfãs:', e); }
 }
 
 // ── MODAL ────────────────────────────────────────────────────────
@@ -2034,7 +2056,7 @@ const IMOVEL_DEFAULT_CARDS = {
     {label:'Sinal',                     key:'sinal',              color:'#9c27b0', icon:'🤝',  tipo:'gasto', recibo:true},
     {label:'Entrada',                   key:'entrada',            color:'#4caf50', icon:'💵',  tipo:'gasto', recibo:true},
     {label:'Repasse bancário',          key:'repasse-bancario',   color:'#e91e8c', icon:'🏦',  tipo:'gasto', recibo:true, financiamento:true},
-    {label:'FGTS',                      key:'fgts',               color:'#e91e8c', icon:'💳',  tipo:'gasto', recibo:true},
+    {label:'FGTS',                      key:'fgts',               color:'#e91e8c', icon:'💳',  tipo:'gasto', recibo:true, financiamento:true},
     {label:'Taxas',                     key:'taxas',              color:'#888',    icon:'📋',  tipo:'gasto', recibo:true},
   ],
   'projeto-arq': [
@@ -2889,7 +2911,7 @@ function renderGeral(){
   // Isso automaticamente deixa de fora 'ganho', as etapas especiais de imóvel (que vivem
   // em IMOVEL_CATS, não em CATS) e qualquer chave órfã/antiga que não bate com nada mais —
   // mais seguro do que tentar adivinhar uma lista de chaves pra excluir.
-  const isReforma = g => g.categoria!=='ganho' && !!CATS[g.categoria];
+  const isReforma = g => g.categoria!=='ganho' && !!(CATS[g.categoria] || CATS[CAT_MERGE_ALIASES[g.categoria]]);
 
   // Diagnóstico: mostra no console qualquer categoria "órfã" usada em lançamentos
   // que não corresponde a nenhuma categoria/etapa válida hoje
@@ -2924,7 +2946,8 @@ function renderGeral(){
   const vendaPago       = vendaItems.filter(g=>getImovelCardKind('venda-imovel',g.subcategoria)==='pagamento' && g.status==='pago').reduce((s,g)=>s+getVal(g),0);
   const vendaAPagar     = vendaItems.filter(g=>getImovelCardKind('venda-imovel',g.subcategoria)==='pagamento' && g.status!=='pago').reduce((s,g)=>s+getVal(g),0);
 
-  // Compra do Imóvel: pagamento do seu bolso (Sinal/Entrada/FGTS/Taxas) x financiamento (Repasse — passagem direta banco→vendedor, não é seu dinheiro)
+  // Compra do Imóvel: pagamento do seu bolso (Sinal/Entrada/Taxas) x financiamento (Repasse bancário + FGTS —
+  // não passam pela sua conta corrente, vão direto pro vendedor/descontam do fundo, não é "seu dinheiro" saindo)
   const compraItems = gastos.filter(g=>g.categoria==='compra-imovel');
   const compraPago       = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && g.status==='pago').reduce((s,g)=>s+getVal(g),0);
   const compraAPagar     = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && g.status!=='pago').reduce((s,g)=>s+getVal(g),0);
@@ -3012,7 +3035,7 @@ function renderGeral(){
             <div style="font-size:18px;font-weight:700;color:#888">${fmt(compraAPagar)}</div>
           </div>
           <div>
-            <div style="font-size:10px;color:#555">Financiado (banco → vendedor)</div>
+            <div style="font-size:10px;color:#555">Financiado (banco + FGTS)</div>
             <div style="font-size:18px;font-weight:700;color:#666">${fmt(compraFinanciado)}</div>
           </div>
         </div>
