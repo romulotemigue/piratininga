@@ -3142,6 +3142,9 @@ function renderGeral(){
   const saldoReal = vendaRecebido - vendaPago + dispGanhos - compraPago - pago;
   // Saldo projetado = saldo real + o que ainda falta entrar/sair dos dois lados
   const saldoProjetado = saldoReal + vendaAReceber - vendaAPagar - compraAPagar - necessario;
+  // Só a transação do imóvel (venda + compra), sem contar a reforma — "quanto sobra
+  // antes de tocar em obra/mudança/casa"
+  const saldoSoImovel = saldoReal + vendaAReceber - vendaAPagar - compraAPagar;
   const saldo = saldoReal; // mantém o nome usado no resto da função (blocos de cenário abaixo)
   // Saldo "só reforma vs só aportes" — cenário mais conservador, ignora a grana da
   // venda/compra do imóvel de propósito (usado só nos 3 blocos de cenário abaixo)
@@ -3157,6 +3160,10 @@ function renderGeral(){
         <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #2a1a22">
           <span style="color:#555;font-size:10px">Projetado (recebendo/pagando o resto):</span><br>
           <span style="font-size:13px;font-weight:600;color:${saldoProjetado<0?'#ef5350':'#42a5f5'}">${fmt(saldoProjetado)}</span>
+        </div>
+        <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #2a1a22">
+          <span style="color:#555;font-size:10px">Só a transação do imóvel (antes da reforma):</span><br>
+          <span style="font-size:13px;font-weight:600;color:${saldoSoImovel<0?'#ef5350':'#4caf50'}">${fmt(saldoSoImovel)}</span>
         </div>
       </div>
       <div class="card" style="border-left:3px solid #4caf50;background:#0d1a0d;cursor:pointer" onclick="openStatusDetailModal('pago')">
