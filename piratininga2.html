@@ -2085,6 +2085,7 @@ function getImovelCardDefs(catKey){
 // Cartões personalizados sem essa marcação caem em 'documentacao' por padrão, exceto se o
 // nome sugerir claramente que é parte do valor do imóvel (ex.: "por fora").
 function getImovelCardGroup(catKey, subKey){
+  if(catKey!=='compra-imovel') return null;
   const def = getImovelCardDefs(catKey).find(i=>i.key===subKey);
   if(!def || def.tipo==='doc' || def.tipo==='entrega') return null;
   if(def.grupo) return def.grupo;
@@ -2901,7 +2902,7 @@ function renderImovelCat(catKey, subKey){
 
   html += '</div>';
 
-  if(valorImovelKeys.length || documentacaoKeys.length){
+  if(catKey==='compra-imovel' && (valorImovelKeys.length || documentacaoKeys.length)){
     html += '<div style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;gap:0;flex-wrap:wrap">';
     if(valorImovelKeys.length) html += '<div style="padding-right:2rem"><div style="font-size:10px;color:#4caf50;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Valor do imóvel</div><div style="font-size:18px;font-weight:700;color:#4caf50">'+fmt(totalValorImovel)+'</div></div>';
     if(documentacaoKeys.length) html += '<div style="border-left:1px solid #1a1a1a;padding:0 2rem"><div style="font-size:10px;color:#e8b544;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Documentação e custos</div><div style="font-size:18px;font-weight:700;color:#e8b544">'+fmt(totalDocumentacao)+'</div></div>';
