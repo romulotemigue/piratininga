@@ -3146,6 +3146,8 @@ function renderGeral(){
   const vendaTotalPrevisto = vendaRecebido + vendaAReceber;
   const vendaPago       = vendaItems.filter(g=>getImovelCardKind('venda-imovel',g.subcategoria)==='pagamento' && g.status==='pago').reduce((s,g)=>s+getVal(g),0);
   const vendaAPagar     = vendaItems.filter(g=>getImovelCardKind('venda-imovel',g.subcategoria)==='pagamento' && g.status!=='pago').reduce((s,g)=>s+getVal(g),0);
+  const vendaLiquido = vendaRecebido - vendaPago;
+  const vendaLiquidoProjetado = vendaLiquido + vendaAReceber - vendaAPagar;
 
   // Compra do Imóvel: pagamento do seu bolso (Sinal/Entrada/Taxas) x financiamento (Repasse bancário + FGTS —
   // não passam pela sua conta corrente, vão direto pro vendedor/descontam do fundo, não é "seu dinheiro" saindo)
@@ -3153,6 +3155,7 @@ function renderGeral(){
   const compraPago       = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && g.status==='pago').reduce((s,g)=>s+getVal(g),0);
   const compraAPagar     = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && g.status!=='pago').reduce((s,g)=>s+getVal(g),0);
   const compraFinanciado = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='financiamento').reduce((s,g)=>s+getVal(g),0);
+  const compraAPagarItems = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && g.status!=='pago');
 
   // Já pago / Necessários "gerais" = reforma + venda + compra somados (sem financiamento,
   // que nunca é dinheiro seu). Dispensável fica só reforma (venda/compra não tem opcional).
@@ -3179,14 +3182,10 @@ function renderGeral(){
 
     <div class="cards-row" style="grid-template-columns:1.3fr 1fr repeat(3,1fr);margin-bottom:1.5rem">
       <div class="card" style="border-left:3px solid #e91e8c;background:#1a0d14">
-        <div class="card-label"><i class="ti ti-wallet" style="font-size:13px;color:#e91e8c"></i> Saldo final real (hoje)</div>
+        <div class="card-label"><i class="ti ti-wallet" style="font-size:13px;color:#e91e8c"></i> Saldo Real</div>
         <div class="card-value" style="color:#e91e8c">${fmt(saldoReal)}</div>
         <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #2a1a22">
-          <span style="color:#555;font-size:10px">Projetado (recebendo/pagando o resto):</span><br>
-          <span style="font-size:13px;font-weight:600;color:${saldoProjetado<0?'#ef5350':'#42a5f5'}">${fmt(saldoProjetado)}</span>
-        </div>
-        <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #2a1a22">
-          <span style="color:#555;font-size:10px">Só a transação do imóvel (antes da reforma):</span><br>
+          <span style="color:#555;font-size:10px">Líquido após Venda e Compra do Imóvel:</span><br>
           <span style="font-size:13px;font-weight:600;color:${saldoSoImovel<0?'#ef5350':'#4caf50'}">${fmt(saldoSoImovel)}</span>
         </div>
       </div>
@@ -3199,18 +3198,18 @@ function renderGeral(){
         <div class="card-label"><i class="ti ti-alert-circle" style="font-size:13px;color:#42a5f5"></i> Necessários</div>
         <div class="card-value" style="color:#42a5f5">${fmt(necessarioTudo)}</div>
         <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #1a2a3a">
-          <span style="color:#555;font-size:10px">Saldo final projetado se pagar os necessários:</span><br>
+          <span style="color:#555;font-size:10px">Líquido se comprar necessários:</span><br>
           <span style="font-size:13px;font-weight:600;color:${saldoProjetado<0?'#ef5350':'#42a5f5'}">${fmt(saldoProjetado)}</span>
         </div>
       </div>
       <div class="card" style="border-left:3px solid #e8b544;background:#1a1500;cursor:pointer" onclick="openStatusDetailModal('apagar')">
         <div class="card-label" style="display:flex;align-items:center;justify-content:space-between">
-          <span><i class="ti ti-clock" style="font-size:13px;color:#e8b544"></i> Dispensáveis (só reforma)</span>
+          <span><i class="ti ti-clock" style="font-size:13px;color:#e8b544"></i> Dispensáveis</span>
           <button onclick="event.stopPropagation();openBulkModal('apagar','')" title="Mover todos em massa" style="background:none;border:none;color:#555;cursor:pointer;font-size:13px;padding:0 2px;transition:color .15s" onmouseover="this.style.color='#e8b544'" onmouseout="this.style.color='#555'"><i class="ti ti-arrows-transfer-down"></i></button>
         </div>
         <div class="card-value yellow">${fmt(dispensavel)}</div>
         <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #2a2000">
-          <span style="color:#555;font-size:10px">Saldo final projetado se pagar necessários + dispensáveis:</span><br>
+          <span style="color:#555;font-size:10px">Comprando necessários e dispensáveis:</span><br>
           <span style="font-size:13px;font-weight:600;color:${(saldoProjetado-dispensavel)<0?'#ef5350':'#4caf50'}">${fmt(saldoProjetado-dispensavel)}</span>
         </div>
       </div>
@@ -3239,8 +3238,10 @@ function renderGeral(){
           </div>
         </div>
         <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #222">
-          <span style="color:#555;font-size:10px">Total previsto (recebido + a receber):</span>
-          <span style="font-size:13px;font-weight:600;color:#e8e7e2;margin-left:4px">${fmt(vendaTotalPrevisto)}</span>
+          <span style="color:#555;font-size:10px">Líquido:</span>
+          <span style="font-size:13px;font-weight:600;color:${vendaLiquido<0?'#ef5350':'#4caf50'};margin-left:4px">${fmt(vendaLiquido)}</span>
+          <span style="color:#555;font-size:10px;margin-left:10px">depois que receber tudo:</span>
+          <span style="font-size:13px;font-weight:600;color:#42a5f5;margin-left:4px">${fmt(vendaLiquidoProjetado)}</span>
         </div>
       </div>
       <div class="card" style="border-left:3px solid ${IMOVEL_CATS['compra-imovel']?.color||'#db7d43'};cursor:pointer" onclick="navigate('compra-imovel')">
@@ -3251,20 +3252,25 @@ function renderGeral(){
             <div style="font-size:18px;font-weight:700;color:#ef5350">${fmt(compraPago)}</div>
           </div>
           <div>
-            <div style="font-size:10px;color:#555">A pagar</div>
-            <div style="font-size:18px;font-weight:700;color:#888">${fmt(compraAPagar)}</div>
-          </div>
-          <div>
             <div style="font-size:10px;color:#555">Financiado (banco + FGTS)</div>
             <div style="font-size:18px;font-weight:700;color:#666">${fmt(compraFinanciado)}</div>
           </div>
         </div>
-        <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #222;color:#555;font-size:10px">${compraItems.length} lançamentos · financiado não entra no saldo (não é seu dinheiro)</div>
+        <div class="card-sub" style="margin-top:10px;padding-top:8px;border-top:1px solid #222">
+          <div style="color:#555;font-size:10px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">A pagar (seu bolso)</div>
+          ${compraAPagarItems.length ? compraAPagarItems.map(g=>{
+            const def = getImovelCardDefs('compra-imovel').find(i=>i.key===g.subcategoria);
+            const label = def?.label || g.descricao || g.subcategoria;
+            return `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span style="color:#aaa">${label}</span><span style="color:#e8b544;font-weight:600">${fmt(getVal(g))}</span></div>`;
+          }).join('') : '<div style="font-size:12px;color:#444">Nada pendente</div>'}
+          <div style="display:flex;justify-content:space-between;font-size:13px;padding-top:6px;margin-top:6px;border-top:1px solid #222"><span style="color:#888;font-weight:600">Total</span><span style="color:#e8b544;font-weight:700">${fmt(compraAPagar)}</span></div>
+        </div>
+        <div class="card-sub" style="margin-top:8px;color:#555;font-size:10px">${compraItems.length} lançamentos · financiado não entra no saldo (não é seu dinheiro)</div>
       </div>
     </div>
 
     <div class="card" style="border-left:3px solid #42a5f5;background:#0d1520;cursor:pointer;margin-bottom:1.5rem" onclick="openStatusDetailModal('necessario','reforma')">
-      <div class="card-label"><i class="ti ti-alert-circle" style="font-size:13px;color:#42a5f5"></i> Necessários (só reforma, sem venda/compra)</div>
+      <div class="card-label"><i class="ti ti-alert-circle" style="font-size:13px;color:#42a5f5"></i> REFORMA: TOTAL GASTO</div>
       <div class="card-value" style="color:#42a5f5">${fmt(necessario)}</div>
       <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #1a2a3a;color:#555;font-size:10px">clique pra ver todos os lançamentos</div>
     </div>
