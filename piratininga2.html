@@ -692,6 +692,29 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
   </div>
 </div>
 
+<div class="modal-overlay" id="status-detail-overlay" onclick="if(event.target===this) closeStatusDetailModal()">
+  <div class="modal" style="max-width:900px;width:92vw;max-height:85vh;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+      <h3 id="status-detail-title" style="margin:0"></h3>
+      <button onclick="closeStatusDetailModal()" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer;line-height:1">&times;</button>
+    </div>
+    <div id="status-detail-total" style="font-size:22px;font-weight:800;margin-bottom:1rem"></div>
+    <div style="overflow-y:auto;flex:1;border:1px solid #222;border-radius:8px">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="background:#161616;position:sticky;top:0">
+          <th style="padding:7px 10px;color:#555;font-weight:500;font-size:10px;text-align:left"></th>
+          <th style="padding:7px 6px;color:#555;font-weight:500;font-size:10px;text-align:left">Data</th>
+          <th style="padding:7px 6px;color:#555;font-weight:500;font-size:10px;text-align:left">Descrição</th>
+          <th style="padding:7px 6px;color:#555;font-weight:500;font-size:10px;text-align:right">Valor</th>
+          <th style="padding:7px 6px;color:#555;font-weight:500;font-size:10px">Qtd</th>
+          <th style="padding:7px 6px"></th>
+        </tr></thead>
+        <tbody id="status-detail-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <div class="cat-menu" id="global-cat-menu"></div>
 <div class="subcat-menu" id="global-subcat-menu"></div>
@@ -737,6 +760,39 @@ function catKeysFor(catKey){
   const keys = [catKey];
   Object.keys(CAT_MERGE_ALIASES).forEach(k=>{ if(CAT_MERGE_ALIASES[k]===catKey) keys.push(k); });
   return keys;
+}
+// Mesmo critério usado na Visão Geral pra decidir o que conta como "reforma"
+function isReformaGasto(g){
+  return g.categoria!=='ganho' && !!(CATS[g.categoria] || CATS[CAT_MERGE_ALIASES[g.categoria]]);
+}
+// Lista de lançamentos que compõem um status (pago/necessario/apagar) na Visão Geral —
+// reforma inteira + só os itens de "pagamento" (não recebimento/financiamento) da venda/compra
+function getStatusDetailList(status){
+  if(status==='apagar'){
+    return gastos.filter(g=>g.status==='apagar'&&isReformaGasto(g));
+  }
+  const reforma = gastos.filter(g=>g.status===status && isReformaGasto(g));
+  const venda   = gastos.filter(g=>g.categoria==='venda-imovel'  && g.status===status && getImovelCardKind('venda-imovel',g.subcategoria)==='pagamento');
+  const compra  = gastos.filter(g=>g.categoria==='compra-imovel' && g.status===status && getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento');
+  return [...reforma, ...venda, ...compra];
+}
+function openStatusDetailModal(status){
+  const list = getStatusDetailList(status);
+  const getValSd = g=>(g.valor||0)*(g.quantidade||1);
+  const total = list.reduce((s,g)=>s+getValSd(g),0);
+  const titles = {pago:'Já Pago', necessario:'Necessários', apagar:'Dispensáveis'};
+  const colors = {pago:'#4caf50', necessario:'#42a5f5', apagar:'#e8b544'};
+  document.getElementById('status-detail-title').textContent = titles[status] || status;
+  const totalEl = document.getElementById('status-detail-total');
+  totalEl.textContent = fmt(total);
+  totalEl.style.color = colors[status]||'#fff';
+  document.getElementById('status-detail-tbody').innerHTML = list.length
+    ? renderRowsGeral(list, '#222')
+    : '<tr><td colspan="6" style="padding:1.5rem;text-align:center;color:#444;font-size:12px">Nenhum lançamento</td></tr>';
+  document.getElementById('status-detail-overlay').classList.add('open');
+}
+function closeStatusDetailModal(){
+  document.getElementById('status-detail-overlay').classList.remove('open');
 }
 
 function renderCatNav(){
@@ -3012,12 +3068,12 @@ function renderGeral(){
           <span style="font-size:13px;font-weight:600;color:${saldoProjetado<0?'#ef5350':'#42a5f5'}">${fmt(saldoProjetado)}</span>
         </div>
       </div>
-      <div class="card" style="border-left:3px solid #4caf50;background:#0d1a0d">
+      <div class="card" style="border-left:3px solid #4caf50;background:#0d1a0d;cursor:pointer" onclick="openStatusDetailModal('pago')">
         <div class="card-label"><i class="ti ti-circle-check" style="font-size:13px;color:#4caf50"></i> Já pago</div>
         <div class="card-value green">${fmt(pagoTudo)}</div>
-        <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #1e3a1e;color:#555;font-size:10px">${lancamentosPagoTudo} lançamentos · reforma + venda + compra</div>
+        <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #1e3a1e;color:#555;font-size:10px">${lancamentosPagoTudo} lançamentos · reforma + venda + compra · clique pra ver todos</div>
       </div>
-      <div class="card" style="border-left:3px solid #42a5f5;background:#0d1520">
+      <div class="card" style="border-left:3px solid #42a5f5;background:#0d1520;cursor:pointer" onclick="openStatusDetailModal('necessario')">
         <div class="card-label"><i class="ti ti-alert-circle" style="font-size:13px;color:#42a5f5"></i> Necessários</div>
         <div class="card-value" style="color:#42a5f5">${fmt(necessarioTudo)}</div>
         <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #1a2a3a">
@@ -3025,10 +3081,10 @@ function renderGeral(){
           <span style="font-size:13px;font-weight:600;color:${(saldo-necessarioTudo)<0?'#ef5350':'#42a5f5'}">${fmt(saldo-necessarioTudo)}</span>
         </div>
       </div>
-      <div class="card" style="border-left:3px solid #e8b544;background:#1a1500">
+      <div class="card" style="border-left:3px solid #e8b544;background:#1a1500;cursor:pointer" onclick="openStatusDetailModal('apagar')">
         <div class="card-label" style="display:flex;align-items:center;justify-content:space-between">
           <span><i class="ti ti-clock" style="font-size:13px;color:#e8b544"></i> Dispensáveis (só reforma)</span>
-          <button onclick="openBulkModal('apagar','')" title="Mover todos em massa" style="background:none;border:none;color:#555;cursor:pointer;font-size:13px;padding:0 2px;transition:color .15s" onmouseover="this.style.color='#e8b544'" onmouseout="this.style.color='#555'"><i class="ti ti-arrows-transfer-down"></i></button>
+          <button onclick="event.stopPropagation();openBulkModal('apagar','')" title="Mover todos em massa" style="background:none;border:none;color:#555;cursor:pointer;font-size:13px;padding:0 2px;transition:color .15s" onmouseover="this.style.color='#e8b544'" onmouseout="this.style.color='#555'"><i class="ti ti-arrows-transfer-down"></i></button>
         </div>
         <div class="card-value yellow">${fmt(dispensavel)}</div>
         <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #2a2000">
