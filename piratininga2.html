@@ -192,7 +192,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 09JUL26 às 13h20</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 09JUL26 às 14h05</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -2248,6 +2248,8 @@ function getImovelCardDefs(catKey){
 // nome sugerir claramente que é parte do valor do imóvel (ex.: "por fora").
 function getImovelCardGroup(catKey, subKey){
   if(catKey!=='compra-imovel') return null;
+  // FGTS não soma separado — o valor dele já está embutido no valor BRUTO da Entrada
+  if(subKey==='fgts') return null;
   const def = getImovelCardDefs(catKey).find(i=>i.key===subKey);
   if(!def || def.tipo==='doc' || def.tipo==='entrega') return null;
   if(def.grupo) return def.grupo;
@@ -2929,10 +2931,14 @@ function renderImovelCat(catKey, subKey){
   const recLista = lista.filter(g=>recKeys.includes(g.subcategoria));
   const gastoLista = lista.filter(g=>gastoKeys.includes(g.subcategoria));
   const financiadoLista = lista.filter(g=>financiadoKeys.includes(g.subcategoria));
+  // Na Compra do Imóvel, a Entrada é lançada com o valor BRUTO — o FGTS é descontado
+  // dela automaticamente aqui, sem a pessoa precisar fazer essa conta na mão
+  const fgtsTotalEtapa = catKey==='compra-imovel' ? lista.filter(g=>g.subcategoria==='fgts').reduce((s,g)=>s+getVal(g),0) : 0;
+  const getValEtapaAjustado = g => (catKey==='compra-imovel' && g.subcategoria==='entrada') ? getVal(g)-fgtsTotalEtapa : getVal(g);
   const totalRecebido = recLista.filter(g=>g.status==='pago').reduce((s,g)=>s+getVal(g),0);
   const totalAReceber = recLista.filter(g=>g.status!=='pago').reduce((s,g)=>s+getVal(g),0);
-  const totalGasto = gastoLista.filter(g=>g.status==='pago').reduce((s,g)=>s+getVal(g),0);
-  const totalAPagar = gastoLista.filter(g=>g.status!=='pago').reduce((s,g)=>s+getVal(g),0);
+  const totalGasto = gastoLista.filter(g=>g.status==='pago').reduce((s,g)=>s+getValEtapaAjustado(g),0);
+  const totalAPagar = gastoLista.filter(g=>g.status!=='pago').reduce((s,g)=>s+getValEtapaAjustado(g),0);
   const totalFinanciado = financiadoLista.reduce((s,g)=>s+getVal(g),0);
   const liquido = totalRecebido - totalGasto;
 
@@ -3105,6 +3111,14 @@ function openModalImovel(catKey){
 
 // ── GERAL ────────────────────────────────────────────────────────
 let reformaPieChartInstance = null;
+function hsl2hexChart(h,s,l){
+  s/=100; l/=100;
+  const k = n => (n + h/30) % 12;
+  const a = s * Math.min(l, 1-l);
+  const f = n => l - a*Math.max(-1, Math.min(k(n)-3, Math.min(9-k(n),1)));
+  const toHex = x => Math.round(255*x).toString(16).padStart(2,'0');
+  return '#'+toHex(f(0))+toHex(f(8))+toHex(f(4));
+}
 function buildReformaPieChart(){
   const canvas = document.getElementById('reformaPieChart');
   if(!canvas) return;
@@ -3114,7 +3128,10 @@ function buildReformaPieChart(){
   items.forEach(g=>{ byCat[g.categoria] = (byCat[g.categoria]||0) + getVal(g); });
   const catKeys = Object.keys(byCat).filter(k=>byCat[k]>0).sort((a,b)=>byCat[b]-byCat[a]);
   const labels = catKeys.map(k=>CATS[k]?.label || k);
-  const colors = catKeys.map(k=>CATS[k]?.color || '#666');
+  // Paleta própria (ângulo dourado) só pra esse gráfico — mais distante entre fatias
+  // vizinhas do que reaproveitar as cores das etapas do menu
+  const GOLDEN = 137.508;
+  const colors = catKeys.map((k,i)=>hsl2hexChart(Math.round((i*GOLDEN)%360), 72, 56));
   const values = catKeys.map(k=>byCat[k]);
   const hasData = values.length>0;
 
@@ -3179,11 +3196,15 @@ function renderGeral(){
   const vendaLiquido = vendaRecebido - vendaPago;
   const vendaLiquidoProjetado = vendaLiquido + vendaAReceber - vendaAPagar;
 
-  // Compra do Imóvel: pagamento do seu bolso (Sinal/Entrada/Taxas) x financiamento (Repasse bancário + FGTS —
-  // não passam pela sua conta corrente, vão direto pro vendedor/descontam do fundo, não é "seu dinheiro" saindo)
+  // Compra do Imóvel: pagamento do seu bolso (Sinal/Entrada/Taxas) x financiamento (Repasse bancário —
+  // não passa pela sua conta corrente, vai direto pro vendedor, não é "seu dinheiro" saindo)
   const compraItems = gastos.filter(g=>g.categoria==='compra-imovel');
-  const compraPago       = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && g.status==='pago').reduce((s,g)=>s+getVal(g),0);
-  const compraAPagar     = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && g.status!=='pago').reduce((s,g)=>s+getVal(g),0);
+  // A Entrada é lançada com o valor BRUTO; o FGTS é descontado dela automaticamente
+  // aqui (a pessoa não precisa fazer essa conta na mão)
+  const compraFgtsTotal = compraItems.filter(g=>g.subcategoria==='fgts').reduce((s,g)=>s+getVal(g),0);
+  const getValCompraAjustado = g => g.subcategoria==='entrada' ? getVal(g)-compraFgtsTotal : getVal(g);
+  const compraPago       = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && g.status==='pago').reduce((s,g)=>s+getValCompraAjustado(g),0);
+  const compraAPagar     = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && g.status!=='pago').reduce((s,g)=>s+getValCompraAjustado(g),0);
   // FGTS não é financiamento bancário de verdade — é desconto usado dentro da própria
   // entrada. "Financiado" mostra só o que o banco manda direto pro vendedor (Repasse).
   const compraFinanciado = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='financiamento' && g.subcategoria!=='fgts').reduce((s,g)=>s+getVal(g),0);
@@ -3247,16 +3268,16 @@ function renderGeral(){
         </div>
         <div style="margin-top:6px;color:#555;font-size:10px">clique pra ver todos os lançamentos</div>
       </div>
-      <div class="card" style="border-left:3px solid #555">
-        <div class="card-label"><i class="ti ti-trending-up" style="font-size:13px;color:#888"></i> Total de aportes</div>
-        <div class="card-value muted">${fmt(totalGanhos)}</div>
-        <div class="card-sub" style="font-size:10px;color:#555">🟢 Disponível: ${fmt(dispGanhos)}</div>
+      <div class="card" style="border-left:3px solid #26c6da;background:#0a1a1c">
+        <div class="card-label"><i class="ti ti-trending-up" style="font-size:13px;color:#26c6da"></i> Total de aportes</div>
+        <div class="card-value" style="color:#26c6da">${fmt(totalGanhos)}</div>
+        <div class="card-sub" style="font-size:10px;color:#4caf50">🟢 Disponível: ${fmt(dispGanhos)}</div>
       </div>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.5rem">
-      <div class="card" style="border-left:3px solid ${IMOVEL_CATS['venda-imovel']?.color||'#db4343'};cursor:pointer" onclick="navigate('venda-imovel')">
-        <div class="card-label"><span style="font-size:13px">${IMOVEL_CATS['venda-imovel']?.icon||'🏠'}</span> Venda do Imóvel</div>
+      <div class="card" style="border-left:3px solid #4caf50;background:#0d1a10;cursor:pointer" onclick="navigate('venda-imovel')">
+        <div class="card-label"><span style="font-size:13px">${IMOVEL_CATS['venda-imovel']?.icon||'🏠'}</span> <span style="color:#4caf50">Venda do Imóvel</span></div>
         <div style="display:flex;gap:1.5rem;margin-top:6px;flex-wrap:wrap">
           <div>
             <div style="font-size:10px;color:#555">Recebido</div>
@@ -3273,13 +3294,11 @@ function renderGeral(){
         </div>
         <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #222">
           <span style="color:#555;font-size:10px">Líquido:</span>
-          <span style="font-size:13px;font-weight:600;color:${vendaLiquido<0?'#ef5350':'#4caf50'};margin-left:4px">${fmt(vendaLiquido)}</span>
-          <span style="color:#555;font-size:10px;margin-left:10px">depois que receber tudo:</span>
-          <span style="font-size:13px;font-weight:600;color:#42a5f5;margin-left:4px">${fmt(vendaLiquidoProjetado)}</span>
+          <span style="font-size:13px;font-weight:600;color:${vendaLiquidoProjetado<0?'#ef5350':'#4caf50'};margin-left:4px">${fmt(vendaLiquidoProjetado)}</span>
         </div>
       </div>
-      <div class="card" style="border-left:3px solid ${IMOVEL_CATS['compra-imovel']?.color||'#db7d43'};cursor:pointer" onclick="navigate('compra-imovel')">
-        <div class="card-label"><span style="font-size:13px">${IMOVEL_CATS['compra-imovel']?.icon||'🔑'}</span> Compra do Imóvel</div>
+      <div class="card" style="border-left:3px solid #5c6bc0;background:#12111f;cursor:pointer" onclick="navigate('compra-imovel')">
+        <div class="card-label"><span style="font-size:13px">${IMOVEL_CATS['compra-imovel']?.icon||'🔑'}</span> <span style="color:#5c6bc0">Compra do Imóvel</span></div>
         <div style="display:flex;gap:1.5rem;margin-top:6px">
           <div>
             <div style="font-size:10px;color:#555">Pago (seu bolso)</div>
@@ -3295,7 +3314,7 @@ function renderGeral(){
           ${compraAPagarItems.length ? compraAPagarItems.map(g=>{
             const def = getImovelCardDefs('compra-imovel').find(i=>i.key===g.subcategoria);
             const label = def?.label || g.descricao || g.subcategoria;
-            return `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span style="color:#aaa">${label}</span><span style="color:#e8b544;font-weight:600">${fmt(getVal(g))}</span></div>`;
+            return `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span style="color:#aaa">${label}${g.subcategoria==='entrada'?' <span style=\'color:#555\'>(já líquida, FGTS descontado)</span>':''}</span><span style="color:#e8b544;font-weight:600">${fmt(getValCompraAjustado(g))}</span></div>`;
           }).join('') : '<div style="font-size:12px;color:#444">Nada pendente</div>'}
           <div style="display:flex;justify-content:space-between;font-size:13px;padding-top:6px;margin-top:6px;border-top:1px solid #222"><span style="color:#888;font-weight:600">Total</span><span style="color:#e8b544;font-weight:700">${fmt(compraAPagar)}</span></div>
         </div>
