@@ -767,11 +767,12 @@ function isReformaGasto(g){
 }
 // Lista de lançamentos que compõem um status (pago/necessario/apagar) na Visão Geral —
 // reforma inteira + só os itens de "pagamento" (não recebimento/financiamento) da venda/compra
-function getStatusDetailList(status){
+function getStatusDetailList(status, scope){
   if(status==='apagar'){
     return gastos.filter(g=>g.status==='apagar'&&isReformaGasto(g));
   }
   const reforma = gastos.filter(g=>g.status===status && isReformaGasto(g));
+  if(scope==='reforma') return reforma;
   const venda   = gastos.filter(g=>g.categoria==='venda-imovel'  && g.status===status && getImovelCardKind('venda-imovel',g.subcategoria)==='pagamento');
   const compra  = gastos.filter(g=>g.categoria==='compra-imovel' && g.status===status && getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento');
   return [...reforma, ...venda, ...compra];
@@ -805,13 +806,13 @@ function renderStatusDetailGrouped(list){
   }).join('');
 }
 
-function openStatusDetailModal(status){
-  const list = getStatusDetailList(status);
+function openStatusDetailModal(status, scope){
+  const list = getStatusDetailList(status, scope);
   const getValSd = g=>(g.valor||0)*(g.quantidade||1);
   const total = list.reduce((s,g)=>s+getValSd(g),0);
   const titles = {pago:'Já Pago', necessario:'Necessários', apagar:'Dispensáveis'};
   const colors = {pago:'#4caf50', necessario:'#42a5f5', apagar:'#e8b544'};
-  document.getElementById('status-detail-title').textContent = titles[status] || status;
+  document.getElementById('status-detail-title').textContent = (titles[status] || status) + (scope==='reforma' ? ' (só reforma)' : '');
   const totalEl = document.getElementById('status-detail-total');
   totalEl.textContent = fmt(total);
   totalEl.style.color = colors[status]||'#fff';
@@ -3239,82 +3240,11 @@ function renderGeral(){
       </div>
     </div>
 
-
-    <!-- BLOCO 1: PAGO (cenário conservador — só reforma vs só aportes, sem contar venda/compra) -->
-    <div style="background:#111;border:1px solid #1e3a1e;border-left:3px solid #4caf50;border-radius:10px;padding:1.25rem;margin-bottom:1rem">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem">
-        <span style="width:8px;height:8px;border-radius:50%;background:#4caf50;display:inline-block"></span>
-        <span style="font-size:11px;font-weight:600;color:#4caf50;text-transform:uppercase;letter-spacing:.08em">Saldo real — já pago <span style="color:#555;font-weight:400;text-transform:none">(só reforma vs. só aportes)</span></span>
-        <span style="margin-left:auto;font-size:15px;font-weight:600;color:${saldoReforma<0?'#ef5350':'#4caf50'}">${fmt(saldoReforma)}</span>
-        <span style="font-size:11px;color:${pctReforma>100?'#ef5350':pctReforma>90?'#ef5350':pctReforma>70?'#e8b544':'#4caf50'}">${pctReforma}%${pctReforma>100?' ⚠ estourou':'  gasto'}</span>
-      </div>
-      <div class="progress-bar-bg" style="margin-bottom:6px"><div class="progress-bar-fill" style="width:${pctReforma}%;background:${pctReforma>90?'#ef5350':pctReforma>70?'#e8b544':'#4caf50'}"></div></div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:1rem"><span>Pago: ${fmt(pago)}</span><span>Saldo: <strong style="color:${saldoReforma<0?'#ef5350':'#4caf50'}">${fmt(saldoReforma)}</strong></span></div>
-      <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:12px">
-        <div class="chart-card" style="background:#0d1a0d;border-color:#1e3a1e">
-          <div class="chart-title" style="color:#4caf50">Por categoria</div>
-          <div id="bar-legend-pago" class="legend-row"></div>
-          <div style="position:relative;height:160px"><canvas id="barChartPago"></canvas></div>
-        </div>
-        <div class="chart-card" style="background:#0d1a0d;border-color:#1e3a1e">
-          <div class="chart-title" style="color:#4caf50">Distribuição</div>
-          <div id="pie-legend-pago" class="legend-row"></div>
-          <div style="position:relative;height:160px"><canvas id="pieChartPago"></canvas></div>
-        </div>
-      </div>
+    <div class="card" style="border-left:3px solid #42a5f5;background:#0d1520;cursor:pointer;margin-bottom:1.5rem" onclick="openStatusDetailModal('necessario','reforma')">
+      <div class="card-label"><i class="ti ti-alert-circle" style="font-size:13px;color:#42a5f5"></i> Necessários (só reforma, sem venda/compra)</div>
+      <div class="card-value" style="color:#42a5f5">${fmt(necessario)}</div>
+      <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #1a2a3a;color:#555;font-size:10px">clique pra ver todos os lançamentos</div>
     </div>
-
-    <!-- BLOCO 2: PAGO + NECESSÁRIOS (cenário conservador — só reforma vs só aportes) -->
-    ${(()=>{const s2=saldoReforma-necessario;const p2=dispGanhos>0?Math.round((pago+necessario)/dispGanhos*100):0;const c2=p2>90?'#ef5350':p2>70?'#e8b544':'#42a5f5';return `
-    <div style="background:#111;border:1px solid #1a2a3a;border-left:3px solid #42a5f5;border-radius:10px;padding:1.25rem;margin-bottom:1rem">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem">
-        <span style="width:8px;height:8px;border-radius:50%;background:#42a5f5;display:inline-block"></span>
-        <span style="font-size:11px;font-weight:600;color:#42a5f5;text-transform:uppercase;letter-spacing:.08em">Saldo com necessários — pago + necessários <span style="color:#555;font-weight:400;text-transform:none">(só reforma vs. só aportes)</span></span>
-        <span style="margin-left:auto;font-size:15px;font-weight:600;color:${s2<0?'#ef5350':'#42a5f5'}">${fmt(s2)}</span>
-        <span style="font-size:11px;color:${c2}">${p2}%${p2>100?' ⚠ estourou':' comprometido'}</span>
-      </div>
-      <div class="progress-bar-bg" style="margin-bottom:6px"><div class="progress-bar-fill" style="width:${p2}%;background:${c2}"></div></div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:1rem"><span>Pago + Necessários: ${fmt(pago+necessario)}</span><span>Saldo: <strong style="color:${s2<0?'#ef5350':'#42a5f5'}">${fmt(s2)}</strong></span></div>
-      <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:12px">
-        <div class="chart-card" style="background:#0d1520;border-color:#1a2a3a">
-          <div class="chart-title" style="color:#42a5f5">Por categoria</div>
-          <div id="bar-legend-nec" class="legend-row"></div>
-          <div style="position:relative;height:160px"><canvas id="barChartNec"></canvas></div>
-        </div>
-        <div class="chart-card" style="background:#0d1520;border-color:#1a2a3a">
-          <div class="chart-title" style="color:#42a5f5">Distribuição</div>
-          <div id="pie-legend-nec" class="legend-row"></div>
-          <div style="position:relative;height:160px"><canvas id="pieChartNec"></canvas></div>
-        </div>
-      </div>
-    </div>
-    `;})()} 
-
-    <!-- BLOCO 3: TUDO (cenário conservador — só reforma vs só aportes) -->
-    ${(()=>{const s3=saldoReforma-necessario-dispensavel;const p3=dispGanhos>0?Math.round((pago+necessario+dispensavel)/dispGanhos*100):0;const c3=p3>90?'#ef5350':p3>70?'#e8b544':'#888';return `
-    <div style="background:#111;border:1px solid #2a2000;border-left:3px solid #e8b544;border-radius:10px;padding:1.25rem;margin-bottom:1.25rem">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem">
-        <span style="width:8px;height:8px;border-radius:50%;background:#e8b544;display:inline-block"></span>
-        <span style="font-size:11px;font-weight:600;color:#e8b544;text-transform:uppercase;letter-spacing:.08em">Saldo comprando tudo — pago + necessários + dispensáveis <span style="color:#555;font-weight:400;text-transform:none">(só reforma vs. só aportes)</span></span>
-        <span style="margin-left:auto;font-size:15px;font-weight:600;color:${s3<0?'#ef5350':'#4caf50'}">${fmt(s3)}</span>
-        <span style="font-size:11px;color:${c3}">${p3}%${p3>100?' ⚠ estourou':' comprometido'}</span>
-      </div>
-      <div class="progress-bar-bg" style="margin-bottom:6px"><div class="progress-bar-fill" style="width:${p3}%;background:${c3}"></div></div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:1rem"><span>Total: ${fmt(pago+necessario+dispensavel)}</span><span>Saldo: <strong style="color:${s3<0?'#ef5350':'#4caf50'}">${fmt(s3)}</strong></span></div>
-      <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:12px">
-        <div class="chart-card" style="background:#1a1500;border-color:#2a2000">
-          <div class="chart-title" style="color:#e8b544">Por categoria</div>
-          <div id="bar-legend-tudo" class="legend-row"></div>
-          <div style="position:relative;height:160px"><canvas id="barChartTudo"></canvas></div>
-        </div>
-        <div class="chart-card" style="background:#1a1500;border-color:#2a2000">
-          <div class="chart-title" style="color:#e8b544">Distribuição</div>
-          <div id="pie-legend-tudo" class="legend-row"></div>
-          <div style="position:relative;height:160px"><canvas id="pieChartTudo"></canvas></div>
-        </div>
-      </div>
-    </div>
-    `;})()} 
   `;
 
   function buildCharts(canvasBarId, canvasPieId, barLegendId, pieLegendId, filterStatuses){
@@ -3347,9 +3277,6 @@ function renderGeral(){
     });
   }
 
-  buildCharts('barChartPago','pieChartPago','bar-legend-pago','pie-legend-pago',['pago']);
-  buildCharts('barChartNec','pieChartNec','bar-legend-nec','pie-legend-nec',['pago','necessario']);
-  buildCharts('barChartTudo','pieChartTudo','bar-legend-tudo','pie-legend-tudo',['pago','necessario','apagar']);
 }
 
 // ── GANHOS PAGE ──────────────────────────────────────────────────
