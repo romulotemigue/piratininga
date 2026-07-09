@@ -1667,7 +1667,8 @@ function checkPossibleDuplicates(){
       if(g.categoria==='ganho') return;
       const normDesc = (g.descricao||'').toLowerCase().trim().replace(/\s+/g,' ');
       if(!normDesc) return;
-      const key = normDesc+'|'+(g.valor||0);
+      const totalVal = (g.valor||0)*(g.quantidade||1);
+      const key = normDesc+'|'+g.categoria+'|'+(g.subcategoria||'')+'|'+totalVal;
       (groups[key] = groups[key]||[]).push(g);
     });
     const suspeitas = Object.values(groups).filter(arr=>arr.length>1);
@@ -3322,13 +3323,17 @@ function renderDiagnostico(){
   const orfaKeys = Object.keys(orfaGroups);
   const orfaTotalGeral = orfaKeys.reduce((s,k)=>s+orfaGroups[k].reduce((s2,g)=>s2+getVal(g),0),0);
 
-  // 2) Possíveis duplicatas: mesma descrição + mesmo valor em mais de um lançamento
+  // 2) Possíveis duplicatas de verdade: mesma descrição + mesma categoria + mesmo
+  // ambiente/subcategoria + mesmo valor TOTAL (valor x quantidade). Assim, comprar o
+  // mesmo produto pra dois ambientes diferentes (ou quantidades diferentes) não conta
+  // como duplicata — só bate quando é realmente o mesmo lançamento repetido.
   const dupGroups = {};
   gastos.forEach(g=>{
     if(g.categoria==='ganho') return;
     const normDesc = (g.descricao||'').toLowerCase().trim().replace(/\s+/g,' ');
     if(!normDesc) return;
-    const key = normDesc+'|'+(g.valor||0);
+    const totalVal = (g.valor||0)*(g.quantidade||1);
+    const key = normDesc+'|'+g.categoria+'|'+(g.subcategoria||'')+'|'+totalVal;
     (dupGroups[key] = dupGroups[key] || []).push(g);
   });
   const dupEntries = Object.values(dupGroups).filter(arr=>arr.length>1);
