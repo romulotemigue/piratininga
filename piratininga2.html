@@ -1626,7 +1626,8 @@ async function loadGastos(){
     gastos = await sbFetch();
     await migrateSubcats(gastos);
     await migrateGanhoTipos(gastos);
-    restoreOrphanCategoriesWithData();
+    // restoreOrphanCategoriesWithData(); // desativado a pedido — estava mudando os totais
+    removeAutoRestoredRevisarCategories();
     removeCompraImvelDuplicateCategory();
     checkPossibleDuplicates();
     renderCatNav();
@@ -1691,6 +1692,25 @@ function checkPossibleDuplicates(){
 // mesclada errado, ou tem uma chave com erro de digitação antigo), ela fica "órfã"
 // e some dos totais silenciosamente. Isso restaura essas categorias como visíveis
 // (marcadas "revisar") pra nenhum dinheiro real desaparecer da conta sem avisar.
+// Desfaz a restauração automática anterior: remove qualquer categoria marcada
+// "(revisar)" que eu tinha adicionado sozinho, voltando o comportamento de antes
+// (esses lançamentos voltam a ficar fora dos totais, sem contar duas vezes nada)
+function removeAutoRestoredRevisarCategories(){
+  try{
+    let mudou = false;
+    Object.keys(CATS).forEach(k=>{
+      if(CATS[k].label && CATS[k].label.endsWith('(revisar)')){
+        delete CATS[k];
+        mudou = true;
+      }
+    });
+    if(mudou){
+      saveCats();
+      console.warn('[piratininga] Categorias "(revisar)" auto-restauradas foram removidas de novo (revertido a pedido do usuário).');
+    }
+  }catch(e){ console.warn('Erro ao reverter categorias revisar:', e); }
+}
+
 function restoreOrphanCategoriesWithData(){
   try{
     const usadas = [...new Set(gastos.map(g=>g.categoria))];
