@@ -192,6 +192,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name">Piratininga</div>
           <div class="sub">controle de gastos</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">build 2026-07-08-fgts-fix</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -2056,7 +2057,7 @@ const IMOVEL_DEFAULT_CARDS = {
     {label:'Sinal',                     key:'sinal',              color:'#9c27b0', icon:'🤝',  tipo:'gasto', recibo:true, grupo:'documentacao'},
     {label:'Entrada',                   key:'entrada',            color:'#4caf50', icon:'💵',  tipo:'gasto', recibo:true, grupo:'valor-imovel'},
     {label:'Repasse bancário',          key:'repasse-bancario',   color:'#e91e8c', icon:'🏦',  tipo:'gasto', recibo:true, financiamento:true, grupo:'valor-imovel'},
-    {label:'FGTS',                      key:'fgts',               color:'#e91e8c', icon:'💳',  tipo:'gasto', recibo:true, financiamento:true, grupo:'documentacao'},
+    {label:'FGTS',                      key:'fgts',               color:'#e91e8c', icon:'💳',  tipo:'gasto', recibo:true, financiamento:true, grupo:'valor-imovel'},
     {label:'Taxas',                     key:'taxas',              color:'#888',    icon:'📋',  tipo:'gasto', recibo:true, grupo:'documentacao'},
   ],
   'projeto-arq': [
@@ -4261,6 +4262,7 @@ try{
   localStorage.removeItem('all_cat_order');
 }catch(e){}
 
+console.log('[piratininga] BUILD: 2026-07-08-fgts-fix', '| FGTS grupo:', IMOVEL_DEFAULT_CARDS['compra-imovel'].find(i=>i.key==='fgts')?.grupo);
 renderCatNav();
 loadGastos();
 
