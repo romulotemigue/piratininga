@@ -1644,14 +1644,12 @@ async function loadGastos(){
 // dentro da etapa Compra do Imóvel de verdade. Provável duplicata: tira a categoria
 // das contas/menu (os lançamentos continuam intactos no Supabase, só não contam mais).
 function removeCompraImvelDuplicateCategory(){
-  if(localStorage.getItem('compra_imvel_removed_v1')) return;
   try{
     if(CATS['compra-imvel']){
       delete CATS['compra-imvel'];
       saveCats();
       console.warn('[piratininga] Categoria órfã "compra-imvel" removida das contas (provável duplicata de R$330.000 já contados na Compra do Imóvel).');
     }
-    localStorage.setItem('compra_imvel_removed_v1','1');
   }catch(e){ console.warn('Erro ao remover compra-imvel:', e); }
 }
 
@@ -1694,19 +1692,19 @@ function checkPossibleDuplicates(){
 // e some dos totais silenciosamente. Isso restaura essas categorias como visíveis
 // (marcadas "revisar") pra nenhum dinheiro real desaparecer da conta sem avisar.
 function restoreOrphanCategoriesWithData(){
-  if(localStorage.getItem('orphan_restore_v1')) return;
   try{
     const usadas = [...new Set(gastos.map(g=>g.categoria))];
-    const orfas = usadas.filter(c=>c && c!=='ganho' && !CATS[c] && !IMOVEL_CATS[c] && !CAT_MERGE_ALIASES[c]);
+    const knownDuplicates = ['compra-imvel']; // já identificada como duplicata, nunca restaurar
+    const orfas = usadas.filter(c=>c && c!=='ganho' && !CATS[c] && !IMOVEL_CATS[c] && !CAT_MERGE_ALIASES[c] && !knownDuplicates.includes(c));
     if(orfas.length){
       orfas.forEach((key,i)=>{
+        if(CATS[key]) return;
         const labelBase = key.split(/[-_]/).map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
         CATS[key] = {label: labelBase+' (revisar)', icon:'⚠️', color: STAGE_COLOR_PRESETS[i%STAGE_COLOR_PRESETS.length]};
       });
       saveCats();
       console.warn('[piratininga] Categorias restauradas porque tinham lançamentos reais e tinham sumido dos totais:', orfas, '— procure "(revisar)" no menu lateral pra decidir o que fazer com cada uma (renomear, mesclar ou excluir de vez).');
     }
-    localStorage.setItem('orphan_restore_v1','1');
   }catch(e){ console.warn('Erro ao restaurar categorias órfãs:', e); }
 }
 
@@ -3095,7 +3093,7 @@ function renderGeral(){
   // que não corresponde a nenhuma categoria/etapa válida hoje
   try{
     const categoriasUsadas = [...new Set(gastos.map(g=>g.categoria))];
-    const orfas = categoriasUsadas.filter(c=>c && c!=='ganho' && !CATS[c] && !IMOVEL_CATS[c]);
+    const orfas = categoriasUsadas.filter(c=>c && c!=='ganho' && c!=='compra-imvel' && !CATS[c] && !IMOVEL_CATS[c]);
     if(orfas.length){
       console.warn('[piratininga][categorias-orfas] Essas categorias aparecem em lançamentos mas não existem mais:', orfas,
         '— exemplos de lançamentos:', orfas.map(c=>gastos.filter(g=>g.categoria===c).slice(0,2).map(g=>({id:g.id,descricao:g.descricao,valor:g.valor,status:g.status}))));
