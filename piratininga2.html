@@ -229,6 +229,9 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       <div class="nav-item" onclick="navigate('ganhos')" id="nav-ganhos">
         <i class="ti ti-trending-up"></i> Aportes
       </div>
+      <div class="nav-item" onclick="navigate('diagnostico')" id="nav-diagnostico" style="color:#888">
+        <i class="ti ti-search"></i> Diagnóstico
+      </div>
     </div>
   </div>
 
@@ -2115,6 +2118,7 @@ function render(){
   barChart=null; pieChart=null; catChart=null;
   if(currentPage==='geral') renderGeral();
   else if(currentPage==='ganhos') renderGanhos();
+  else if(currentPage==='diagnostico') renderDiagnostico();
   else if(currentPage==='venda-imovel') renderImovelCat('venda-imovel', null);
   else if(currentPage==='compra-imovel') renderImovelCat('compra-imovel', null);
   else if(currentPage==='projeto-arq') renderImovelCat('projeto-arq', null);
@@ -3304,6 +3308,90 @@ const GANHO_TIPOS = {
   direcionado: {label:'Direcionado',    emoji:'🟡', color:'#e8b544', bg:'#1a1500', border:'#2a2000', desc:'Vai receber mas já tem destino certo — não passa pela sua conta'},
   comprometido:{label:'Comprometido',   emoji:'⚫', color:'#666',    bg:'#161616', border:'#2a2a2a', desc:'Já foi usado ou reservado'},
 };
+
+function renderDiagnostico(){
+  const getVal = g=>(g.valor||0)*(g.quantidade||1);
+
+  // 1) Lançamentos "órfãos": categoria não existe mais em nenhuma etapa/categoria visível
+  const orfaGroups = {};
+  gastos.forEach(g=>{
+    if(g.categoria==='ganho') return;
+    if(CATS[g.categoria] || IMOVEL_CATS[g.categoria] || CAT_MERGE_ALIASES[g.categoria]) return;
+    (orfaGroups[g.categoria] = orfaGroups[g.categoria] || []).push(g);
+  });
+  const orfaKeys = Object.keys(orfaGroups);
+  const orfaTotalGeral = orfaKeys.reduce((s,k)=>s+orfaGroups[k].reduce((s2,g)=>s2+getVal(g),0),0);
+
+  // 2) Possíveis duplicatas: mesma descrição + mesmo valor em mais de um lançamento
+  const dupGroups = {};
+  gastos.forEach(g=>{
+    if(g.categoria==='ganho') return;
+    const normDesc = (g.descricao||'').toLowerCase().trim().replace(/\s+/g,' ');
+    if(!normDesc) return;
+    const key = normDesc+'|'+(g.valor||0);
+    (dupGroups[key] = dupGroups[key] || []).push(g);
+  });
+  const dupEntries = Object.values(dupGroups).filter(arr=>arr.length>1);
+
+  function rowHtml(g){
+    const catInfo = CATS[g.categoria] || IMOVEL_CATS[g.categoria];
+    const catLabel = catInfo?.label || (g.categoria||'(sem categoria)');
+    return `<tr style="border-bottom:1px solid #222">
+      <td style="padding:6px 8px;font-size:11px;color:#666;white-space:nowrap">${fmtDate(g.data)}</td>
+      <td style="padding:6px 8px;font-size:12px">
+        <div>${g.descricao||''}</div>
+        <div style="font-size:10px;color:#666;margin-top:2px">categoria: <b>${catLabel}</b>${g.subcategoria?' · sub: '+g.subcategoria:''} · status: ${g.status||'-'}</div>
+      </td>
+      <td style="padding:6px 8px;text-align:right;font-size:13px;font-weight:600;color:#e8b544;white-space:nowrap">${fmt(getVal(g))}</td>
+      <td style="padding:6px 8px;white-space:nowrap">
+        <button onclick="openEdit(${g.id})" style="background:none;border:none;color:#888;cursor:pointer;font-size:13px;padding:2px 4px"><i class="ti ti-pencil"></i></button>
+        <button onclick="if(confirm('Excluir este lançamento de vez? Essa ação não pode ser desfeita.'))removeGasto(${g.id})" style="background:none;border:none;color:#ef5350;cursor:pointer;font-size:13px;padding:2px 4px"><i class="ti ti-trash"></i></button>
+      </td>
+    </tr>`;
+  }
+
+  document.getElementById('content').innerHTML = `
+    <div style="margin-bottom:1.5rem">
+      <h2 style="margin:0 0 4px">Diagnóstico</h2>
+      <div style="font-size:12px;color:#666">Lançamentos que não aparecem em nenhuma etapa (categoria antiga/excluída) e possíveis duplicatas. Nada aqui foi apagado — você decide item por item.</div>
+    </div>
+
+    <div style="background:#1a1500;border:1px solid #2a2000;border-left:3px solid #e8b544;border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.5rem">
+      <div style="font-size:13px;font-weight:700;color:#e8b544;margin-bottom:4px">Lançamentos órfãos (categoria não existe mais)</div>
+      <div style="font-size:12px;color:#888">Total escondido: <b style="color:#e8b544">${fmt(orfaTotalGeral)}</b> em ${orfaKeys.length} categoria(s)</div>
+    </div>
+
+    ${orfaKeys.length ? orfaKeys.map(k=>{
+      const items = orfaGroups[k];
+      const total = items.reduce((s,g)=>s+getVal(g),0);
+      return `<div style="background:#111;border:1px solid #2a2a2a;border-radius:10px;overflow:hidden;margin-bottom:1rem">
+        <div style="padding:10px 14px;background:#1a1a1a;display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px;font-weight:700;color:#e8b544">"${k}"</span>
+          <span style="font-size:11px;color:#666">${items.length} lançamento(s)</span>
+          <span style="margin-left:auto;font-size:13px;font-weight:700;color:#e8b544">${fmt(total)}</span>
+        </div>
+        <table style="width:100%;border-collapse:collapse">${items.map(rowHtml).join('')}</table>
+      </div>`;
+    }).join('') : '<div style="color:#444;font-size:12px;margin-bottom:1.5rem">Nenhum lançamento órfão encontrado. ✓</div>'}
+
+    <div style="background:#1a0d14;border:1px solid #2a1a22;border-left:3px solid #e91e8c;border-radius:10px;padding:1rem 1.25rem;margin:2rem 0 1.5rem">
+      <div style="font-size:13px;font-weight:700;color:#e91e8c;margin-bottom:4px">Possíveis duplicatas (mesma descrição + mesmo valor)</div>
+      <div style="font-size:12px;color:#888">${dupEntries.length} grupo(s) encontrado(s)</div>
+    </div>
+
+    ${dupEntries.length ? dupEntries.map(arr=>{
+      const total = arr.reduce((s,g)=>s+getVal(g),0);
+      return `<div style="background:#111;border:1px solid #2a2a2a;border-radius:10px;overflow:hidden;margin-bottom:1rem">
+        <div style="padding:10px 14px;background:#1a1a1a;display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px;font-weight:700;color:#e91e8c">${arr[0].descricao}</span>
+          <span style="font-size:11px;color:#666">${arr.length} ocorrências</span>
+          <span style="margin-left:auto;font-size:13px;font-weight:700;color:#e91e8c">${fmt(total)} (somado)</span>
+        </div>
+        <table style="width:100%;border-collapse:collapse">${arr.map(rowHtml).join('')}</table>
+      </div>`;
+    }).join('') : '<div style="color:#444;font-size:12px">Nenhuma duplicata encontrada. ✓</div>'}
+  `;
+}
 
 function renderGanhos(){
   const lista = gastos.filter(g=>g.categoria==='ganho');
