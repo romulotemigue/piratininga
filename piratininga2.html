@@ -192,7 +192,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 09JUL26 (versão 2)</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 09JUL26 (versão 4)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -1894,6 +1894,16 @@ function ensureObraBrutaPhases(){
     });
 
     if(mudou) saveSubCats();
+
+    // Diagnóstico: mostra a estrutura final pra investigar bugs de agrupamento
+    const finalEntries = Object.keys(SUBCATS['obra-bruta']).map(k=>({key:k, label:SUBCATS['obra-bruta'][k].label, grupo:SUBCATS['obra-bruta'][k].grupo||'(SEM GRUPO)', ordem:SUBCATS['obra-bruta'][k].ordem}));
+    const semGrupo = finalEntries.filter(e=>e.grupo==='(SEM GRUPO)');
+    const gruposUnicos = [...new Set(finalEntries.map(e=>e.grupo))];
+    console.log('[piratininga][obra-bruta-debug] Total de entradas:', finalEntries.length);
+    console.log('[piratininga][obra-bruta-debug] Entradas SEM grupo (deveria ser 0):', semGrupo.length, semGrupo);
+    console.log('[piratininga][obra-bruta-debug] Grupos únicos encontrados (deveria ser 17):', gruposUnicos.length, gruposUnicos);
+    console.log('[piratininga][obra-bruta-debug] Todas as entradas:', finalEntries);
+    console.log('[piratininga][obra-bruta-debug] Estado de expansão salvo (pirati_expanded_sub):', localStorage.getItem('pirati_expanded_sub'));
   }catch(e){ console.warn('Erro ao criar fases da Execução de Obra:', e); }
 }
 
@@ -4129,11 +4139,12 @@ function renderObraBrutaSteps(){
   const dispensavel = lista.filter(g=>g.status==='apagar').reduce((s,g)=>s+getValO(g),0);
   const pctGeral = total>0?Math.round(pago/total*100):0;
 
-  // Agrupa as subcategorias por fase (campo 'grupo'), respeitando a ordem enviada
-  const subEntries = Object.keys(SUBCATS[cat]||{}).map(sk=>({sk, ...SUBCATS[cat][sk]}));
+  // Agrupa as subcategorias por fase (campo 'grupo'), respeitando a ordem enviada.
+  // Itens sem grupo (órfãos) não aparecem aqui — já são tratados no Diagnóstico.
+  const subEntries = Object.keys(SUBCATS[cat]||{}).map(sk=>({sk, ...SUBCATS[cat][sk]})).filter(e=>e.grupo);
   const fases = {};
   subEntries.forEach(e=>{
-    const nome = e.grupo || 'Outros';
+    const nome = e.grupo;
     if(!fases[nome]) fases[nome] = {ordem: e.ordem ?? 9999, subs: []};
     fases[nome].subs.push(e.sk);
     if((e.ordem ?? 9999) < fases[nome].ordem) fases[nome].ordem = e.ordem;
@@ -4148,19 +4159,19 @@ function renderObraBrutaSteps(){
     const pctFase = totalFase>0 ? Math.round(pagoFase/totalFase*100) : 0;
     const temItens = itemsFase.length>0;
     const corFase = pctFase>=100 ? '#4caf50' : temItens ? info.color : '#333';
-    return `<div class="card" style="border-left:3px solid ${corFase};cursor:pointer;margin-bottom:10px;padding:14px 18px" onclick="openObraFaseModal(${idx})">
-      <div style="display:flex;align-items:center;gap:14px">
-        <div style="width:30px;height:30px;border-radius:50%;background:${corFase}1c;border:2px solid ${corFase};color:${corFase};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0">${idx+1}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;color:#ddd">${faseName}</div>
-          <div style="height:6px;border-radius:3px;background:#1a1a1a;overflow:hidden;margin-top:7px">
-            <div style="height:100%;width:${pctFase}%;background:${corFase};border-radius:3px;transition:width .3s"></div>
-          </div>
+    return `<div data-card-key="fase-${idx}" onclick="openObraFaseModal(${idx})"
+      style="background:#0e0e0e;border:1px solid ${temItens?corFase:'#1e1e1e'};border-top:3px solid ${corFase};border-radius:8px;padding:12px 14px;cursor:pointer;min-height:104px;box-sizing:border-box;display:flex;flex-direction:column;gap:6px;transition:background .15s"
+      onmouseover="this.style.background='#161616'" onmouseout="this.style.background='#0e0e0e'">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="width:22px;height:22px;border-radius:50%;background:${corFase}22;border:1.5px solid ${corFase};color:${corFase};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">${idx+1}</span>
+        <span style="font-size:11px;font-weight:600;color:#ccc;line-height:1.25">${faseName}</span>
+      </div>
+      <div style="font-size:16px;font-weight:800;color:${corFase};margin-top:2px">${fmt(totalFase)}</div>
+      <div style="margin-top:auto">
+        <div style="height:6px;border-radius:3px;background:#1a1a1a;overflow:hidden">
+          <div style="height:100%;width:${pctFase}%;background:${corFase};border-radius:3px;transition:width .3s"></div>
         </div>
-        <div style="text-align:right;min-width:80px;flex-shrink:0">
-          <div style="font-size:14px;font-weight:700;color:${corFase}">${pctFase}%</div>
-          <div style="font-size:10px;color:#666">${fmt(totalFase)}</div>
-        </div>
+        <div style="font-size:10px;color:#666;text-align:right;margin-top:3px">${pctFase}% pago</div>
       </div>
     </div>`;
   }).join('');
@@ -4197,7 +4208,7 @@ function renderObraBrutaSteps(){
       <div style="height:8px;border-radius:4px;background:#1a1a1a;overflow:hidden"><div style="height:100%;width:${Math.min(pctGeral,100)}%;background:${pctGeral>=100?'#4caf50':info.color};border-radius:4px;transition:width .3s"></div></div>
     </div>
     <div style="margin:1.25rem 0 8px;font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.06em">Fases da obra (${faseNomes.length})</div>
-    ${stepsHtml}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px">${stepsHtml}</div>
   `;
 
   obraFaseModalData = {lista, fases, faseNomes, info};
