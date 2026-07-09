@@ -192,7 +192,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 09JUL26 às 14h05</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 09JUL26 às 15h10</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -240,10 +240,10 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       <span class="topbar-title" id="topbar-title">Visão Geral</span>
       <div class="topbar-right">
         <span class="topbar-date" id="topbar-date"></span>
-        <button class="btn-ganho" onclick="openModalGanho()">
+        <button class="btn-ganho" id="topbar-btn-aporte" onclick="openModalGanho()">
           <i class="ti ti-plus"></i> Lançar aporte
         </button>
-        <button class="btn-launch" onclick="openModal()">
+        <button class="btn-launch" id="topbar-btn-gasto" onclick="openModal()">
           <i class="ti ti-minus"></i> Lançar gasto
         </button>
       </div>
@@ -2063,6 +2063,13 @@ function applyContentColor(page){
 function navigate(page, skipHistory){
   currentPage = page;
   applyContentColor(page);
+  // Os botões "Lançar aporte/gasto" do topo só fazem sentido dentro de uma etapa —
+  // em Visão Geral/Aportes/Diagnóstico cada lançamento já tem seu próprio botão de contexto
+  const isEtapaPage = !['geral','ganhos','diagnostico'].includes(page.split('__')[0]);
+  const btnAporte = document.getElementById('topbar-btn-aporte');
+  const btnGasto = document.getElementById('topbar-btn-gasto');
+  if(btnAporte) btnAporte.style.display = isEtapaPage ? '' : 'none';
+  if(btnGasto) btnGasto.style.display = isEtapaPage ? '' : 'none';
   if(!skipHistory){
     history.pushState({page}, '', '#'+page);
   }
@@ -2789,6 +2796,7 @@ function openEditImovelCat(k){
   IMOVEL_CATS[k].label = nome.trim();
   saveImovelCatsCustom();
   renderCatNav();
+  render();
 }
 
 function deleteImovelCat(k){
@@ -3151,6 +3159,71 @@ function buildReformaPieChart(){
   });
 }
 
+// ── CARDS DA VISÃO GERAL: arrastar, renomear, ocultar ──────────────
+const GERAL_CARD_ORDER_DEFAULT = ['saldo-real','ja-pago','necessarios','dispensaveis','aportes','venda-imovel','compra-imovel','reforma'];
+function getGeralCardOrder(){
+  const saved = JSON.parse(localStorage.getItem('geral_card_order')||'null') || [];
+  const order = saved.filter(id=>GERAL_CARD_ORDER_DEFAULT.includes(id));
+  GERAL_CARD_ORDER_DEFAULT.forEach(id=>{ if(!order.includes(id)) order.push(id); });
+  return order;
+}
+function saveGeralCardOrder(order){ localStorage.setItem('geral_card_order', JSON.stringify(order)); }
+function getHiddenGeralCards(){ try{ return JSON.parse(localStorage.getItem('hidden_geral_cards')||'[]'); }catch(e){ return []; } }
+function saveHiddenGeralCards(arr){ localStorage.setItem('hidden_geral_cards', JSON.stringify(arr)); }
+function getGeralCardTitles(){ try{ return JSON.parse(localStorage.getItem('geral_card_titles')||'{}'); }catch(e){ return {}; } }
+function getGeralCardTitle(id, fallback){ return getGeralCardTitles()[id] || fallback; }
+
+function toggleHideGeralCard(id){
+  if(!confirm('Ocultar este card da Visão Geral? Dá pra restaurar depois clicando em "mostrar cards ocultos".')) return;
+  const hidden = getHiddenGeralCards();
+  if(!hidden.includes(id)) hidden.push(id);
+  saveHiddenGeralCards(hidden);
+  render();
+}
+function restoreHiddenGeralCards(){
+  saveHiddenGeralCards([]);
+  render();
+}
+function renameGeralCardTitle(id, currentTitle){
+  const novo = prompt('Novo nome para "'+currentTitle+'":', currentTitle);
+  if(!novo || !novo.trim()) return;
+  const titles = getGeralCardTitles();
+  titles[id] = novo.trim();
+  localStorage.setItem('geral_card_titles', JSON.stringify(titles));
+  render();
+}
+
+let geralDragKey = null;
+function geralCardDragStart(e,id){ geralDragKey = id; e.dataTransfer.effectAllowed='move'; e.stopPropagation(); }
+function geralCardDragOver(e){ e.preventDefault(); }
+function geralCardDrop(e, id){
+  e.preventDefault(); e.stopPropagation();
+  if(!geralDragKey || geralDragKey===id) return;
+  const order = getGeralCardOrder();
+  const fi = order.indexOf(geralDragKey), ti = order.indexOf(id);
+  if(fi===-1||ti===-1) return;
+  order.splice(fi,1); order.splice(ti,0,geralDragKey);
+  saveGeralCardOrder(order);
+  geralDragKey = null;
+  render();
+}
+function geralCardDragEnd(){ geralDragKey = null; }
+
+// Envolve o HTML de um card com moldura arrastável + botões de editar/ocultar
+function wrapGeralCard(id, innerHtml, onEdit, extraStyle){
+  return `<div class="geral-card-wrap" draggable="true" data-card-id="${id}"
+    ondragstart="geralCardDragStart(event,'${id}')" ondragover="geralCardDragOver(event)" ondrop="geralCardDrop(event,'${id}')" ondragend="geralCardDragEnd(event)"
+    style="position:relative;${extraStyle||''}"
+    onmouseover="this.querySelector('.geral-card-controls').style.opacity='1'" onmouseout="this.querySelector('.geral-card-controls').style.opacity='0'">
+    <div class="geral-card-controls" style="position:absolute;top:8px;right:8px;display:flex;gap:3px;z-index:5;opacity:0;transition:opacity .15s">
+      <span style="cursor:grab;color:#555;font-size:13px;padding:3px 4px;background:#111;border:1px solid #2a2a2a;border-radius:4px" title="Arrastar pra reordenar">⠿</span>
+      <button onclick="event.stopPropagation();${onEdit}" title="Renomear" style="background:#111;border:1px solid #2a2a2a;border-radius:4px;color:#888;cursor:pointer;font-size:11px;padding:3px 6px"><i class="ti ti-pencil"></i></button>
+      <button onclick="event.stopPropagation();toggleHideGeralCard('${id}')" title="Ocultar" style="background:#111;border:1px solid #2a2a2a;border-radius:4px;color:#ef5350;cursor:pointer;font-size:11px;padding:3px 6px"><i class="ti ti-eye-off"></i></button>
+    </div>
+    ${innerHtml}
+  </div>`;
+}
+
 function renderGeral(){
   // Venda/Compra do Imóvel são transações imobiliárias, não orçamento de reforma —
   // ficam de fora dos totais/gráficos de reforma pra não distorcer os números
@@ -3231,34 +3304,40 @@ function renderGeral(){
   const saldoReforma = dispGanhos - pago;
   const pctReforma = dispGanhos>0?Math.round(total/dispGanhos*100):0;
 
-  document.getElementById('content').innerHTML = `
+  const gcTitles = getGeralCardTitles();
 
-    <div class="cards-row" style="grid-template-columns:1.3fr 1fr repeat(3,1fr);margin-bottom:1.5rem">
-      <div class="card" style="border-left:3px solid #e91e8c;background:#1a0d14">
-        <div class="card-label"><i class="ti ti-wallet" style="font-size:13px;color:#e91e8c"></i> Saldo Real</div>
+  const htmlSaldoReal = `
+      <div class="card" style="border-left:3px solid #e91e8c;background:#1a0d14;height:100%">
+        <div class="card-label"><i class="ti ti-wallet" style="font-size:13px;color:#e91e8c"></i> ${gcTitles['saldo-real']||'Saldo Real'}</div>
         <div class="card-value" style="color:#e91e8c">${fmt(saldoReal)}</div>
         <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #2a1a22">
           <span style="color:#555;font-size:10px">Líquido após Venda e Compra do Imóvel:</span><br>
           <span style="font-size:13px;font-weight:600;color:${saldoSoImovel<0?'#ef5350':'#4caf50'}">${fmt(saldoSoImovel)}</span>
         </div>
-      </div>
-      <div class="card" style="border-left:3px solid #4caf50;background:#0d1a0d;cursor:pointer" onclick="openStatusDetailModal('pago')">
-        <div class="card-label"><i class="ti ti-circle-check" style="font-size:13px;color:#4caf50"></i> Já pago</div>
+      </div>`;
+
+  const htmlJaPago = `
+      <div class="card" style="border-left:3px solid #4caf50;background:#0d1a0d;cursor:pointer;height:100%" onclick="openStatusDetailModal('pago')">
+        <div class="card-label"><i class="ti ti-circle-check" style="font-size:13px;color:#4caf50"></i> ${gcTitles['ja-pago']||getColLabel('pago')}</div>
         <div class="card-value green">${fmt(pagoTudo)}</div>
         <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #1e3a1e;color:#555;font-size:10px">${lancamentosPagoTudo} lançamentos · reforma + venda + compra · clique pra ver todos</div>
-      </div>
-      <div class="card" style="border-left:3px solid #42a5f5;background:#0d1520;cursor:pointer" onclick="openStatusDetailModal('necessario')">
-        <div class="card-label"><i class="ti ti-alert-circle" style="font-size:13px;color:#42a5f5"></i> Necessários</div>
+      </div>`;
+
+  const htmlNecessarios = `
+      <div class="card" style="border-left:3px solid #42a5f5;background:#0d1520;cursor:pointer;height:100%" onclick="openStatusDetailModal('necessario')">
+        <div class="card-label"><i class="ti ti-alert-circle" style="font-size:13px;color:#42a5f5"></i> ${gcTitles['necessarios']||getColLabel('necessario')}</div>
         <div class="card-value" style="color:#42a5f5">${fmt(necessarioTudo)}</div>
         <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #1a2a3a">
           <span style="color:#555;font-size:10px">Líquido se comprar necessários:</span><br>
           <span style="font-size:13px;font-weight:600;color:${saldoProjetado<0?'#ef5350':'#42a5f5'}">${fmt(saldoProjetado)}</span>
         </div>
         <div style="margin-top:6px;color:#555;font-size:10px">clique pra ver todos os lançamentos</div>
-      </div>
-      <div class="card" style="border-left:3px solid #e8b544;background:#1a1500;cursor:pointer" onclick="openStatusDetailModal('apagar')">
-        <div class="card-label" style="display:flex;align-items:center;justify-content:space-between">
-          <span><i class="ti ti-clock" style="font-size:13px;color:#e8b544"></i> Dispensáveis</span>
+      </div>`;
+
+  const htmlDispensaveis = `
+      <div class="card" style="border-left:3px solid #e8b544;background:#1a1500;cursor:pointer;height:100%" onclick="openStatusDetailModal('apagar')">
+        <div class="card-label" style="display:flex;align-items:center;justify-content:space-between;padding-right:70px">
+          <span><i class="ti ti-clock" style="font-size:13px;color:#e8b544"></i> ${gcTitles['dispensaveis']||getColLabel('apagar')}</span>
           <button onclick="event.stopPropagation();openBulkModal('apagar','')" title="Mover todos em massa" style="background:none;border:none;color:#555;cursor:pointer;font-size:13px;padding:0 2px;transition:color .15s" onmouseover="this.style.color='#e8b544'" onmouseout="this.style.color='#555'"><i class="ti ti-arrows-transfer-down"></i></button>
         </div>
         <div class="card-value yellow">${fmt(dispensavel)}</div>
@@ -3267,17 +3346,18 @@ function renderGeral(){
           <span style="font-size:13px;font-weight:600;color:${(saldoProjetado-dispensavel)<0?'#ef5350':'#4caf50'}">${fmt(saldoProjetado-dispensavel)}</span>
         </div>
         <div style="margin-top:6px;color:#555;font-size:10px">clique pra ver todos os lançamentos</div>
-      </div>
-      <div class="card" style="border-left:3px solid #26c6da;background:#0a1a1c">
-        <div class="card-label"><i class="ti ti-trending-up" style="font-size:13px;color:#26c6da"></i> Total de aportes</div>
+      </div>`;
+
+  const htmlAportes = `
+      <div class="card" style="border-left:3px solid #26c6da;background:#0a1a1c;height:100%">
+        <div class="card-label"><i class="ti ti-trending-up" style="font-size:13px;color:#26c6da"></i> ${gcTitles['aportes']||'Total de aportes'}</div>
         <div class="card-value" style="color:#26c6da">${fmt(totalGanhos)}</div>
         <div class="card-sub" style="font-size:10px;color:#4caf50">🟢 Disponível: ${fmt(dispGanhos)}</div>
-      </div>
-    </div>
+      </div>`;
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.5rem">
-      <div class="card" style="border-left:3px solid #4caf50;background:#0d1a10;cursor:pointer" onclick="navigate('venda-imovel')">
-        <div class="card-label"><span style="font-size:13px">${IMOVEL_CATS['venda-imovel']?.icon||'🏠'}</span> <span style="color:#4caf50">Venda do Imóvel</span></div>
+  const htmlVenda = `
+      <div class="card" style="border-left:3px solid ${IMOVEL_CATS['venda-imovel']?.color||'#4caf50'};background:${IMOVEL_CATS['venda-imovel']?.color||'#4caf50'}12;cursor:pointer;height:100%" onclick="navigate('venda-imovel')">
+        <div class="card-label"><span style="font-size:13px">${IMOVEL_CATS['venda-imovel']?.icon||'🏠'}</span> <span style="color:${IMOVEL_CATS['venda-imovel']?.color||'#4caf50'}">${IMOVEL_CATS['venda-imovel']?.label||'Venda do Imóvel'}</span></div>
         <div style="display:flex;gap:1.5rem;margin-top:6px;flex-wrap:wrap">
           <div>
             <div style="font-size:10px;color:#555">Recebido</div>
@@ -3296,9 +3376,11 @@ function renderGeral(){
           <span style="color:#555;font-size:10px">Líquido:</span>
           <span style="font-size:13px;font-weight:600;color:${vendaLiquidoProjetado<0?'#ef5350':'#4caf50'};margin-left:4px">${fmt(vendaLiquidoProjetado)}</span>
         </div>
-      </div>
-      <div class="card" style="border-left:3px solid #5c6bc0;background:#12111f;cursor:pointer" onclick="navigate('compra-imovel')">
-        <div class="card-label"><span style="font-size:13px">${IMOVEL_CATS['compra-imovel']?.icon||'🔑'}</span> <span style="color:#5c6bc0">Compra do Imóvel</span></div>
+      </div>`;
+
+  const htmlCompra = `
+      <div class="card" style="border-left:3px solid ${IMOVEL_CATS['compra-imovel']?.color||'#5c6bc0'};background:${IMOVEL_CATS['compra-imovel']?.color||'#5c6bc0'}12;cursor:pointer;height:100%" onclick="navigate('compra-imovel')">
+        <div class="card-label"><span style="font-size:13px">${IMOVEL_CATS['compra-imovel']?.icon||'🔑'}</span> <span style="color:${IMOVEL_CATS['compra-imovel']?.color||'#5c6bc0'}">${IMOVEL_CATS['compra-imovel']?.label||'Compra do Imóvel'}</span></div>
         <div style="display:flex;gap:1.5rem;margin-top:6px">
           <div>
             <div style="font-size:10px;color:#555">Pago (seu bolso)</div>
@@ -3319,12 +3401,12 @@ function renderGeral(){
           <div style="display:flex;justify-content:space-between;font-size:13px;padding-top:6px;margin-top:6px;border-top:1px solid #222"><span style="color:#888;font-weight:600">Total</span><span style="color:#e8b544;font-weight:700">${fmt(compraAPagar)}</span></div>
         </div>
         <div class="card-sub" style="margin-top:8px;color:#555;font-size:10px">${compraItems.length} lançamentos · financiado não entra no saldo (não é seu dinheiro)</div>
-      </div>
-    </div>
+      </div>`;
 
-    <div class="card" style="border-left:3px solid #ab47bc;background:#150d1a;margin-bottom:1.5rem">
-      <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="openStatusDetailModal('necessario','reforma')">
-        <div class="card-label"><i class="ti ti-chart-pie" style="font-size:13px;color:#ab47bc"></i> REFORMA: TOTAL GASTO</div>
+  const htmlReforma = `
+    <div class="card" style="border-left:3px solid #ab47bc;background:#150d1a;height:100%">
+      <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding-right:70px" onclick="openStatusDetailModal('necessario','reforma')">
+        <div class="card-label"><i class="ti ti-chart-pie" style="font-size:13px;color:#ab47bc"></i> ${gcTitles['reforma']||'REFORMA: TOTAL GASTO'}</div>
         <div class="card-value" style="color:#ab47bc;margin:0">${fmt(necessario)}</div>
       </div>
       <div style="margin-top:6px;color:#555;font-size:10px;cursor:pointer" onclick="openStatusDetailModal('necessario','reforma')">clique pra ver todos os lançamentos</div>
@@ -3332,6 +3414,30 @@ function renderGeral(){
         <div style="position:relative;height:200px"><canvas id="reformaPieChart"></canvas></div>
         <div id="reforma-pie-legend" style="display:flex;flex-direction:column;gap:7px;font-size:12px"></div>
       </div>
+    </div>`;
+
+  const CARD_REGISTRY = {
+    'saldo-real':    { html: htmlSaldoReal,    edit:`renameGeralCardTitle('saldo-real', '${gcTitles['saldo-real']||'Saldo Real'}')`, span:2 },
+    'ja-pago':       { html: htmlJaPago,       edit:`renameStatusLabel('pago')`, span:2 },
+    'necessarios':   { html: htmlNecessarios,  edit:`renameStatusLabel('necessario')`, span:2 },
+    'dispensaveis':  { html: htmlDispensaveis, edit:`renameStatusLabel('apagar')`, span:2 },
+    'aportes':       { html: htmlAportes,      edit:`renameGeralCardTitle('aportes', '${gcTitles['aportes']||'Total de aportes'}')`, span:2 },
+    'venda-imovel':  { html: htmlVenda,        edit:`openEditImovelCat('venda-imovel')`, span:5 },
+    'compra-imovel': { html: htmlCompra,       edit:`openEditImovelCat('compra-imovel')`, span:5 },
+    'reforma':       { html: htmlReforma,      edit:`renameGeralCardTitle('reforma', '${gcTitles['reforma']||'REFORMA: TOTAL GASTO'}')`, span:10 },
+  };
+
+  const hiddenCards = getHiddenGeralCards();
+  const order = getGeralCardOrder().filter(id=>!hiddenCards.includes(id));
+
+  document.getElementById('content').innerHTML = `
+    ${hiddenCards.length ? `<div style="text-align:right;margin-bottom:8px"><button onclick="restoreHiddenGeralCards()" style="background:none;border:1px solid #333;border-radius:6px;color:#888;font-size:11px;padding:5px 10px;cursor:pointer">${hiddenCards.length} card(s) oculto(s) · mostrar de novo</button></div>` : ''}
+    <div style="display:grid;grid-template-columns:repeat(10,1fr);gap:12px;margin-bottom:1.5rem;align-items:stretch">
+      ${order.map(id=>{
+        const c = CARD_REGISTRY[id];
+        if(!c) return '';
+        return wrapGeralCard(id, c.html, c.edit, `grid-column:span ${c.span}`);
+      }).join('')}
     </div>
   `;
 
@@ -3869,10 +3975,32 @@ async function deleteAllInCol(status, catKey){
 }
 
 // ── COLUMN ORDER & GRID ──────────────────────────────────────────
+let COL_LABELS_CUSTOM = JSON.parse(localStorage.getItem('col_labels_custom')||'{}');
+const COL_DEFAULT_LABELS = { pago:'Pago', necessario:'Necessários', apagar:'Dispensáveis' };
+function getColLabel(status){ return COL_LABELS_CUSTOM[status] || COL_DEFAULT_LABELS[status] || status; }
+function setColLabel(status, label){
+  COL_LABELS_CUSTOM[status] = label;
+  localStorage.setItem('col_labels_custom', JSON.stringify(COL_LABELS_CUSTOM));
+}
+function renameStatusLabel(status){
+  const atual = getColLabel(status);
+  const novo = prompt('Novo nome para "'+atual+'" (isso muda em todo o app: colunas de cada etapa, formulário de lançamento, etc.):', atual);
+  if(!novo || !novo.trim()) return;
+  setColLabel(status, novo.trim());
+  refreshStatusOptionLabels();
+  render();
+}
+// Atualiza os textos dos <option> de status nos formulários padrão de lançamento
+// (não mexe nos rótulos especiais de Venda/Compra do Imóvel, tipo "Recebido"/"A receber")
+function refreshStatusOptionLabels(){
+  document.querySelectorAll('#f-status option[value="pago"], #e-status option[value="pago"], #sl-status option[value="pago"]').forEach(el=>{ el.textContent = getColLabel('pago'); });
+  document.querySelectorAll('#f-status option[value="necessario"], #e-status option[value="necessario"], #sl-status option[value="necessario"]').forEach(el=>{ el.textContent = getColLabel('necessario'); });
+  document.querySelectorAll('#f-status option[value="apagar"], #e-status option[value="apagar"], #sl-status option[value="apagar"]').forEach(el=>{ el.textContent = getColLabel('apagar'); });
+}
 const COL_DEFS = {
-  pago:      {label:'Pago',        color:'#4caf50', icon:'ti-circle-check'},
-  necessario:{label:'Necessários', color:'#42a5f5', icon:'ti-alert-circle'},
-  apagar:    {label:'Dispensáveis',color:'#e8b544', icon:'ti-clock'},
+  pago:      {color:'#4caf50', icon:'ti-circle-check'},
+  necessario:{color:'#42a5f5', icon:'ti-alert-circle'},
+  apagar:    {color:'#e8b544', icon:'ti-clock'},
 };
 const DEFAULT_COL_ORDER = ['pago','necessario','apagar'];
 
@@ -3911,7 +4039,7 @@ function renderColGrid(lista, catKey){
           ondragstart="onColDragStart(event,'${status}','${catKey||''}')"
           ondragend="onColDragEnd(event)">⠿</span>
         <i class="ti ${def.icon}" style="font-size:13px;color:${def.color}"></i>
-        <span style="font-size:10px;font-weight:600;color:${def.color};text-transform:uppercase;letter-spacing:.08em">${def.label}</span>
+        <span style="font-size:10px;font-weight:600;color:${def.color};text-transform:uppercase;letter-spacing:.08em">${getColLabel(status)}</span>
         <button onclick="openBulkModal('${status}','${catKey||''}')" title="Mover em massa"
           style="margin-left:auto;background:none;border:none;color:#444;cursor:pointer;font-size:14px;padding:2px 4px;border-radius:4px;transition:color .15s"
           onmouseover="this.style.color='${def.color}'" onmouseout="this.style.color='#444'">
@@ -4522,6 +4650,7 @@ try{
 }catch(e){}
 
 console.log('[piratininga] BUILD: 2026-07-08-fgts-fix', '| FGTS grupo:', IMOVEL_DEFAULT_CARDS['compra-imovel'].find(i=>i.key==='fgts')?.grupo);
+refreshStatusOptionLabels();
 renderCatNav();
 loadGastos();
 
