@@ -192,7 +192,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 09JUL26 (versão 65)</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 09JUL26 (versão 1)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -936,26 +936,76 @@ function handleNavItemClick(k, e){
   }
 }
 
-function buildSubcatRowsHtml(k){
-  const info = IMOVEL_CATS[k] || CATS[k];
-  const subColor = info?.color||'#e8b544';
-  if(!SUBCATS[k]) return '';
-  return Object.keys(SUBCATS[k]).map(sk=>`
+function renderFlatSubcatRow(k, sk, subColor, extraIndent){
+  return `
     <div class="subcat-row" id="subcat-row-${k}-${sk}" draggable="true"
       ondragstart="subDragStart('${k}','${sk}',event)"
       ondragover="subDragOver('${k}','${sk}',event)"
       ondragleave="subDragLeave('${k}','${sk}',event)"
       ondrop="subDragDrop('${k}','${sk}',event)"
       ondragend="subDragEnd(event)">
-      <span style="color:#2a2a2a;cursor:grab;font-size:11px;padding:0 4px 0 1rem;user-select:none" title="Arrastar">⠿</span>
+      <span style="color:#2a2a2a;cursor:grab;font-size:11px;padding:0 4px 0 ${extraIndent?'1.9rem':'1rem'};user-select:none" title="Arrastar">⠿</span>
       <div class="nav-item" style="padding-left:0;font-size:11px;color:#555;flex:1;border-left:2px solid #2a2a2a;padding-left:8px;margin:2px 0;border-radius:0" onclick="navigate('${k}__${sk}')" id="nav-${k}__${sk}"
         onmouseover="this.style.borderColor='${subColor}';this.style.color='#999'"
         onmouseout="this.style.borderColor='#2a2a2a';this.style.color='#555'">
         ${SUBCATS[k][sk].label}
       </div>
       <button class="subcat-dots-btn" style="background:none;border:none;color:#444;cursor:pointer;padding:4px 6px;font-size:13px;transition:opacity .15s" onclick="toggleSubCatMenu('${k}','${sk}',event)"><i class="ti ti-dots-vertical"></i></button>
-    </div>
-  `).join('');
+    </div>`;
+}
+
+function getExpandedSub(){ try{ return JSON.parse(localStorage.getItem('pirati_expanded_sub')||'{}'); }catch(e){ return {}; } }
+function subGroupSafeId(groupKey){ return groupKey.replace(/[^a-zA-Z0-9]/g,'_'); }
+
+function toggleSubGroup(k, gName, e){
+  if(e) e.stopPropagation();
+  const expandedSub = getExpandedSub();
+  const groupKey = k+'__grp__'+gName;
+  expandedSub[groupKey] = !expandedSub[groupKey];
+  localStorage.setItem('pirati_expanded_sub', JSON.stringify(expandedSub));
+  const safeId = subGroupSafeId(groupKey);
+  const chev = document.getElementById('chev-grp-'+safeId);
+  const container = document.getElementById('subgrp-'+safeId);
+  if(chev) chev.style.transform = 'rotate('+(expandedSub[groupKey]?90:0)+'deg)';
+  if(container) container.style.maxHeight = expandedSub[groupKey] ? '900px' : '0';
+}
+
+function buildSubcatRowsHtml(k){
+  const info = IMOVEL_CATS[k] || CATS[k];
+  const subColor = info?.color||'#e8b544';
+  if(!SUBCATS[k]) return '';
+  const skKeys = Object.keys(SUBCATS[k]);
+  const hasGroups = skKeys.some(sk=>SUBCATS[k][sk].grupo);
+  if(!hasGroups){
+    return skKeys.map(sk=>renderFlatSubcatRow(k, sk, subColor, false)).join('');
+  }
+  // Hierarquia de 2 níveis: fase (grupo) > itens — mantém a ordem definida em 'ordem'
+  const groups = {};
+  skKeys.forEach(sk=>{
+    const entry = SUBCATS[k][sk];
+    const gName = entry.grupo || '';
+    (groups[gName]=groups[gName]||[]).push({sk, ...entry});
+  });
+  const groupNames = Object.keys(groups).sort((a,b)=>{
+    const oa = groups[a][0]?.ordem ?? 0, ob = groups[b][0]?.ordem ?? 0;
+    return oa-ob;
+  });
+  const expandedSub = getExpandedSub();
+  return groupNames.map(gName=>{
+    if(!gName) return groups[gName].map(e=>renderFlatSubcatRow(k, e.sk, subColor, false)).join('');
+    const items = groups[gName].sort((a,b)=>(a.ordem??0)-(b.ordem??0));
+    const groupKey = k+'__grp__'+gName;
+    const safeId = subGroupSafeId(groupKey);
+    const isOpen = !!expandedSub[groupKey];
+    const groupRow = `
+      <div style="display:flex;align-items:center;gap:5px;padding:5px 6px 5px 1rem;cursor:pointer;user-select:none" onclick="toggleSubGroup('${k}','${gName.replace(/'/g,"\\'")}',event)">
+        <span id="chev-grp-${safeId}" style="color:#555;font-size:9px;transition:transform .15s;transform:rotate(${isOpen?90:0}deg);display:inline-block">▶</span>
+        <span style="font-size:11px;color:#888;flex:1">${gName}</span>
+        <span style="font-size:9px;color:#444;background:#1a1a1a;border-radius:8px;padding:1px 6px">${items.length}</span>
+      </div>`;
+    const itemRows = items.map(e=>renderFlatSubcatRow(k, e.sk, subColor, true)).join('');
+    return groupRow + `<div id="subgrp-${safeId}" style="overflow:hidden;max-height:${isOpen?'900px':'0'};transition:max-height .2s ease">${itemRows}</div>`;
+  }).join('');
 }
 
 function toggleExpand(k, e){
@@ -1767,23 +1817,59 @@ function ensureObraPhasesSubcats(){
 function ensureObraBrutaPhases(){
   try{
     const FASES = [
-      'Demolição','Alvenaria','Hidráulica','Elétrica','Impermeabilização',
-      'Contrapiso e Regularização','Esquadrias','Gesso','Revestimentos de Parede',
-      'Pisos e Rodapés','Pintura (Preparação)','Marcenaria e Móveis Planejados',
-      'Marmoraria','Louças, Metais e Vidros','Iluminação e Acabamentos Elétricos',
-      'Pintura Final e Limpeza Pós-Obra','Instalação de Eletrodomésticos e Mudança'
+      {fase:'Demolição', itens:['Retirada de pisos','Retirada de revestimentos','Remoção de louças e metais','Remoção de portas e esquadrias','Demolição de paredes','Remoção de bancadas','Descarte de entulho']},
+      {fase:'Alvenaria', itens:['Construção de novas paredes','Fechamento de vãos','Abertura de nichos','Vergas e contravergas','Regularizações']},
+      {fase:'Hidráulica', itens:['Água fria','Água quente','Esgoto','Gás','Drenos de ar-condicionado']},
+      {fase:'Elétrica', itens:['Novos circuitos','Quadro elétrico','Tomadas','Interruptores','Iluminação','Rede','Internet','Infraestrutura para automação']},
+      {fase:'Impermeabilização', itens:['Banheiros','Lavanderia','Sacadas','Áreas molhadas']},
+      {fase:'Contrapiso e Regularização', itens:['Nivelamento','Contrapiso','Regularização de paredes','Regularização para revestimentos']},
+      {fase:'Esquadrias', itens:['Portas','Batentes','Janelas','Caixilhos','Portas de correr']},
+      {fase:'Gesso', itens:['Forro','Sancas','Cortineiros','Molduras','Fechamentos']},
+      {fase:'Revestimentos de Parede', itens:['Banheiros','Cozinha','Lavanderia','Pastilhas','Porcelanatos']},
+      {fase:'Pisos e Rodapés', itens:['Piso vinílico','Porcelanato','Laminado','Madeira','Rodapés']},
+      {fase:'Pintura (Preparação)', itens:['Massa corrida','Lixamento','Selador','Fundo preparador','Primeira demão']},
+      {fase:'Marcenaria e Móveis Planejados', itens:['Armários','Painéis','Closets','Nichos','Prateleiras']},
+      {fase:'Marmoraria', itens:['Bancadas','Soleiras','Peitoris','Nichos','Pingadeiras']},
+      {fase:'Louças, Metais e Vidros', itens:['Vasos sanitários','Cubas','Torneiras','Chuveiros','Registros','Box','Espelhos']},
+      {fase:'Iluminação e Acabamentos Elétricos', itens:['Luminárias','Spots','Pendentes','Trilhos','Perfis de LED','Espelhos de tomada','Interruptores']},
+      {fase:'Pintura Final e Limpeza Pós-Obra', itens:['Última demão de tinta','Retoques','Silicone','Calafetação','Limpeza fina']},
+      {fase:'Instalação de Eletrodomésticos e Mudança', itens:['Geladeira','Cooktop','Forno','Coifa','Lava-louças','Máquina de lavar','Ar-condicionado','Mudança','Montagem dos móveis soltos','Decoração']},
     ];
     if(!SUBCATS['obra-bruta']) SUBCATS['obra-bruta'] = {};
-    const existentes = Object.values(SUBCATS['obra-bruta']).map(s=>(s.label||'').toLowerCase());
     let mudou = false;
-    FASES.forEach(label=>{
-      if(existentes.includes(label.toLowerCase())) return;
-      let key = label.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
-      let i=1; const base=key;
-      while(SUBCATS['obra-bruta'][key]) key = base+'-'+(i++);
-      SUBCATS['obra-bruta'][key] = {label};
-      mudou = true;
+
+    // remove a versão antiga (só as 17 fases soltas, sem os itens de dentro), se existir
+    Object.keys(SUBCATS['obra-bruta']).forEach(k=>{
+      const entry = SUBCATS['obra-bruta'][k];
+      if(!entry.grupo && FASES.find(f=>f.fase.toLowerCase()===(entry.label||'').toLowerCase())){
+        delete SUBCATS['obra-bruta'][k];
+        mudou = true;
+      }
     });
+
+    const existentes = Object.values(SUBCATS['obra-bruta']).map(s=>(s.label||'').toLowerCase());
+    FASES.forEach((f,fi)=>{
+      f.itens.forEach((itemLabel,ii)=>{
+        if(existentes.includes(itemLabel.toLowerCase())) return;
+        let key = (f.fase+'-'+itemLabel).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+        let i=1; const base=key;
+        while(SUBCATS['obra-bruta'][key]) key = base+'-'+(i++);
+        SUBCATS['obra-bruta'][key] = {label:itemLabel, grupo:f.fase, ordem:fi*100+ii};
+        mudou = true;
+      });
+    });
+
+    // Qualquer item que não pertença às 17 fases novas (ex.: "Mão de Obra", "Material
+    // Bruto", ou as antigas "Elétrica"/"Hidráulica" soltas) sai da etapa — fica
+    // disponível no Diagnóstico pra você decidir depois onde encaixar. Os lançamentos
+    // em si nunca são apagados, só deixam de aparecer aqui.
+    Object.keys(SUBCATS['obra-bruta']).forEach(k=>{
+      if(!SUBCATS['obra-bruta'][k].grupo){
+        delete SUBCATS['obra-bruta'][k];
+        mudou = true;
+      }
+    });
+
     if(mudou) saveSubCats();
   }catch(e){ console.warn('Erro ao criar fases da Execução de Obra:', e); }
 }
@@ -3634,6 +3720,22 @@ function renderDiagnostico(){
   const orfaKeys = Object.keys(orfaGroups);
   const orfaTotalGeral = orfaKeys.reduce((s,k)=>s+orfaGroups[k].reduce((s2,g)=>s2+getVal(g),0),0);
 
+  // 1.5) Sub-categorias/ambientes órfãos: a categoria existe, mas o ambiente/sub
+  // que o lançamento usa não existe mais dentro dela (ex.: você tirou "Mão de Obra"
+  // da lista de ambientes, mas os lançamentos antigos continuam com essa marcação)
+  const orfaSubGroups = {};
+  gastos.forEach(g=>{
+    if(g.categoria==='ganho') return;
+    if(!(CATS[g.categoria] || IMOVEL_CATS[g.categoria])) return;
+    if(!g.subcategoria) return;
+    const validSubs = SUBCATS[g.categoria] || {};
+    if(validSubs[g.subcategoria]) return;
+    const key = g.categoria+'|'+g.subcategoria;
+    (orfaSubGroups[key] = orfaSubGroups[key] || []).push(g);
+  });
+  const orfaSubKeys = Object.keys(orfaSubGroups);
+  const orfaSubTotalGeral = orfaSubKeys.reduce((s,k)=>s+orfaSubGroups[k].reduce((s2,g)=>s2+getVal(g),0),0);
+
   // 2) Possíveis duplicatas de verdade: mesma descrição + mesma categoria + mesmo
   // ambiente/subcategoria + mesmo valor TOTAL (valor x quantidade). Assim, comprar o
   // mesmo produto pra dois ambientes diferentes (ou quantidades diferentes) não conta
@@ -3669,7 +3771,7 @@ function renderDiagnostico(){
   document.getElementById('content').innerHTML = `
     <div style="margin-bottom:1.5rem">
       <h2 style="margin:0 0 4px">Diagnóstico</h2>
-      <div style="font-size:12px;color:#666">Lançamentos que não aparecem em nenhuma etapa (categoria antiga/excluída) e possíveis duplicatas. Nada aqui foi apagado — você decide item por item.</div>
+      <div style="font-size:12px;color:#666">Lançamentos que não aparecem em nenhuma etapa (categoria/ambiente antigo ou excluído) e possíveis duplicatas. Nada aqui foi apagado — você decide item por item.</div>
     </div>
 
     <div style="background:#1a1500;border:1px solid #2a2000;border-left:3px solid #e8b544;border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.5rem">
@@ -3689,6 +3791,26 @@ function renderDiagnostico(){
         <table style="width:100%;border-collapse:collapse">${items.map(rowHtml).join('')}</table>
       </div>`;
     }).join('') : '<div style="color:#444;font-size:12px;margin-bottom:1.5rem">Nenhum lançamento órfão encontrado. ✓</div>'}
+
+    <div style="background:#0d1520;border:1px solid #1a2a3a;border-left:3px solid #42a5f5;border-radius:10px;padding:1rem 1.25rem;margin:2rem 0 1.5rem">
+      <div style="font-size:13px;font-weight:700;color:#42a5f5;margin-bottom:4px">Ambientes órfãos (a categoria existe, mas o ambiente não existe mais dentro dela)</div>
+      <div style="font-size:12px;color:#888">Total: <b style="color:#42a5f5">${fmt(orfaSubTotalGeral)}</b> em ${orfaSubKeys.length} ambiente(s)</div>
+    </div>
+
+    ${orfaSubKeys.length ? orfaSubKeys.map(key=>{
+      const [catKey, subKey] = key.split('|');
+      const items = orfaSubGroups[key];
+      const total = items.reduce((s,g)=>s+getVal(g),0);
+      const catInfo = CATS[catKey] || IMOVEL_CATS[catKey];
+      return `<div style="background:#111;border:1px solid #2a2a2a;border-radius:10px;overflow:hidden;margin-bottom:1rem">
+        <div style="padding:10px 14px;background:#1a1a1a;display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px;font-weight:700;color:#42a5f5">${catInfo?.label||catKey} → "${subKey}"</span>
+          <span style="font-size:11px;color:#666">${items.length} lançamento(s)</span>
+          <span style="margin-left:auto;font-size:13px;font-weight:700;color:#42a5f5">${fmt(total)}</span>
+        </div>
+        <table style="width:100%;border-collapse:collapse">${items.map(rowHtml).join('')}</table>
+      </div>`;
+    }).join('') : '<div style="color:#444;font-size:12px;margin-bottom:1.5rem">Nenhum ambiente órfão encontrado. ✓</div>'}
 
     <div style="background:#1a0d14;border:1px solid #2a1a22;border-left:3px solid #e91e8c;border-radius:10px;padding:1rem 1.25rem;margin:2rem 0 1.5rem">
       <div style="font-size:13px;font-weight:700;color:#e91e8c;margin-bottom:4px">Possíveis duplicatas (mesma descrição + mesmo valor)</div>
