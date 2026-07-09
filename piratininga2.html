@@ -190,9 +190,9 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
     <div class="sidebar-brand">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div>
-          <div class="name">Piratininga</div>
+          <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 09JUL26 às 15h10</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 09JUL26 (versão 64)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -223,8 +223,6 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         </div>
       </div>
       <div id="cat-nav-list"></div>
-      <div class="divider"></div>
-      <div id="imovel-nav-list"></div>
       <div class="divider"></div>
       <div class="nav-item" onclick="navigate('ganhos')" id="nav-ganhos">
         <i class="ti ti-trending-up"></i> Aportes
@@ -534,8 +532,6 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       <select id="e-tipo-ganho">
         <option value="disponivel">🟢 Disponível — já está na minha conta</option>
         <option value="areceber">🔵 A receber — garantido mas ainda não caiu</option>
-        <option value="direcionado">🟡 Direcionado — vai receber mas tem destino certo</option>
-        <option value="comprometido">⚫ Comprometido — já foi usado/reservado</option>
       </select>
     </div>
     <div class="modal-row">
@@ -780,7 +776,12 @@ function getStatusDetailList(status, scope){
   const compra  = gastos.filter(g=>g.categoria==='compra-imovel' && g.status===status && getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento');
   return [...reforma, ...venda, ...compra];
 }
+let statusModalDisabledGroups = new Set();
+let statusModalCurrentStatus = null;
+let statusModalCurrentScope = null;
+
 function renderStatusDetailGrouped(list){
+  const getValSd = g=>(g.valor||0)*(g.quantidade||1);
   const groups = {};
   list.forEach(g=>{
     const displayKey = CAT_MERGE_ALIASES[g.categoria] || g.categoria;
@@ -799,29 +800,55 @@ function renderStatusDetailGrouped(list){
     const label = info?.label || catKey;
     const color = info?.color || '#666';
     const items = groups[catKey];
-    const header = `<tr><td colspan="6" style="padding:8px 10px;background:${color}1c;border-top:1px solid ${color}55;border-bottom:1px solid ${color}33">
-      <span style="display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.08em">
-        <span style="width:7px;height:7px;border-radius:50%;background:${color};display:inline-block"></span>${info?.icon?info.icon+' ':''}${label}
+    const groupTotal = items.reduce((s,g)=>s+getValSd(g),0);
+    const isOff = statusModalDisabledGroups.has(catKey);
+    const header = `<tr><td colspan="6" style="padding:8px 10px;background:${color}${isOff?'0a':'1c'};border-top:1px solid ${color}55;border-bottom:1px solid ${color}33">
+      <span style="display:flex;align-items:center;gap:8px">
+        <button onclick="event.stopPropagation();toggleStatusGroup('${catKey}')" title="${isOff?'Voltar a somar':'Não somar no total'}" style="background:${isOff?'#333':color};border:none;cursor:pointer;padding:0;width:30px;height:16px;border-radius:8px;position:relative;transition:background .15s;flex-shrink:0">
+          <span style="position:absolute;top:2px;left:${isOff?'2px':'16px'};width:12px;height:12px;border-radius:50%;background:#fff;transition:left .15s"></span>
+        </button>
+        <span style="display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:700;color:${isOff?'#555':color};text-transform:uppercase;letter-spacing:.08em;flex:1;${isOff?'text-decoration:line-through':''}">
+          ${info?.icon?info.icon+' ':''}${label}
+        </span>
+        <span style="font-size:11px;font-weight:700;color:${isOff?'#555':color}">${fmt(groupTotal)}</span>
       </span>
     </td></tr>`;
-    const rows = items.map(g=>renderOneRow(g, g.status, catKey, color+'33', true)).join('');
+    const rows = items.map(g=>renderOneRow(g, g.status, catKey, color+'33', true, isOff)).join('');
     return header+rows;
   }).join('');
 }
 
-function openStatusDetailModal(status, scope){
+function refreshStatusDetailModal(){
+  const status = statusModalCurrentStatus, scope = statusModalCurrentScope;
   const list = getStatusDetailList(status, scope);
   const getValSd = g=>(g.valor||0)*(g.quantidade||1);
-  const total = list.reduce((s,g)=>s+getValSd(g),0);
   const titles = {pago:'Já Pago', necessario:'Necessários', apagar:'Dispensáveis'};
   const colors = {pago:'#4caf50', necessario:'#42a5f5', apagar:'#e8b544'};
   document.getElementById('status-detail-title').textContent = (titles[status] || status) + (scope==='reforma' ? ' (só reforma)' : '');
+  const total = list.reduce((s,g)=>{
+    const displayKey = CAT_MERGE_ALIASES[g.categoria] || g.categoria;
+    if(statusModalDisabledGroups.has(displayKey)) return s;
+    return s+getValSd(g);
+  },0);
   const totalEl = document.getElementById('status-detail-total');
   totalEl.textContent = fmt(total);
   totalEl.style.color = colors[status]||'#fff';
   document.getElementById('status-detail-tbody').innerHTML = list.length
     ? renderStatusDetailGrouped(list)
     : '<tr><td colspan="6" style="padding:1.5rem;text-align:center;color:#444;font-size:12px">Nenhum lançamento</td></tr>';
+}
+
+function toggleStatusGroup(catKey){
+  if(statusModalDisabledGroups.has(catKey)) statusModalDisabledGroups.delete(catKey);
+  else statusModalDisabledGroups.add(catKey);
+  refreshStatusDetailModal();
+}
+
+function openStatusDetailModal(status, scope){
+  statusModalDisabledGroups = new Set();
+  statusModalCurrentStatus = status;
+  statusModalCurrentScope = scope;
+  refreshStatusDetailModal();
   document.getElementById('status-detail-overlay').classList.add('open');
 }
 function closeStatusDetailModal(){
@@ -3088,6 +3115,25 @@ function renderImovelCat(catKey, subKey){
 
   html += '</div>';
 
+  // Barra de progresso (% já recebido, na Venda; % já pago, na Compra/Projeto)
+  html += (()=>{
+    let pct, corLabel, label;
+    if(recItems.length){
+      const totalGeralV = totalRecebido+totalAReceber;
+      pct = totalGeralV>0?Math.round(totalRecebido/totalGeralV*100):0;
+      label = 'Recebido';
+    } else {
+      const totalGeralC = totalGasto+totalAPagar;
+      pct = totalGeralC>0?Math.round(totalGasto/totalGeralC*100):0;
+      label = 'Pago';
+    }
+    corLabel = pct>=100?'#4caf50':pct>50?info.color:'#e8b544';
+    return '<div style="margin-bottom:1.5rem">'
+      +'<div style="display:flex;justify-content:space-between;font-size:10px;color:#666;margin-bottom:5px"><span>'+label+'</span><span style="font-weight:700;color:'+corLabel+'">'+pct+'%</span></div>'
+      +'<div style="height:8px;border-radius:4px;background:#1a1a1a;overflow:hidden"><div style="height:100%;width:'+Math.min(pct,100)+'%;background:'+corLabel+';border-radius:4px;transition:width .3s"></div></div>'
+      +'</div>';
+  })();
+
   if(catKey==='compra-imovel' && (valorImovelKeys.length || documentacaoKeys.length)){
     html += '<div style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;gap:0;flex-wrap:wrap">';
     if(valorImovelKeys.length) html += '<div style="padding-right:2rem"><div style="font-size:10px;color:#4caf50;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Valor do imóvel</div><div style="font-size:18px;font-weight:700;color:#4caf50">'+fmt(totalValorImovel)+'</div></div>';
@@ -3194,10 +3240,34 @@ function renameGeralCardTitle(id, currentTitle){
 }
 
 let geralDragKey = null;
-function geralCardDragStart(e,id){ geralDragKey = id; e.dataTransfer.effectAllowed='move'; e.stopPropagation(); }
-function geralCardDragOver(e){ e.preventDefault(); }
+function geralCardDragStart(e,id){
+  geralDragKey = id;
+  e.dataTransfer.effectAllowed='move';
+  const wrap = e.currentTarget;
+  setTimeout(()=>{ wrap.style.opacity='0.35'; wrap.style.transform='scale(0.95)'; },0);
+  e.stopPropagation();
+}
+function geralCardDragOver(e){
+  e.preventDefault();
+  const wrap = e.currentTarget;
+  if(!geralDragKey || wrap.dataset.cardId===geralDragKey) return;
+  wrap.style.transition = 'transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .18s ease';
+  wrap.style.transform = 'scale(1.035)';
+  wrap.style.boxShadow = '0 0 0 2px #42a5f5, 0 10px 28px rgba(66,165,245,.4)';
+  wrap.style.zIndex = '3';
+}
+function geralCardDragLeave(e){
+  const wrap = e.currentTarget;
+  wrap.style.transform = '';
+  wrap.style.boxShadow = '';
+  wrap.style.zIndex = '';
+}
 function geralCardDrop(e, id){
   e.preventDefault(); e.stopPropagation();
+  const wrap = e.currentTarget;
+  wrap.style.transform = '';
+  wrap.style.boxShadow = '';
+  wrap.style.zIndex = '';
   if(!geralDragKey || geralDragKey===id) return;
   const order = getGeralCardOrder();
   const fi = order.indexOf(geralDragKey), ti = order.indexOf(id);
@@ -3207,18 +3277,20 @@ function geralCardDrop(e, id){
   geralDragKey = null;
   render();
 }
-function geralCardDragEnd(){ geralDragKey = null; }
+function geralCardDragEnd(e){
+  geralDragKey = null;
+  document.querySelectorAll('.geral-card-wrap').forEach(el=>{ el.style.opacity=''; el.style.transform=''; el.style.boxShadow=''; el.style.zIndex=''; });
+}
 
-// Envolve o HTML de um card com moldura arrastável + botões de editar/ocultar
+// Envolve o HTML de um card com moldura arrastável + botões de editar/ocultar (sempre visíveis)
 function wrapGeralCard(id, innerHtml, onEdit, extraStyle){
   return `<div class="geral-card-wrap" draggable="true" data-card-id="${id}"
-    ondragstart="geralCardDragStart(event,'${id}')" ondragover="geralCardDragOver(event)" ondrop="geralCardDrop(event,'${id}')" ondragend="geralCardDragEnd(event)"
-    style="position:relative;${extraStyle||''}"
-    onmouseover="this.querySelector('.geral-card-controls').style.opacity='1'" onmouseout="this.querySelector('.geral-card-controls').style.opacity='0'">
-    <div class="geral-card-controls" style="position:absolute;top:8px;right:8px;display:flex;gap:3px;z-index:5;opacity:0;transition:opacity .15s">
-      <span style="cursor:grab;color:#555;font-size:13px;padding:3px 4px;background:#111;border:1px solid #2a2a2a;border-radius:4px" title="Arrastar pra reordenar">⠿</span>
-      <button onclick="event.stopPropagation();${onEdit}" title="Renomear" style="background:#111;border:1px solid #2a2a2a;border-radius:4px;color:#888;cursor:pointer;font-size:11px;padding:3px 6px"><i class="ti ti-pencil"></i></button>
-      <button onclick="event.stopPropagation();toggleHideGeralCard('${id}')" title="Ocultar" style="background:#111;border:1px solid #2a2a2a;border-radius:4px;color:#ef5350;cursor:pointer;font-size:11px;padding:3px 6px"><i class="ti ti-eye-off"></i></button>
+    ondragstart="geralCardDragStart(event,'${id}')" ondragover="geralCardDragOver(event)" ondragleave="geralCardDragLeave(event)" ondrop="geralCardDrop(event,'${id}')" ondragend="geralCardDragEnd(event)"
+    style="position:relative;transition:opacity .15s,transform .15s;${extraStyle||''}">
+    <div class="geral-card-controls" style="position:absolute;top:8px;right:8px;display:flex;gap:3px;z-index:5">
+      <span style="cursor:grab;color:#666;font-size:13px;padding:3px 4px;background:#111;border:1px solid #333;border-radius:4px" title="Arrastar pra reordenar">⠿</span>
+      <button onclick="event.stopPropagation();${onEdit}" title="Renomear" style="background:#111;border:1px solid #333;border-radius:4px;color:#999;cursor:pointer;font-size:11px;padding:3px 6px"><i class="ti ti-pencil"></i></button>
+      <button onclick="event.stopPropagation();toggleHideGeralCard('${id}')" title="Ocultar" style="background:#111;border:1px solid #333;border-radius:4px;color:#ef5350;cursor:pointer;font-size:11px;padding:3px 6px"><i class="ti ti-eye-off"></i></button>
     </div>
     ${innerHtml}
   </div>`;
@@ -3336,10 +3408,7 @@ function renderGeral(){
 
   const htmlDispensaveis = `
       <div class="card" style="border-left:3px solid #e8b544;background:#1a1500;cursor:pointer;height:100%" onclick="openStatusDetailModal('apagar')">
-        <div class="card-label" style="display:flex;align-items:center;justify-content:space-between;padding-right:70px">
-          <span><i class="ti ti-clock" style="font-size:13px;color:#e8b544"></i> ${gcTitles['dispensaveis']||getColLabel('apagar')}</span>
-          <button onclick="event.stopPropagation();openBulkModal('apagar','')" title="Mover todos em massa" style="background:none;border:none;color:#555;cursor:pointer;font-size:13px;padding:0 2px;transition:color .15s" onmouseover="this.style.color='#e8b544'" onmouseout="this.style.color='#555'"><i class="ti ti-arrows-transfer-down"></i></button>
-        </div>
+        <div class="card-label"><i class="ti ti-clock" style="font-size:13px;color:#e8b544"></i> ${gcTitles['dispensaveis']||getColLabel('apagar')}</div>
         <div class="card-value yellow">${fmt(dispensavel)}</div>
         <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #2a2000">
           <span style="color:#555;font-size:10px">Líquido se comprar necessários e dispensáveis:</span><br>
@@ -3376,6 +3445,20 @@ function renderGeral(){
           <span style="color:#555;font-size:10px">Líquido:</span>
           <span style="font-size:13px;font-weight:600;color:${vendaLiquidoProjetado<0?'#ef5350':'#4caf50'};margin-left:4px">${fmt(vendaLiquidoProjetado)}</span>
         </div>
+        ${(()=>{
+          const totalV = vendaRecebido+vendaAReceber;
+          const pR = totalV>0?Math.round(vendaRecebido/totalV*100):0;
+          const pA = 100-pR;
+          return `<div style="margin-top:10px">
+            <div style="display:flex;height:10px;border-radius:5px;overflow:hidden;background:#111">
+              <div style="width:${pR}%;background:#4caf50"></div>
+              <div style="width:${pA}%;background:#333"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:10px;color:#666">
+              <span style="color:#4caf50">Recebido ${pR}%</span><span>A receber ${pA}%</span>
+            </div>
+          </div>`;
+        })()}
       </div>`;
 
   const htmlCompra = `
@@ -3401,6 +3484,22 @@ function renderGeral(){
           <div style="display:flex;justify-content:space-between;font-size:13px;padding-top:6px;margin-top:6px;border-top:1px solid #222"><span style="color:#888;font-weight:600">Total</span><span style="color:#e8b544;font-weight:700">${fmt(compraAPagar)}</span></div>
         </div>
         <div class="card-sub" style="margin-top:8px;color:#555;font-size:10px">${compraItems.length} lançamentos · financiado não entra no saldo (não é seu dinheiro)</div>
+        ${(()=>{
+          const totalC = compraPago+compraAPagar+compraFinanciado;
+          const pP = totalC>0?Math.round(compraPago/totalC*100):0;
+          const pA = totalC>0?Math.round(compraAPagar/totalC*100):0;
+          const pF = 100-pP-pA;
+          return `<div style="margin-top:10px">
+            <div style="display:flex;height:10px;border-radius:5px;overflow:hidden;background:#111">
+              <div style="width:${pP}%;background:#ef5350"></div>
+              <div style="width:${pA}%;background:#e8b544"></div>
+              <div style="width:${pF}%;background:#444"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:10px;color:#666">
+              <span style="color:#ef5350">Pago ${pP}%</span><span style="color:#e8b544">A pagar ${pA}%</span><span>Financiado ${pF}%</span>
+            </div>
+          </div>`;
+        })()}
       </div>`;
 
   const htmlReforma = `
@@ -3576,8 +3675,6 @@ function renderGanhos(){
   const total = lista.reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
   const dispTotal = lista.filter(g=>g.subcategoria==='disponivel'||!g.subcategoria).reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
   const aReceberTotal = lista.filter(g=>g.subcategoria==='areceber').reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
-  const dirTotal = lista.filter(g=>g.subcategoria==='direcionado').reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
-  const compTotal = lista.filter(g=>g.subcategoria==='comprometido').reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
 
   function blocoHtml(tipo, meta){
     const items = lista.filter(g=>(g.subcategoria===tipo)||(tipo==='disponivel'&&!g.subcategoria));
@@ -3622,75 +3719,38 @@ function renderGanhos(){
   const jaGasto = gastos.filter(g=>g.status==='pago'&&isReformaGasto(g)).reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
   const necessarios = gastos.filter(g=>g.status==='necessario'&&isReformaGasto(g)).reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
   const dispensavel = gastos.filter(g=>g.status==='apagar'&&isReformaGasto(g)).reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
-  const saldoReal = dispTotal - jaGasto - necessarios;
-  const saldoProjetado = (dispTotal - jaGasto) + aReceberTotal - necessarios;
-  const saldoTudo = saldoReal - dispensavel;
+  const naContaAgora = dispTotal - jaGasto;
+  const saldoProjetado = naContaAgora + aReceberTotal - necessarios;
 
   document.getElementById('content').innerHTML = `
-    <div style="background:#111;border:1px solid #2a2a2a;border-radius:10px;padding:1rem;margin-bottom:1.25rem">
-
-      <!-- linha de referência -->
-      <div style="display:flex;gap:1.5rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem">
-        <div>
-          <div style="font-size:10px;color:#555;margin-bottom:2px">🟢 Disponível bruto</div>
-          <div style="font-size:13px;font-weight:600;color:#4caf50">${fmt(dispTotal)}</div>
-        </div>
-        <div>
-          <div style="font-size:10px;color:#555;margin-bottom:2px">🔵 A receber</div>
-          <div style="font-size:13px;font-weight:600;color:#42a5f5">${fmt(aReceberTotal)}</div>
-        </div>
-        <div>
-          <div style="font-size:10px;color:#555;margin-bottom:2px">🟡 Direcionado</div>
-          <div style="font-size:13px;font-weight:600;color:#e8b544">${fmt(dirTotal)}</div>
-        </div>
-        <div>
-          <div style="font-size:10px;color:#333;margin-bottom:2px">⚫ Comprometido</div>
-          <div style="font-size:13px;font-weight:600;color:#333">${fmt(compTotal)}</div>
-        </div>
-        <div style="margin-left:auto;display:flex;align-items:center;gap:1.5rem">
-          <div style="text-align:right">
-            <div style="font-size:9px;color:#2a2a2a;text-transform:uppercase;letter-spacing:.06em">Total registrado</div>
-            <div style="font-size:11px;color:#2a2a2a">${fmt(total)}</div>
-          </div>
-          <button class="btn-ganho" onclick="openModalGanho()"><i class="ti ti-plus"></i> Lançar aporte</button>
-        </div>
+    <div class="cards-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:1.5rem">
+      <div class="card" style="border-left:3px solid #4caf50;background:#0d1a0d">
+        <div class="card-label"><i class="ti ti-wallet" style="font-size:13px;color:#4caf50"></i> Disponível</div>
+        <div class="card-value" style="color:#4caf50">${fmt(dispTotal)}</div>
+        <div class="card-sub" style="font-size:10px;color:#555">dinheiro que já está na conta</div>
       </div>
-
-      <!-- bloco principal -->
-      <div style="background:#0d1a0d;border:1px solid #1e3a1e;border-left:3px solid #e91e8c;border-radius:8px;padding:16px 20px">
-        <div style="display:flex;align-items:flex-start;gap:32px;flex-wrap:wrap">
-
-          <!-- na conta agora -->
-          <div>
-            <div style="font-size:10px;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">Na conta agora</div>
-            <div style="font-size:32px;font-weight:800;color:${(dispTotal-jaGasto)<0?'#ef5350':'#e91e8c'}">${fmt(dispTotal-jaGasto)}</div>
-            <div style="font-size:10px;color:#555;margin-top:4px">Disponível − Já pago</div>
-            <div style="margin-top:10px;display:flex;flex-direction:column;gap:4px">
-              <div style="font-size:11px;color:#555">Se pagar necessários: <span style="font-weight:700;color:${(dispTotal-jaGasto-necessarios)<0?'#ef5350':'#888'}">${fmt(dispTotal-jaGasto-necessarios)}</span></div>
-              <div style="font-size:11px;color:#555">Se pagar tudo: <span style="font-weight:700;color:${(dispTotal-jaGasto-necessarios-dispensavel)<0?'#ef5350':'#666'}">${fmt(dispTotal-jaGasto-necessarios-dispensavel)}</span></div>
-            </div>
-          </div>
-
-          <!-- projetado -->
-          <div style="border-left:1px solid #1e3a1e;padding-left:24px">
-            <div style="font-size:10px;color:#42a5f5;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">🔵 Projetado (+ a receber)</div>
-            <div style="font-size:24px;font-weight:700;color:${saldoProjetado<0?'#ef5350':'#42a5f5'}">${fmt(saldoProjetado)}</div>
-            <div style="font-size:10px;color:#555;margin-top:4px">Na conta + A receber − Necessários</div>
-            <div style="margin-top:10px">
-              <div style="font-size:11px;color:#555">Se pagar tudo: <span style="font-weight:700;color:${(saldoProjetado-dispensavel)<0?'#ef5350':'#444'}">${fmt(saldoProjetado-dispensavel)}</span></div>
-            </div>
-          </div>
-
-        </div>
+      <div class="card" style="border-left:3px solid #42a5f5;background:#0d1520">
+        <div class="card-label"><i class="ti ti-clock" style="font-size:13px;color:#42a5f5"></i> A receber</div>
+        <div class="card-value" style="color:#42a5f5">${fmt(aReceberTotal)}</div>
+        <div class="card-sub" style="font-size:10px;color:#555">garantido, mas ainda não caiu</div>
+      </div>
+      <div class="card" style="border-left:3px solid #e91e8c;background:#1a0d14">
+        <div class="card-label"><i class="ti ti-cash" style="font-size:13px;color:#e91e8c"></i> Na conta agora</div>
+        <div class="card-value" style="color:${naContaAgora<0?'#ef5350':'#e91e8c'}">${fmt(naContaAgora)}</div>
+        <div class="card-sub" style="font-size:10px;color:#555">disponível − já pago (reforma)</div>
+      </div>
+      <div class="card" style="border-left:3px solid #ab47bc;background:#150d1a">
+        <div class="card-label"><i class="ti ti-chart-line" style="font-size:13px;color:#ab47bc"></i> Projetado</div>
+        <div class="card-value" style="color:${saldoProjetado<0?'#ef5350':'#ab47bc'}">${fmt(saldoProjetado)}</div>
+        <div class="card-sub" style="font-size:10px;color:#555">+ a receber − necessários</div>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-      ${blocoHtml('disponivel', GANHO_TIPOS.disponivel)}
-      ${blocoHtml('areceber', GANHO_TIPOS.areceber)}
+    <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+      <button class="btn-ganho" onclick="openModalGanho()"><i class="ti ti-plus"></i> Lançar aporte</button>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      ${blocoHtml('direcionado', GANHO_TIPOS.direcionado)}
-      ${blocoHtml('comprometido', GANHO_TIPOS.comprometido)}
+      ${blocoHtml('disponivel', GANHO_TIPOS.disponivel)}
+      ${blocoHtml('areceber', GANHO_TIPOS.areceber)}
     </div>
   `;
 }
@@ -4126,7 +4186,7 @@ function tableCardHeader(label, color, icon, status, catKey){
 const SUBCAT_GROUP_PALETTE = ['#42a5f5','#e8b544','#ab47bc','#4caf50','#ef5350','#26c6da','#ff7043','#8d6e63','#7cb342','#5c6bc0','#ec407a','#26a69a'];
 function subGroupColor(idx){ return SUBCAT_GROUP_PALETTE[idx % SUBCAT_GROUP_PALETTE.length]; }
 
-function renderOneRow(g, status, catKey, rowBorder, showSubLabel){
+function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed){
   const subLabel = showSubLabel && g.subcategoria && SUBCATS[catKey||g.categoria]?.[g.subcategoria]?.label || '';
   const val = (g.valor||0)*(g.quantidade||1);
   return `<tr draggable="true" data-id="${g.id}" data-status="${status}" data-catkey="${catKey||''}"
@@ -4134,7 +4194,7 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel){
     onDragEnd="onRowDragEnd(event)"
     onDragOver="onRowInternalOver(event)"
     onDrop="onRowInternalDrop(event,${g.id},'${status}','${catKey||''}')"
-    style="cursor:default;border-bottom:1px solid ${rowBorder}">
+    style="cursor:default;border-bottom:1px solid ${rowBorder};${dimmed?'opacity:.35':''}">
     <td style="padding:6px 2px 6px 8px;width:12px"><span class="drag-handle" title="Arrastar">⠿</span></td>
     <td style="width:32px;vertical-align:middle;padding:4px">${fmtDate(g.data)}</td>
     <td style="font-size:12px;padding:4px">
@@ -4648,6 +4708,18 @@ try{
 try{
   localStorage.removeItem('all_cat_order');
 }catch(e){}
+
+function getProjectName(){ return localStorage.getItem('project_name') || 'Piratininga'; }
+function renameProjectName(){
+  const atual = getProjectName();
+  const novo = prompt('Nome do projeto (isso só muda o que aparece na tela — não muda o link do site nem o banco de dados):', atual);
+  if(!novo || !novo.trim()) return;
+  localStorage.setItem('project_name', novo.trim());
+  document.getElementById('project-name-el').textContent = novo.trim();
+  document.title = novo.trim();
+}
+document.getElementById('project-name-el').textContent = getProjectName();
+document.title = getProjectName();
 
 console.log('[piratininga] BUILD: 2026-07-08-fgts-fix', '| FGTS grupo:', IMOVEL_DEFAULT_CARDS['compra-imovel'].find(i=>i.key==='fgts')?.grupo);
 refreshStatusOptionLabels();
