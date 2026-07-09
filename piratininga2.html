@@ -776,6 +776,32 @@ function getStatusDetailList(status){
   const compra  = gastos.filter(g=>g.categoria==='compra-imovel' && g.status===status && getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento');
   return [...reforma, ...venda, ...compra];
 }
+function renderStatusDetailGrouped(list){
+  const groups = {};
+  list.forEach(g=>{ (groups[g.categoria]=groups[g.categoria]||[]).push(g); });
+  const pinnedOrder = getPinnedStageKeys();
+  const catKeysSorted = Object.keys(groups).sort((a,b)=>{
+    const ia = pinnedOrder.indexOf(a), ib = pinnedOrder.indexOf(b);
+    if(ia!==-1 && ib!==-1) return ia-ib;
+    if(ia!==-1) return -1;
+    if(ib!==-1) return 1;
+    return a.localeCompare(b);
+  });
+  return catKeysSorted.map(catKey=>{
+    const info = IMOVEL_CATS[catKey] || CATS[catKey];
+    const label = info?.label || catKey;
+    const color = info?.color || '#666';
+    const items = groups[catKey];
+    const header = `<tr><td colspan="6" style="padding:8px 10px;background:${color}1c;border-top:1px solid ${color}55;border-bottom:1px solid ${color}33">
+      <span style="display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.08em">
+        <span style="width:7px;height:7px;border-radius:50%;background:${color};display:inline-block"></span>${info?.icon?info.icon+' ':''}${label}
+      </span>
+    </td></tr>`;
+    const rows = items.map(g=>renderOneRow(g, g.status, catKey, color+'33', true)).join('');
+    return header+rows;
+  }).join('');
+}
+
 function openStatusDetailModal(status){
   const list = getStatusDetailList(status);
   const getValSd = g=>(g.valor||0)*(g.quantidade||1);
@@ -787,7 +813,7 @@ function openStatusDetailModal(status){
   totalEl.textContent = fmt(total);
   totalEl.style.color = colors[status]||'#fff';
   document.getElementById('status-detail-tbody').innerHTML = list.length
-    ? renderRowsGeral(list, '#222')
+    ? renderStatusDetailGrouped(list)
     : '<tr><td colspan="6" style="padding:1.5rem;text-align:center;color:#444;font-size:12px">Nenhum lançamento</td></tr>';
   document.getElementById('status-detail-overlay').classList.add('open');
 }
