@@ -3077,8 +3077,8 @@ function renderGeral(){
         <div class="card-label"><i class="ti ti-alert-circle" style="font-size:13px;color:#42a5f5"></i> Necessários</div>
         <div class="card-value" style="color:#42a5f5">${fmt(necessarioTudo)}</div>
         <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #1a2a3a">
-          <span style="color:#555;font-size:10px">Saldo se usar necessários (reforma + venda + compra):</span><br>
-          <span style="font-size:13px;font-weight:600;color:${(saldo-necessarioTudo)<0?'#ef5350':'#42a5f5'}">${fmt(saldo-necessarioTudo)}</span>
+          <span style="color:#555;font-size:10px">Saldo final projetado se pagar os necessários:</span><br>
+          <span style="font-size:13px;font-weight:600;color:${saldoProjetado<0?'#ef5350':'#42a5f5'}">${fmt(saldoProjetado)}</span>
         </div>
       </div>
       <div class="card" style="border-left:3px solid #e8b544;background:#1a1500;cursor:pointer" onclick="openStatusDetailModal('apagar')">
@@ -3088,8 +3088,8 @@ function renderGeral(){
         </div>
         <div class="card-value yellow">${fmt(dispensavel)}</div>
         <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #2a2000">
-          <span style="color:#555;font-size:10px">Saldo comprando necessários e dispensáveis:</span><br>
-          <span style="font-size:13px;font-weight:600;color:${(saldo-necessarioTudo-dispensavel)<0?'#ef5350':'#4caf50'}">${fmt(saldo-necessarioTudo-dispensavel)}</span>
+          <span style="color:#555;font-size:10px">Saldo final projetado se pagar necessários + dispensáveis:</span><br>
+          <span style="font-size:13px;font-weight:600;color:${(saldoProjetado-dispensavel)<0?'#ef5350':'#4caf50'}">${fmt(saldoProjetado-dispensavel)}</span>
         </div>
       </div>
       <div class="card" style="border-left:3px solid #555">
