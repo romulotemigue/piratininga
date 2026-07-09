@@ -778,7 +778,10 @@ function getStatusDetailList(status){
 }
 function renderStatusDetailGrouped(list){
   const groups = {};
-  list.forEach(g=>{ (groups[g.categoria]=groups[g.categoria]||[]).push(g); });
+  list.forEach(g=>{
+    const displayKey = CAT_MERGE_ALIASES[g.categoria] || g.categoria;
+    (groups[displayKey]=groups[displayKey]||[]).push(g);
+  });
   const pinnedOrder = getPinnedStageKeys();
   const catKeysSorted = Object.keys(groups).sort((a,b)=>{
     const ia = pinnedOrder.indexOf(a), ib = pinnedOrder.indexOf(b);
@@ -2450,6 +2453,16 @@ try{
     console.log('[piratininga] pisoKey encontrado:', pisoKey);
     if(pisoKey && !EXTRA_PINNED_STAGES.includes(pisoKey)){
       EXTRA_PINNED_STAGES.push(pisoKey);
+    }
+
+    // busca ampla: categoria "Utilidades Domésticas"
+    const utilidadesKey = Object.keys(CATS).find(k=>{
+      const nl = normLabel(CATS[k].label);
+      return nl.includes('utilidades') && (nl.includes('domestic') || nl.includes('domestica'));
+    });
+    console.log('[piratininga] utilidadesKey encontrado:', utilidadesKey);
+    if(utilidadesKey && !EXTRA_PINNED_STAGES.includes(utilidadesKey)){
+      EXTRA_PINNED_STAGES.push(utilidadesKey);
     }
 
     // recolore com a paleta de ângulo dourado, incluindo a mudança acima
