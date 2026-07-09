@@ -192,7 +192,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">build 2026-07-09-aportes-fix-v2</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 09JUL26 às 13h20</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -2923,7 +2923,7 @@ function renderImovelCat(catKey, subKey){
 
   // MAIN SUMMARY VIEW
   const recKeys = visibleItems.filter(i=>i.tipo==='recebimento'||i.tipo==='recibo'||i.tipo==='aporte').map(i=>i.key);
-  const financiadoKeys = visibleItems.filter(i=>i.financiamento).map(i=>i.key);
+  const financiadoKeys = visibleItems.filter(i=>i.financiamento && i.key!=='fgts').map(i=>i.key);
   const gastoKeys = visibleItems.filter(i=>i.tipo==='gasto' && !i.financiamento).map(i=>i.key);
   // only count items that belong to this catKey AND match the subcategoria keys
   const recLista = lista.filter(g=>recKeys.includes(g.subcategoria));
@@ -3104,6 +3104,36 @@ function openModalImovel(catKey){
 }
 
 // ── GERAL ────────────────────────────────────────────────────────
+let reformaPieChartInstance = null;
+function buildReformaPieChart(){
+  const canvas = document.getElementById('reformaPieChart');
+  if(!canvas) return;
+  const getVal = g=>(g.valor||0)*(g.quantidade||1);
+  const items = gastos.filter(g=>g.status==='necessario' && isReformaGasto(g));
+  const byCat = {};
+  items.forEach(g=>{ byCat[g.categoria] = (byCat[g.categoria]||0) + getVal(g); });
+  const catKeys = Object.keys(byCat).filter(k=>byCat[k]>0).sort((a,b)=>byCat[b]-byCat[a]);
+  const labels = catKeys.map(k=>CATS[k]?.label || k);
+  const colors = catKeys.map(k=>CATS[k]?.color || '#666');
+  const values = catKeys.map(k=>byCat[k]);
+  const hasData = values.length>0;
+
+  const legendEl = document.getElementById('reforma-pie-legend');
+  if(legendEl){
+    legendEl.innerHTML = hasData
+      ? catKeys.map((k,i)=>`<span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:${colors[i]};display:inline-block;flex-shrink:0"></span><span style="color:#aaa">${labels[i]}</span><span style="margin-left:auto;color:${colors[i]};font-weight:600">${fmt(values[i])}</span></span>`).join('')
+      : '<span style="font-size:11px;color:#444">Sem dados</span>';
+  }
+
+  if(reformaPieChartInstance){ reformaPieChartInstance.destroy(); reformaPieChartInstance = null; }
+  reformaPieChartInstance = new Chart(canvas,{
+    type:'doughnut',
+    data:{labels:hasData?labels:['Sem dados'],datasets:[{data:hasData?values:[1],backgroundColor:hasData?colors:['#2a2a2a'],borderWidth:2,borderColor:'#150d1a'}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>hasData?ctx.label+': '+fmt(ctx.raw):''}}}}
+  });
+}
+
 function renderGeral(){
   // Venda/Compra do Imóvel são transações imobiliárias, não orçamento de reforma —
   // ficam de fora dos totais/gráficos de reforma pra não distorcer os números
@@ -3154,7 +3184,9 @@ function renderGeral(){
   const compraItems = gastos.filter(g=>g.categoria==='compra-imovel');
   const compraPago       = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && g.status==='pago').reduce((s,g)=>s+getVal(g),0);
   const compraAPagar     = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && g.status!=='pago').reduce((s,g)=>s+getVal(g),0);
-  const compraFinanciado = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='financiamento').reduce((s,g)=>s+getVal(g),0);
+  // FGTS não é financiamento bancário de verdade — é desconto usado dentro da própria
+  // entrada. "Financiado" mostra só o que o banco manda direto pro vendedor (Repasse).
+  const compraFinanciado = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='financiamento' && g.subcategoria!=='fgts').reduce((s,g)=>s+getVal(g),0);
   const compraAPagarItems = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && g.status!=='pago');
 
   // Já pago / Necessários "gerais" = reforma + venda + compra somados (sem financiamento,
@@ -3201,6 +3233,7 @@ function renderGeral(){
           <span style="color:#555;font-size:10px">Líquido se comprar necessários:</span><br>
           <span style="font-size:13px;font-weight:600;color:${saldoProjetado<0?'#ef5350':'#42a5f5'}">${fmt(saldoProjetado)}</span>
         </div>
+        <div style="margin-top:6px;color:#555;font-size:10px">clique pra ver todos os lançamentos</div>
       </div>
       <div class="card" style="border-left:3px solid #e8b544;background:#1a1500;cursor:pointer" onclick="openStatusDetailModal('apagar')">
         <div class="card-label" style="display:flex;align-items:center;justify-content:space-between">
@@ -3209,9 +3242,10 @@ function renderGeral(){
         </div>
         <div class="card-value yellow">${fmt(dispensavel)}</div>
         <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #2a2000">
-          <span style="color:#555;font-size:10px">Comprando necessários e dispensáveis:</span><br>
+          <span style="color:#555;font-size:10px">Líquido se comprar necessários e dispensáveis:</span><br>
           <span style="font-size:13px;font-weight:600;color:${(saldoProjetado-dispensavel)<0?'#ef5350':'#4caf50'}">${fmt(saldoProjetado-dispensavel)}</span>
         </div>
+        <div style="margin-top:6px;color:#555;font-size:10px">clique pra ver todos os lançamentos</div>
       </div>
       <div class="card" style="border-left:3px solid #555">
         <div class="card-label"><i class="ti ti-trending-up" style="font-size:13px;color:#888"></i> Total de aportes</div>
@@ -3269,12 +3303,20 @@ function renderGeral(){
       </div>
     </div>
 
-    <div class="card" style="border-left:3px solid #42a5f5;background:#0d1520;cursor:pointer;margin-bottom:1.5rem" onclick="openStatusDetailModal('necessario','reforma')">
-      <div class="card-label"><i class="ti ti-alert-circle" style="font-size:13px;color:#42a5f5"></i> REFORMA: TOTAL GASTO</div>
-      <div class="card-value" style="color:#42a5f5">${fmt(necessario)}</div>
-      <div class="card-sub" style="margin-top:8px;padding-top:8px;border-top:1px solid #1a2a3a;color:#555;font-size:10px">clique pra ver todos os lançamentos</div>
+    <div class="card" style="border-left:3px solid #ab47bc;background:#150d1a;margin-bottom:1.5rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="openStatusDetailModal('necessario','reforma')">
+        <div class="card-label"><i class="ti ti-chart-pie" style="font-size:13px;color:#ab47bc"></i> REFORMA: TOTAL GASTO</div>
+        <div class="card-value" style="color:#ab47bc;margin:0">${fmt(necessario)}</div>
+      </div>
+      <div style="margin-top:6px;color:#555;font-size:10px;cursor:pointer" onclick="openStatusDetailModal('necessario','reforma')">clique pra ver todos os lançamentos</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px;align-items:center">
+        <div style="position:relative;height:200px"><canvas id="reformaPieChart"></canvas></div>
+        <div id="reforma-pie-legend" style="display:flex;flex-direction:column;gap:7px;font-size:12px"></div>
+      </div>
     </div>
   `;
+
+  buildReformaPieChart();
 
   function buildCharts(canvasBarId, canvasPieId, barLegendId, pieLegendId, filterStatuses){
     const items = gastos.filter(g=>filterStatuses.includes(g.status)&&isReforma(g));
