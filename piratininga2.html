@@ -28,7 +28,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sidebar-brand{padding:1rem 1.25rem;border-bottom:1px solid #2a2a2a}
 .sidebar-brand .name{font-size:13px;font-weight:600;color:#e8e7e2}
 .sidebar-brand .sub{font-size:11px;color:#555;margin-top:2px}
-.sidebar-nav{padding:.5rem 0;flex:1;overflow-y:auto}
+.sidebar-nav{padding:.5rem 0;flex:1;overflow-y:auto;min-height:0}
 .nav-item{display:flex;align-items:center;gap:10px;padding:9px 1.25rem;font-size:13px;color:#888;cursor:pointer;border-left:2px solid transparent;transition:all .15s}
 .nav-item:hover{color:#e8e7e2;background:#1e1e1e}
 .nav-item.active{color:#e8b544;border-left-color:#e8b544;background:#1e1e1e}
@@ -192,7 +192,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 09JUL26 (versão 1)</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 09JUL26 (versão 2)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -1704,6 +1704,7 @@ async function loadGastos(){
     removeAutoRestoredRevisarCategories();
     removeCompraImvelDuplicateCategory();
     ensureObraBrutaPhases();
+    restoreOrphanSubcats();
     ensureObraPhasesSubcats();
     checkPossibleDuplicates();
     renderCatNav();
@@ -1814,6 +1815,28 @@ function ensureObraPhasesSubcats(){
 
 // Cria as fases da Execução de Obra como "ambientes" (subcategorias), se ainda não existirem.
 // Só adiciona o que falta — nunca mexe no que já existe (ex.: 'Mão de Obra', 'Material Bruto').
+// Se um lançamento referencia um ambiente que não está mais registrado (mas a
+// categoria em si existe), recria o ambiente automaticamente — evita mostrar
+// como "órfão" algo que só não foi cadastrado formalmente
+function restoreOrphanSubcats(){
+  try{
+    let mudou = false;
+    gastos.forEach(g=>{
+      if(g.categoria==='ganho' || !g.subcategoria) return;
+      if(g.categoria==='obra-bruta') return; // essa é curada à parte, de propósito
+      if(IMOVEL_CATS[g.categoria]) return; // essas usam getImovelCardDefs
+      if(!CATS[g.categoria]) return; // categoria nem existe — outro problema (órfã inteira)
+      if(!SUBCATS[g.categoria]) SUBCATS[g.categoria] = {};
+      if(!SUBCATS[g.categoria][g.subcategoria]){
+        const label = g.subcategoria.split(/[-_]/).map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
+        SUBCATS[g.categoria][g.subcategoria] = {label};
+        mudou = true;
+      }
+    });
+    if(mudou) saveSubCats();
+  }catch(e){ console.warn('Erro ao restaurar ambientes órfãos:', e); }
+}
+
 function ensureObraBrutaPhases(){
   try{
     const FASES = [
@@ -2287,6 +2310,7 @@ function render(){
     if(IMOVEL_CATS[catKey]) renderImovelCat(catKey, subKey);
     else renderSubCat(currentPage);
   }
+  else if(currentPage==='obra-bruta') renderObraBrutaSteps();
   else renderCat(currentPage);
 }
 
@@ -3728,8 +3752,12 @@ function renderDiagnostico(){
     if(g.categoria==='ganho') return;
     if(!(CATS[g.categoria] || IMOVEL_CATS[g.categoria])) return;
     if(!g.subcategoria) return;
-    const validSubs = SUBCATS[g.categoria] || {};
-    if(validSubs[g.subcategoria]) return;
+    // Venda/Compra do Imóvel/Projeto de Arquitetura validam os cartões por
+    // getImovelCardDefs (padrão + personalizados), não pela SUBCATS genérica
+    const isValid = IMOVEL_CATS[g.categoria]
+      ? !!getImovelCardDefs(g.categoria).find(d=>d.key===g.subcategoria)
+      : !!(SUBCATS[g.categoria] && SUBCATS[g.categoria][g.subcategoria]);
+    if(isValid) return;
     const key = g.categoria+'|'+g.subcategoria;
     (orfaSubGroups[key] = orfaSubGroups[key] || []).push(g);
   });
@@ -4085,6 +4113,122 @@ function openModalWithSubCat(catKey, subKey){
 }
 
 // ── CATEGORIA ────────────────────────────────────────────────────
+// Layout especial de Execução de Obra: fases numeradas, cada uma com barra de
+// progresso e valores — em vez da tabela padrão de Pago/Necessário/Dispensável
+let obraFaseModalData = null;
+function renderObraBrutaSteps(){
+  const cat = 'obra-bruta';
+  const info = CATS[cat];
+  if(!info){ navigate('geral'); return; }
+  const catAliasKeys = catKeysFor(cat);
+  const lista = gastos.filter(g=>catAliasKeys.includes(g.categoria));
+  const getValO = g=>(g.valor||0)*(g.quantidade||1);
+  const total = lista.reduce((s,g)=>s+getValO(g),0);
+  const pago = lista.filter(g=>g.status==='pago').reduce((s,g)=>s+getValO(g),0);
+  const necessario = lista.filter(g=>g.status==='necessario').reduce((s,g)=>s+getValO(g),0);
+  const dispensavel = lista.filter(g=>g.status==='apagar').reduce((s,g)=>s+getValO(g),0);
+  const pctGeral = total>0?Math.round(pago/total*100):0;
+
+  // Agrupa as subcategorias por fase (campo 'grupo'), respeitando a ordem enviada
+  const subEntries = Object.keys(SUBCATS[cat]||{}).map(sk=>({sk, ...SUBCATS[cat][sk]}));
+  const fases = {};
+  subEntries.forEach(e=>{
+    const nome = e.grupo || 'Outros';
+    if(!fases[nome]) fases[nome] = {ordem: e.ordem ?? 9999, subs: []};
+    fases[nome].subs.push(e.sk);
+    if((e.ordem ?? 9999) < fases[nome].ordem) fases[nome].ordem = e.ordem;
+  });
+  const faseNomes = Object.keys(fases).sort((a,b)=>fases[a].ordem-fases[b].ordem);
+
+  const stepsHtml = faseNomes.map((faseName, idx)=>{
+    const skList = fases[faseName].subs;
+    const itemsFase = lista.filter(g=>skList.includes(g.subcategoria));
+    const totalFase = itemsFase.reduce((s,g)=>s+getValO(g),0);
+    const pagoFase = itemsFase.filter(g=>g.status==='pago').reduce((s,g)=>s+getValO(g),0);
+    const pctFase = totalFase>0 ? Math.round(pagoFase/totalFase*100) : 0;
+    const temItens = itemsFase.length>0;
+    const corFase = pctFase>=100 ? '#4caf50' : temItens ? info.color : '#333';
+    return `<div class="card" style="border-left:3px solid ${corFase};cursor:pointer;margin-bottom:10px;padding:14px 18px" onclick="openObraFaseModal(${idx})">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="width:30px;height:30px;border-radius:50%;background:${corFase}1c;border:2px solid ${corFase};color:${corFase};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0">${idx+1}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:#ddd">${faseName}</div>
+          <div style="height:6px;border-radius:3px;background:#1a1a1a;overflow:hidden;margin-top:7px">
+            <div style="height:100%;width:${pctFase}%;background:${corFase};border-radius:3px;transition:width .3s"></div>
+          </div>
+        </div>
+        <div style="text-align:right;min-width:80px;flex-shrink:0">
+          <div style="font-size:14px;font-weight:700;color:${corFase}">${pctFase}%</div>
+          <div style="font-size:10px;color:#666">${fmt(totalFase)}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('content').innerHTML = `
+    <div class="cat-total-card" style="border-left:3px solid ${info.color}">
+      <div class="cat-stat">
+        <span class="cat-stat-label">Total comprometido</span>
+        <span class="cat-stat-value" style="color:${info.color}">${fmt(total)}</span>
+      </div>
+      <div class="cat-stat">
+        <span class="cat-stat-label">Já pago</span>
+        <span class="cat-stat-value" style="color:#4caf50">${fmt(pago)}</span>
+      </div>
+      <div class="cat-stat">
+        <span class="cat-stat-label">Necessários</span>
+        <span class="cat-stat-value" style="color:#42a5f5">${fmt(necessario)}</span>
+      </div>
+      <div class="cat-stat">
+        <span class="cat-stat-label">Dispensáveis</span>
+        <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
+      </div>
+      <div style="margin-left:auto">
+        <button onclick="openModal('${cat}')"
+          style="background:transparent;border:1px solid ${info.color};color:${info.color};padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
+          onmouseover="this.style.background='${info.color}';this.style.color='#111'"
+          onmouseout="this.style.background='transparent';this.style.color='${info.color}'">
+          + lançar em ${info.label}
+        </button>
+      </div>
+    </div>
+    <div style="margin:1.25rem 0 5px">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:#666;margin-bottom:5px"><span>Progresso geral da obra</span><span style="font-weight:700;color:${pctGeral>=100?'#4caf50':info.color}">${pctGeral}%</span></div>
+      <div style="height:8px;border-radius:4px;background:#1a1a1a;overflow:hidden"><div style="height:100%;width:${Math.min(pctGeral,100)}%;background:${pctGeral>=100?'#4caf50':info.color};border-radius:4px;transition:width .3s"></div></div>
+    </div>
+    <div style="margin:1.25rem 0 8px;font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.06em">Fases da obra (${faseNomes.length})</div>
+    ${stepsHtml}
+  `;
+
+  obraFaseModalData = {lista, fases, faseNomes, info};
+}
+
+function openObraFaseModal(idx){
+  if(!obraFaseModalData) return;
+  const {lista, fases, faseNomes, info} = obraFaseModalData;
+  const faseName = faseNomes[idx];
+  const skList = fases[faseName].subs;
+  const getValO = g=>(g.valor||0)*(g.quantidade||1);
+  const items = lista.filter(g=>skList.includes(g.subcategoria));
+  const total = items.reduce((s,g)=>s+getValO(g),0);
+  document.getElementById('status-detail-title').textContent = (idx+1)+'. '+faseName;
+  const totalEl = document.getElementById('status-detail-total');
+  totalEl.textContent = fmt(total);
+  totalEl.style.color = info.color;
+  document.getElementById('status-detail-tbody').innerHTML = items.length
+    ? skList.filter(sk=>items.some(g=>g.subcategoria===sk)).map(sk=>{
+        const subItems = items.filter(g=>g.subcategoria===sk);
+        const label = SUBCATS['obra-bruta'][sk]?.label || sk;
+        const header = `<tr><td colspan="6" style="padding:7px 10px;background:${info.color}14;border-top:1px solid ${info.color}33;border-bottom:1px solid ${info.color}22">
+          <span style="font-size:10px;font-weight:700;color:${info.color};text-transform:uppercase;letter-spacing:.06em">${label}</span>
+        </td></tr>`;
+        const rows = subItems.map(g=>renderOneRow(g, g.status, 'obra-bruta', info.color+'33', false)).join('');
+        return header+rows;
+      }).join('')
+    : `<tr><td colspan="6" style="padding:2rem;text-align:center;color:#444;font-size:12px">Nenhum lançamento nessa fase ainda</td></tr>`;
+  document.getElementById('status-detail-overlay').classList.add('open');
+}
+
 function renderCat(cat){
   const info   = CATS[cat] || IMOVEL_CATS[cat];
   if(!info){ navigate('geral'); return; }
