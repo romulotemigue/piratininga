@@ -1597,6 +1597,8 @@ async function loadGastos(){
     await migrateSubcats(gastos);
     await migrateGanhoTipos(gastos);
     restoreOrphanCategoriesWithData();
+    removeCompraImvelDuplicateCategory();
+    checkPossibleDuplicates();
     renderCatNav();
     const initialPage = location.hash ? location.hash.slice(1) : 'geral';
     navigate(initialPage, true);
@@ -1605,6 +1607,56 @@ async function loadGastos(){
     console.error(e);
     document.getElementById('content').innerHTML = '<div class="loading" style="color:#ef5350">Erro ao conectar ao banco de dados.<br><small>'+e.message+'</small></div>';
   }
+}
+
+// A categoria órfã "compra-imvel" (erro de digitação antigo) tinha R$330.000 em
+// lançamentos — exatamente o mesmo total do "Valor do Imóvel" já contado certinho
+// dentro da etapa Compra do Imóvel de verdade. Provável duplicata: tira a categoria
+// das contas/menu (os lançamentos continuam intactos no Supabase, só não contam mais).
+function removeCompraImvelDuplicateCategory(){
+  if(localStorage.getItem('compra_imvel_removed_v1')) return;
+  try{
+    if(CATS['compra-imvel']){
+      delete CATS['compra-imvel'];
+      saveCats();
+      console.warn('[piratininga] Categoria órfã "compra-imvel" removida das contas (provável duplicata de R$330.000 já contados na Compra do Imóvel).');
+    }
+    localStorage.setItem('compra_imvel_removed_v1','1');
+  }catch(e){ console.warn('Erro ao remover compra-imvel:', e); }
+}
+
+// Procura lançamentos com a mesma descrição + mesmo valor aparecendo mais de uma vez
+// (sinal de possível duplicata, especialmente entre categorias diferentes — ex.: um
+// gasto lançado tanto numa categoria antiga quanto na etapa nova/correta)
+function checkPossibleDuplicates(){
+  try{
+    const groups = {};
+    gastos.forEach(g=>{
+      if(g.categoria==='ganho') return;
+      const normDesc = (g.descricao||'').toLowerCase().trim().replace(/\s+/g,' ');
+      if(!normDesc) return;
+      const key = normDesc+'|'+(g.valor||0);
+      (groups[key] = groups[key]||[]).push(g);
+    });
+    const suspeitas = Object.values(groups).filter(arr=>arr.length>1);
+    if(suspeitas.length){
+      console.warn('[piratininga][possiveis-duplicatas] '+suspeitas.length+' grupo(s) de lançamentos com a mesma descrição e valor:',
+        suspeitas.map(arr=>arr.map(g=>({id:g.id, descricao:g.descricao, valor:g.valor, categoria:g.categoria, subcategoria:g.subcategoria, status:g.status, data:g.data}))));
+      toast('⚠ Encontrei '+suspeitas.length+' possível(is) duplicata(s) — veja o console (F12)','err');
+    }
+
+    // Verificação extra: a categoria órfã "compra-imvel" tem um total muito parecido
+    // com o "Valor do Imóvel" da Compra do Imóvel de verdade? Se sim, é bem provável
+    // que seja o mesmo lançamento duplicado numa categoria antiga com erro de digitação.
+    if(CATS['compra-imvel']){
+      const orfaItems = gastos.filter(g=>g.categoria==='compra-imvel');
+      const orfaTotal = orfaItems.reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
+      console.warn('[piratininga][compra-imvel-check] Lançamentos na categoria órfã "compra-imvel":',
+        orfaItems.map(g=>({id:g.id, descricao:g.descricao, valor:g.valor, status:g.status, data:g.data})),
+        '— total:', orfaTotal, '— se esse valor bater com o "Valor do Imóvel" da Compra do Imóvel de verdade, é provável duplicata.');
+    }
+    return suspeitas;
+  }catch(e){ console.warn('Erro ao checar duplicatas:', e); return []; }
 }
 
 // Se algum lançamento aponta pra uma categoria que não existe mais (foi excluída,
