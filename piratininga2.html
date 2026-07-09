@@ -3353,9 +3353,9 @@ function renderGanhos(){
     </div>`;
   }
 
-  const jaGasto = gastos.filter(g=>g.status==='pago'&&g.categoria!=='ganho').reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
-  const necessarios = gastos.filter(g=>g.status==='necessario'&&g.categoria!=='ganho').reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
-  const dispensavel = gastos.filter(g=>g.status==='apagar'&&g.categoria!=='ganho').reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
+  const jaGasto = gastos.filter(g=>g.status==='pago'&&isReformaGasto(g)).reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
+  const necessarios = gastos.filter(g=>g.status==='necessario'&&isReformaGasto(g)).reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
+  const dispensavel = gastos.filter(g=>g.status==='apagar'&&isReformaGasto(g)).reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
   const saldoReal = dispTotal - jaGasto - necessarios;
   const saldoProjetado = (dispTotal - jaGasto) + aReceberTotal - necessarios;
   const saldoTudo = saldoReal - dispensavel;
