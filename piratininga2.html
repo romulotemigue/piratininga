@@ -192,7 +192,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 10JUL26 (versão 14)</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 10JUL26 (versão 15)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -250,6 +250,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       <span class="modal-title" id="main-modal-title">Lançar gasto</span>
       <button class="modal-close" onclick="closeModal()"><i class="ti ti-x"></i></button>
     </div>
+    <div id="f-tipo-banner" style="display:none;font-size:11px;color:#e8b544;background:#1a1500;border:1px solid #8a6d1f;border-radius:6px;padding:6px 10px;margin-bottom:12px"></div>
     <div class="modal-row">
       <div class="form-group">
         <label>Descrição</label>
@@ -705,6 +706,74 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       </div>
     </div>
     <button class="btn-confirm" id="btn-confirm-sl" onclick="addGastoSubCat()">Confirmar lançamento</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="obra-triagem-overlay" onclick="if(event.target===this) closeObraTriagemModal()">
+  <div class="modal" style="max-width:520px;width:92vw">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.25rem">
+      <h3 style="margin:0">Novo lançamento em Execução de Obra</h3>
+      <button onclick="closeObraTriagemModal()" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer;line-height:1">&times;</button>
+    </div>
+    <div style="font-size:12px;color:#888;margin-bottom:1.25rem">Isso é um pacote de empreitada (vários serviços juntos) ou um serviço avulso?</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <button onclick="chooseObraTipo('empreitada','com-material')" style="background:#1a1500;border:2px solid #e8b544;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#251f00'" onmouseout="this.style.background='#1a1500'">
+        <div style="font-size:24px;margin-bottom:8px">📦</div>
+        <div style="font-size:13px;font-weight:700;color:#e8b544">Empreitada</div>
+        <div style="font-size:11px;color:#c9a227;margin-top:2px">com material</div>
+      </button>
+      <button onclick="chooseObraTipo('empreitada','sem-material')" style="background:#1a1500;border:2px solid #8a6d1f;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#251f00'" onmouseout="this.style.background='#1a1500'">
+        <div style="font-size:24px;margin-bottom:8px">📦</div>
+        <div style="font-size:13px;font-weight:700;color:#e8b544">Empreitada</div>
+        <div style="font-size:11px;color:#8a6d1f;margin-top:2px">sem material</div>
+      </button>
+      <button onclick="chooseObraTipo('unico','com-material')" style="background:#0d1520;border:2px solid #42a5f5;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#0f1c2b'" onmouseout="this.style.background='#0d1520'">
+        <div style="font-size:24px;margin-bottom:8px">🔧</div>
+        <div style="font-size:13px;font-weight:700;color:#42a5f5">Serviço único</div>
+        <div style="font-size:11px;color:#3a7ab8;margin-top:2px">com material</div>
+      </button>
+      <button onclick="chooseObraTipo('unico','sem-material')" style="background:#0d1520;border:2px solid #2c5d85;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#0f1c2b'" onmouseout="this.style.background='#0d1520'">
+        <div style="font-size:24px;margin-bottom:8px">🔧</div>
+        <div style="font-size:13px;font-weight:700;color:#42a5f5">Serviço único</div>
+        <div style="font-size:11px;color:#2c5d85;margin-top:2px">sem material</div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="obra-empreitada-overlay" onclick="if(event.target===this) closeObraEmpreitadaModal()">
+  <div class="modal" style="max-width:1400px;width:96vw;max-height:92vh;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+      <h3 style="margin:0" id="empreitada-title">📦 Novo pacote de empreitada</h3>
+      <button onclick="closeObraEmpreitadaModal()" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer;line-height:1">&times;</button>
+    </div>
+    <div class="modal-row" style="margin-bottom:14px">
+      <div class="form-group" style="margin-bottom:0">
+        <label>Descrição / Empreiteiro</label>
+        <input type="text" id="emp-desc" placeholder="Ex: João Empreiteiro - piso e demolição">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>Valor total do pacote (R$)</label>
+        <input type="text" id="emp-valor" placeholder="0,00" oninput="maskMoney(this)" inputmode="numeric">
+      </div>
+    </div>
+    <div class="modal-row" style="margin-bottom:14px">
+      <div class="form-group" style="margin-bottom:0">
+        <label>Data</label>
+        <input type="date" id="emp-data">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>Status</label>
+        <select id="emp-status">
+          <option value="necessario">Necessário</option>
+          <option value="pago">Pago</option>
+          <option value="apagar">Dispensável</option>
+        </select>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#888;margin-bottom:8px">Marque os serviços cobertos por esse pacote e, se quiser, escreva o ambiente de cada um:</div>
+    <div id="emp-service-grid" style="overflow-y:auto;flex:1;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;align-content:start;padding-bottom:8px"></div>
+    <button class="btn-confirm" id="emp-btn-confirm" onclick="confirmEmpreitada()" style="margin-top:14px">Confirmar pacote</button>
   </div>
 </div>
 
@@ -2086,6 +2155,113 @@ function applyM2(){
   toast('Valor aplicado!');
 }
 
+// ── TRIAGEM: pacote de empreitada x serviço único ──────────────────
+let pendingTipoContratacao = null; // usado quando vai pro formulário principal (serviço único)
+
+function openObraTriagemModal(){
+  document.getElementById('obra-triagem-overlay').classList.add('open');
+}
+function closeObraTriagemModal(){
+  document.getElementById('obra-triagem-overlay').classList.remove('open');
+}
+function chooseObraTipo(tipo, material){
+  closeObraTriagemModal();
+  if(tipo==='unico'){
+    pendingTipoContratacao = material;
+    openModal('obra-bruta');
+  } else {
+    openObraEmpreitadaModal(material);
+  }
+}
+
+// Aceita tanto o formato novo (JSON com ambiente por serviço) quanto o formato
+// simples antigo (lista separada por vírgula, sem ambiente individual)
+function parsePacoteSubs(str){
+  if(!str) return [];
+  try{
+    const parsed = JSON.parse(str);
+    if(Array.isArray(parsed)) return parsed;
+  }catch(e){}
+  return str.split(',').filter(Boolean).map(sub=>({sub, ambiente:''}));
+}
+
+// ── CONSTRUTOR DE PACOTE DE EMPREITADA (grade horizontal, fases inteiras) ──
+let empreitadaMaterial = null;
+function openObraEmpreitadaModal(material){
+  empreitadaMaterial = material;
+  document.getElementById('empreitada-title').textContent = '📦 Novo pacote de empreitada — '+(material==='com-material'?'com material':'sem material');
+  document.getElementById('emp-desc').value = '';
+  document.getElementById('emp-valor').value = '';
+  document.getElementById('emp-data').value = new Date().toISOString().slice(0,10);
+  document.getElementById('emp-status').value = 'necessario';
+  renderEmpreitadaServiceGrid();
+  document.getElementById('obra-empreitada-overlay').classList.add('open');
+}
+function closeObraEmpreitadaModal(){
+  document.getElementById('obra-empreitada-overlay').classList.remove('open');
+}
+
+function renderEmpreitadaServiceGrid(){
+  const cat = 'obra-bruta';
+  const subEntries = Object.keys(SUBCATS[cat]||{}).map(sk=>({sk, ...SUBCATS[cat][sk]})).filter(e=>e.grupo && isSubAtivo(cat, e.sk));
+  const fases = {};
+  subEntries.forEach(e=>{
+    if(!fases[e.grupo]) fases[e.grupo] = {ordem: e.ordem ?? 9999, subs: []};
+    fases[e.grupo].subs.push(e);
+  });
+  const faseNomes = Object.keys(fases).sort((a,b)=>fases[a].ordem-fases[b].ordem);
+  const ambientesUsados = [...new Set(gastos.filter(g=>g.categoria==='obra-bruta' && g.ambiente).map(g=>g.ambiente))];
+
+  document.getElementById('emp-service-grid').innerHTML = faseNomes.map((faseName,fi)=>{
+    const items = fases[faseName].subs.sort((a,b)=>(a.ordem??0)-(b.ordem??0));
+    const rows = items.map(it=>`
+      <div style="display:flex;align-items:center;gap:6px;padding:3px 0">
+        <input type="checkbox" class="emp-sub-check" value="${it.sk}" onchange="document.getElementById('emp-amb-${it.sk}').disabled=!this.checked" style="width:auto;flex-shrink:0">
+        <span style="font-size:11px;color:#ccc;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${it.label}">${it.label}</span>
+        <input type="text" id="emp-amb-${it.sk}" list="emp-ambiente-list" placeholder="ambiente" disabled style="width:80px;flex-shrink:0;background:#111;border:1px solid #333;border-radius:4px;padding:3px 5px;color:#e8e7e2;font-size:10px;outline:none">
+      </div>`).join('');
+    return `<div style="background:#0e0e0e;border:1px solid #2a2a2a;border-radius:8px;padding:10px 12px">
+      <div style="font-size:11px;font-weight:700;color:#e8b544;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #2a2a2a">${fi+1}. ${faseName}</div>
+      ${rows}
+    </div>`;
+  }).join('') + `<datalist id="emp-ambiente-list">${ambientesUsados.map(a=>`<option value="${a}"></option>`).join('')}</datalist>`;
+}
+
+async function confirmEmpreitada(){
+  const desc = document.getElementById('emp-desc').value.trim();
+  const val = parseMoney(document.getElementById('emp-valor').value);
+  const data = document.getElementById('emp-data').value;
+  const status = document.getElementById('emp-status').value;
+  if(!desc){ alert('Preencha a descrição/empreiteiro.'); return; }
+  if(isNaN(val)||val<=0){ alert('Preencha um valor válido.'); return; }
+  const checks = [...document.querySelectorAll('.emp-sub-check:checked')];
+  if(!checks.length){ alert('Marque pelo menos um serviço coberto pelo pacote.'); return; }
+  const servicos = checks.map(el=>{
+    const sk = el.value;
+    const ambiente = document.getElementById('emp-amb-'+sk)?.value.trim() || '';
+    return {sub:sk, ambiente};
+  });
+  const primeiro = servicos[0];
+  const btn = document.getElementById('emp-btn-confirm');
+  btn.disabled = true; btn.textContent = 'Salvando...';
+  try{
+    await sbInsert({
+      descricao: desc, categoria:'obra-bruta', subcategoria: primeiro.sub, data, valor: val, status,
+      obs:'', orcamento:0, quantidade:1, link:'',
+      ambiente: primeiro.ambiente,
+      pacote_subs: JSON.stringify(servicos),
+      tipo_contratacao: empreitadaMaterial
+    });
+    closeObraEmpreitadaModal();
+    toast('Pacote salvo com sucesso!');
+    await loadGastos();
+  } catch(e){
+    toast('Erro ao salvar: '+e.message,'err');
+  } finally{
+    btn.disabled=false; btn.textContent='Confirmar pacote';
+  }
+}
+
 function togglePacoteSection(checked, prefix){
   document.getElementById(prefix+'-pacote-section').style.display = checked ? '' : 'none';
 }
@@ -2137,6 +2313,16 @@ function openModal(cat, subcat){
   const titleEl = document.getElementById('main-modal-title');
   if(titleEl) titleEl.textContent = title;
 
+  const bannerEl = document.getElementById('f-tipo-banner');
+  if(bannerEl){
+    if(pendingTipoContratacao){
+      bannerEl.style.display = '';
+      bannerEl.textContent = '🔧 Serviço único — ' + (pendingTipoContratacao==='com-material'?'com material':'sem material (lembre de lançar o material à parte depois)');
+    } else {
+      bannerEl.style.display = 'none';
+    }
+  }
+
   // Adjust status options for imovel cats
   const statusEl = document.getElementById('f-status');
 
@@ -2159,7 +2345,7 @@ function openModal(cat, subcat){
   document.getElementById('modal-overlay').classList.add('open');
   setTimeout(()=>document.getElementById('f-desc').focus(),100);
 }
-function closeModal(){ document.getElementById('modal-overlay').classList.remove('open'); }
+function closeModal(){ document.getElementById('modal-overlay').classList.remove('open'); pendingTipoContratacao = null; }
 document.getElementById('modal-overlay').addEventListener('click',function(e){ if(e.target===this) closeModal(); });
 
 // ── ANEXOS ───────────────────────────────────────────────────────
@@ -2253,6 +2439,7 @@ async function addGasto(){
         const checked = [...document.querySelectorAll('.f-pacote-sub-check:checked')].map(el=>el.value);
         if(checked.length) payload.pacote_subs = [subcat, ...checked].join(',');
       }
+      if(pendingTipoContratacao){ payload.tipo_contratacao = pendingTipoContratacao; }
     }
     const inserted = await sbInsert(payload);
     // upload pending files
@@ -2275,6 +2462,7 @@ async function addGasto(){
     const pacoteCheckEl = document.getElementById('f-pacote-check'); if(pacoteCheckEl) pacoteCheckEl.checked=false;
     document.querySelectorAll('.f-pacote-sub-check').forEach(el=>el.checked=false);
     const pacoteSectionEl = document.getElementById('f-pacote-section'); if(pacoteSectionEl) pacoteSectionEl.style.display='none';
+    pendingTipoContratacao = null;
     closeModal();
     toast('Gasto salvo com sucesso!');
     await loadGastos();
@@ -4248,18 +4436,20 @@ function renderObraBrutaSteps(){
     const itensListHtml = skListAtivos.map(sk=>{
       const subLabel = SUBCATS[cat][sk]?.label || sk;
       const itemGastosDireto = itemsFase.filter(g=>g.subcategoria===sk);
-      const pacoteGasto = lista.find(g=>g.subcategoria!==sk && g.pacote_subs && g.pacote_subs.split(',').includes(sk));
+      const pacoteGasto = lista.find(g=>g.subcategoria!==sk && g.pacote_subs && parsePacoteSubs(g.pacote_subs).some(p=>p.sub===sk));
       const itemTotal = itemGastosDireto.reduce((s,g)=>s+getValO(g),0);
       const itemPago = itemGastosDireto.some(g=>g.status==='pago');
       const hasVal = itemTotal>0;
+      const semMaterial = itemGastosDireto.some(g=>g.tipo_contratacao==='sem-material') || (pacoteGasto && pacoteGasto.tipo_contratacao==='sem-material');
+      const faltaMaterialTag = semMaterial ? ' <span title="Falta lançar o material" style="color:#e8b544">🧱</span>' : '';
       if(pacoteGasto){
         return `<div onclick="event.stopPropagation();openPacoteModal(${pacoteGasto.id})" style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:3px 0;cursor:pointer" title="Parte do pacote: ${pacoteGasto.descricao}">
-          <span style="font-size:10px;color:#c9a227;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📦 ${subLabel}</span>
+          <span style="font-size:10px;color:#c9a227;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📦 ${subLabel}${faltaMaterialTag}</span>
           <span style="font-size:10px;font-weight:700;color:#e8b544;flex-shrink:0">${fmt(getValO(pacoteGasto))}</span>
         </div>`;
       }
       return `<div onclick="event.stopPropagation();openModal('${cat}','${sk}')" style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:3px 0;cursor:pointer" title="Lançar em ${subLabel}">
-        <span style="font-size:10px;color:${hasVal?'#999':'#555'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${subLabel}</span>
+        <span style="font-size:10px;color:${hasVal?'#999':'#555'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${subLabel}${faltaMaterialTag}</span>
         <span style="font-size:10px;font-weight:600;color:${hasVal?(itemPago?'#4caf50':corFase):'#3a3a3a'};flex-shrink:0">${hasVal?fmt(itemTotal):'—'}</span>
       </div>`;
     }).join('');
@@ -4304,7 +4494,7 @@ function renderObraBrutaSteps(){
         <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
       </div>
       <div style="margin-left:auto">
-        <button onclick="openModal('${cat}')"
+        <button onclick="openObraTriagemModal()"
           style="background:transparent;border:1px solid ${info.color};color:${info.color};padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
           onmouseover="this.style.background='${info.color}';this.style.color='#111'"
           onmouseout="this.style.background='transparent';this.style.color='${info.color}'">
@@ -4344,18 +4534,19 @@ function setObraViewMode(mode){
 function openPacoteModal(gastoId){
   const g = gastos.find(x=>x.id===gastoId);
   if(!g) return;
-  const subs = (g.pacote_subs||'').split(',').filter(Boolean);
+  const subs = parsePacoteSubs(g.pacote_subs);
   const val = (g.valor||0)*(g.quantidade||1);
   document.getElementById('status-detail-title').textContent = '📦 '+g.descricao;
   const totalEl = document.getElementById('status-detail-total');
   totalEl.textContent = fmt(val);
   totalEl.style.color = '#e8b544';
-  const rows = subs.map(sk=>{
-    const label = SUBCATS['obra-bruta']?.[sk]?.label || sk;
-    return `<tr><td colspan="6" style="padding:7px 12px;font-size:12px;color:#ccc">📦 ${label}</td></tr>`;
+  const rows = subs.map(item=>{
+    const label = SUBCATS['obra-bruta']?.[item.sub]?.label || item.sub;
+    return `<tr><td colspan="6" style="padding:7px 12px;font-size:12px;color:#ccc">📦 ${label}${item.ambiente?` <span style="color:#666;font-size:10px">— ${item.ambiente}</span>`:''}</td></tr>`;
   }).join('');
+  const tipoTag = g.tipo_contratacao ? (g.tipo_contratacao==='com-material'?'<span style="background:#0d1520;color:#42a5f5;border-radius:4px;padding:2px 7px;font-size:10px">com material</span>':'<span style="background:#1a1500;color:#e8b544;border-radius:4px;padding:2px 7px;font-size:10px">🧱 sem material</span>') : '';
   const infoRow = `<tr><td colspan="6" style="padding:12px;border-top:1px solid #2a2a2a">
-    <div style="font-size:11px;color:#888"><b>Data:</b> ${fmtDate(g.data)} &nbsp;·&nbsp; <b>Status:</b> ${getColLabel(g.status)}</div>
+    <div style="font-size:11px;color:#888;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b>Data:</b> ${fmtDate(g.data)} &nbsp;·&nbsp; <b>Status:</b> ${getColLabel(g.status)} ${tipoTag}</div>
     ${g.obs?`<div style="font-size:11px;color:#888;margin-top:6px"><b>Observação:</b> ${g.obs}</div>`:''}
     ${g.link?`<div style="font-size:11px;margin-top:6px"><a href="${g.link}" target="_blank" style="color:#2a78d6">🔗 Ver link/contrato</a></div>`:''}
     <div style="margin-top:10px;display:flex;gap:6px">
