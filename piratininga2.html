@@ -19,7 +19,7 @@
 .auth-error{font-size:12px;color:#ef5350;margin-top:8px;display:none}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f0f0f;color:#e8e7e2;min-height:100vh}
 .app{display:flex;height:100vh;overflow:hidden}
-.sidebar{width:200px;min-width:160px;max-width:400px;background:#161616;border-right:1px solid #2a2a2a;display:flex;flex-direction:column;flex-shrink:0;position:relative}
+.sidebar{width:200px;min-width:160px;max-width:400px;height:100vh;background:#161616;border-right:1px solid #2a2a2a;display:flex;flex-direction:column;flex-shrink:0;position:relative}
 .sidebar-resizer{width:4px;background:transparent;cursor:col-resize;position:absolute;right:-2px;top:0;bottom:0;z-index:10;transition:background .15s}
 .sidebar-resizer:hover,.sidebar-resizer.dragging{background:#e8b544}
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
@@ -28,7 +28,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sidebar-brand{padding:1rem 1.25rem;border-bottom:1px solid #2a2a2a}
 .sidebar-brand .name{font-size:13px;font-weight:600;color:#e8e7e2}
 .sidebar-brand .sub{font-size:11px;color:#555;margin-top:2px}
-.sidebar-nav{padding:.5rem 0;flex:1;overflow-y:auto;min-height:0}
+.sidebar-nav{padding:.5rem 0;flex:1 1 0;overflow-y:auto;min-height:0}
 .nav-item{display:flex;align-items:center;gap:10px;padding:9px 1.25rem;font-size:13px;color:#888;cursor:pointer;border-left:2px solid transparent;transition:all .15s}
 .nav-item:hover{color:#e8e7e2;background:#1e1e1e}
 .nav-item.active{color:#e8b544;border-left-color:#e8b544;background:#1e1e1e}
@@ -192,7 +192,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 09JUL26 (versão 7)</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 09JUL26 (versão 8)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -991,7 +991,7 @@ function buildSubcatRowsHtml(k){
     return oa-ob;
   });
   const expandedSub = getExpandedSub();
-  return groupNames.map(gName=>{
+  return groupNames.map((gName,gIdx)=>{
     if(!gName) return groups[gName].map(e=>renderFlatSubcatRow(k, e.sk, subColor, false)).join('');
     const items = groups[gName].sort((a,b)=>(a.ordem??0)-(b.ordem??0));
     const groupKey = k+'__grp__'+gName;
@@ -999,7 +999,8 @@ function buildSubcatRowsHtml(k){
     const isOpen = !!expandedSub[groupKey];
     const groupRow = `
       <div style="display:flex;align-items:center;gap:5px;padding:5px 6px 5px 1rem;cursor:pointer;user-select:none" onclick="toggleSubGroup('${k}','${gName.replace(/'/g,"\\'")}',event)">
-        <span id="chev-grp-${safeId}" style="color:#555;font-size:9px;transition:transform .15s;transform:rotate(${isOpen?90:0}deg);display:inline-block">▶</span>
+        <span id="chev-grp-${safeId}" style="color:#555;font-size:9px;transition:transform .15s;transform:rotate(${isOpen?90:0}deg);display:inline-block;flex-shrink:0">▶</span>
+        <span style="font-size:9px;color:#555;flex-shrink:0;min-width:14px">${gIdx+1}.</span>
         <span style="font-size:11px;color:#888;flex:1">${gName}</span>
         <span style="font-size:9px;color:#444;background:#1a1a1a;border-radius:8px;padding:1px 6px">${items.length}</span>
       </div>`;
@@ -4129,19 +4130,34 @@ function renderObraBrutaSteps(){
     const pctFase = totalFase>0 ? Math.round(pagoFase/totalFase*100) : 0;
     const temItens = itemsFase.length>0;
     const corFase = pctFase>=100 ? '#4caf50' : temItens ? info.color : '#333';
-    return `<div data-card-key="fase-${idx}" onclick="openObraFaseModal(${idx})"
-      style="background:#0e0e0e;border:1px solid ${temItens?corFase:'#1e1e1e'};border-top:3px solid ${corFase};border-radius:8px;padding:12px 14px;cursor:pointer;min-height:104px;box-sizing:border-box;display:flex;flex-direction:column;gap:6px;transition:background .15s"
-      onmouseover="this.style.background='#161616'" onmouseout="this.style.background='#0e0e0e'">
-      <div style="display:flex;align-items:center;gap:8px">
+
+    const itensListHtml = skList.map(sk=>{
+      const subLabel = SUBCATS[cat][sk]?.label || sk;
+      const itemGastos = itemsFase.filter(g=>g.subcategoria===sk);
+      const itemTotal = itemGastos.reduce((s,g)=>s+getValO(g),0);
+      const itemPago = itemGastos.some(g=>g.status==='pago');
+      const hasVal = itemTotal>0;
+      return `<div onclick="event.stopPropagation();openModal('${cat}','${sk}')" style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:3px 0;cursor:pointer" title="Lançar em ${subLabel}">
+        <span style="font-size:10px;color:${hasVal?'#999':'#555'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${subLabel}</span>
+        <span style="font-size:10px;font-weight:600;color:${hasVal?(itemPago?'#4caf50':corFase):'#3a3a3a'};flex-shrink:0">${hasVal?fmt(itemTotal):'—'}</span>
+      </div>`;
+    }).join('');
+
+    return `<div data-card-key="fase-${idx}"
+      style="background:#0e0e0e;border:1px solid ${temItens?corFase:'#1e1e1e'};border-top:3px solid ${corFase};border-radius:8px;padding:12px 14px;box-sizing:border-box;display:flex;flex-direction:column;gap:6px">
+      <div style="display:flex;align-items:center;gap:8px;cursor:pointer" onclick="openObraFaseModal(${idx})">
         <span style="width:22px;height:22px;border-radius:50%;background:${corFase}22;border:1.5px solid ${corFase};color:${corFase};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">${idx+1}</span>
-        <span style="font-size:11px;font-weight:600;color:#ccc;line-height:1.25">${faseName}</span>
+        <span style="font-size:11px;font-weight:600;color:#ccc;line-height:1.25;flex:1">${faseName}</span>
+        <span style="font-size:13px;font-weight:800;color:${corFase}">${fmt(totalFase)}</span>
       </div>
-      <div style="font-size:16px;font-weight:800;color:${corFase};margin-top:2px">${fmt(totalFase)}</div>
-      <div style="margin-top:auto">
-        <div style="height:6px;border-radius:3px;background:#1a1a1a;overflow:hidden">
+      <div>
+        <div style="height:5px;border-radius:3px;background:#1a1a1a;overflow:hidden">
           <div style="height:100%;width:${pctFase}%;background:${corFase};border-radius:3px;transition:width .3s"></div>
         </div>
-        <div style="font-size:10px;color:#666;text-align:right;margin-top:3px">${pctFase}% pago</div>
+        <div style="font-size:9px;color:#666;text-align:right;margin-top:2px">${pctFase}% pago</div>
+      </div>
+      <div style="border-top:1px solid #1a1a1a;padding-top:5px;margin-top:2px">
+        ${itensListHtml}
       </div>
     </div>`;
   }).join('');
@@ -4178,7 +4194,8 @@ function renderObraBrutaSteps(){
       <div style="height:8px;border-radius:4px;background:#1a1a1a;overflow:hidden"><div style="height:100%;width:${Math.min(pctGeral,100)}%;background:${pctGeral>=100?'#4caf50':info.color};border-radius:4px;transition:width .3s"></div></div>
     </div>
     <div style="margin:1.25rem 0 8px;font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.06em">Fases da obra (${faseNomes.length})</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px">${stepsHtml}</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;align-items:start">${stepsHtml}</div>
+    <div style="font-size:10px;color:#555;margin-top:10px">Clique no item pra lançar um gasto nele diretamente, ou no cabeçalho da fase pra ver tudo junto.</div>
   `;
 
   obraFaseModalData = {lista, fases, faseNomes, info};
