@@ -192,7 +192,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 09JUL26 (versão 11)</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 09JUL26 (versão 12)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -1851,7 +1851,7 @@ function restoreOrphanSubcats(){
 function ensureObraBrutaPhases(){
   try{
     const FASES = [
-      {fase:'Demolição', itens:['Retirada de pisos','Retirada de revestimentos','Remoção de louças e metais','Remoção de portas e esquadrias','Demolição de paredes','Remoção de bancadas','Descarte de entulho']},
+      {fase:'Demolição', itens:['Retirada de revestimentos (piso)','Retirada de revestimentos (parede)','Remoção de louças e metais','Remoção de portas e esquadrias','Demolição de paredes','Remoção de bancadas','Descarte de entulho']},
       {fase:'Alvenaria', itens:['Construção de novas paredes','Fechamento de vãos','Abertura de nichos','Vergas e contravergas','Regularizações']},
       {fase:'Hidráulica', itens:['Água fria','Água quente','Esgoto','Gás','Drenos de ar-condicionado']},
       {fase:'Elétrica', itens:['Novos circuitos','Quadro elétrico','Tomadas','Interruptores','Iluminação','Rede','Internet','Infraestrutura para automação']},
@@ -4157,14 +4157,16 @@ function renderObraBrutaSteps(){
 
   const stepsHtml = faseNomes.map((faseName, idx)=>{
     const skList = fases[faseName].subs;
-    const itemsFase = lista.filter(g=>skList.includes(g.subcategoria));
+    const skListAtivos = skList.filter(sk=>isSubAtivo(cat, sk));
+    if(skListAtivos.length===0) return ''; // fase inteira desligada — some do lado direito
+    const itemsFase = lista.filter(g=>skListAtivos.includes(g.subcategoria));
     const totalFase = itemsFase.reduce((s,g)=>s+getValO(g),0);
     const pagoFase = itemsFase.filter(g=>g.status==='pago').reduce((s,g)=>s+getValO(g),0);
     const pctFase = totalFase>0 ? Math.round(pagoFase/totalFase*100) : 0;
     const temItens = itemsFase.length>0;
     const corFase = pctFase>=100 ? '#4caf50' : temItens ? info.color : '#333';
 
-    const itensListHtml = skList.filter(sk=>isSubAtivo(cat, sk)).map(sk=>{
+    const itensListHtml = skListAtivos.map(sk=>{
       const subLabel = SUBCATS[cat][sk]?.label || sk;
       const itemGastos = itemsFase.filter(g=>g.subcategoria===sk);
       const itemTotal = itemGastos.reduce((s,g)=>s+getValO(g),0);
@@ -4190,7 +4192,7 @@ function renderObraBrutaSteps(){
         <div style="font-size:9px;color:#666;text-align:right;margin-top:2px">${pctFase}% pago</div>
       </div>
       <div style="border-top:1px solid #1a1a1a;padding-top:5px;margin-top:2px">
-        ${itensListHtml || '<div style="font-size:10px;color:#444;font-style:italic">nenhum item ativo nessa fase</div>'}
+        ${itensListHtml}
       </div>
     </div>`;
   }).join('');
@@ -4226,7 +4228,7 @@ function renderObraBrutaSteps(){
       <div style="display:flex;justify-content:space-between;font-size:10px;color:#666;margin-bottom:5px"><span>Progresso geral da obra</span><span style="font-weight:700;color:${pctGeral>=100?'#4caf50':info.color}">${pctGeral}%</span></div>
       <div style="height:8px;border-radius:4px;background:#1a1a1a;overflow:hidden"><div style="height:100%;width:${Math.min(pctGeral,100)}%;background:${pctGeral>=100?'#4caf50':info.color};border-radius:4px;transition:width .3s"></div></div>
     </div>
-    <div style="margin:1.25rem 0 8px;font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.06em">Fases da obra (${faseNomes.length})</div>
+    <div style="margin:1.25rem 0 8px;font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.06em">Fases da obra (${faseNomes.filter(fn=>fases[fn].subs.some(sk=>isSubAtivo(cat,sk))).length} de ${faseNomes.length} ativas)</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;align-items:start">${stepsHtml}</div>
     <div style="font-size:10px;color:#555;margin-top:10px">Clique no item pra lançar um gasto nele diretamente, ou no cabeçalho da fase pra ver tudo junto.</div>
   `;
