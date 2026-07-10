@@ -192,7 +192,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 09JUL26 (versão 9)</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 09JUL26 (versão 10)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -911,7 +911,7 @@ function renderCatNav(){
         </div>
         <button class="nav-dots" onclick="toggleCatMenu('${k}',${isImovel},${isPinnedStage},event)" title="Opções"><i class="ti ti-dots-vertical"></i></button>
       </div>
-      <div id="subcat-list-${k}" style="overflow:hidden;max-height:${isOpen?'20000px':'0'};transition:max-height .25s ease">${subs}</div>
+      <div id="subcat-list-${k}" style="overflow:hidden;max-height:${isOpen?'none':'0'}">${subs}</div>
     </div>`;
   }).join('');
 
@@ -936,16 +936,43 @@ function handleNavItemClick(k, e){
   }
 }
 
+function toggleFaseAtivo(k, skList, e){
+  if(e) e.stopPropagation();
+  if(!SUBCATS[k]) return;
+  const algumAtivo = skList.some(sk=>isSubAtivo(k, sk));
+  const novoEstado = !algumAtivo;
+  skList.forEach(sk=>{ if(SUBCATS[k][sk]) SUBCATS[k][sk].ativo = novoEstado; });
+  saveSubCats();
+  renderCatNav();
+  if(currentPage===k || currentPage.split('__')[0]===k) render();
+}
+function isSubAtivo(k, sk){ return SUBCATS[k]?.[sk]?.ativo !== false; }
+function toggleSubAtivo(k, sk, e){
+  if(e) e.stopPropagation();
+  if(!SUBCATS[k] || !SUBCATS[k][sk]) return;
+  SUBCATS[k][sk].ativo = !isSubAtivo(k, sk);
+  saveSubCats();
+  renderCatNav();
+  if(currentPage===k || currentPage.split('__')[0]===k) render();
+}
+function miniToggleHtml(ativo, onclickAttr){
+  return `<button onclick="${onclickAttr}" title="${ativo?'Desativar':'Ativar'}" style="background:${ativo?'#4caf50':'#333'};border:none;cursor:pointer;padding:0;width:24px;height:13px;border-radius:7px;position:relative;flex-shrink:0;transition:background .15s">
+    <span style="position:absolute;top:1.5px;left:${ativo?'12px':'1.5px'};width:10px;height:10px;border-radius:50%;background:#fff;transition:left .15s"></span>
+  </button>`;
+}
+
 function renderFlatSubcatRow(k, sk, subColor, extraIndent){
+  const ativo = isSubAtivo(k, sk);
   return `
-    <div class="subcat-row" id="subcat-row-${k}-${sk}" draggable="true"
+    <div class="subcat-row" id="subcat-row-${k}-${sk}" draggable="true" style="${ativo?'':'opacity:.4'}"
       ondragstart="subDragStart('${k}','${sk}',event)"
       ondragover="subDragOver('${k}','${sk}',event)"
       ondragleave="subDragLeave('${k}','${sk}',event)"
       ondrop="subDragDrop('${k}','${sk}',event)"
       ondragend="subDragEnd(event)">
       <span style="color:#2a2a2a;cursor:grab;font-size:11px;padding:0 4px 0 ${extraIndent?'1.9rem':'1rem'};user-select:none" title="Arrastar">⠿</span>
-      <div class="nav-item" style="padding-left:0;font-size:11px;color:#555;flex:1;border-left:2px solid #2a2a2a;padding-left:8px;margin:2px 0;border-radius:0" onclick="navigate('${k}__${sk}')" id="nav-${k}__${sk}"
+      ${miniToggleHtml(ativo, `toggleSubAtivo('${k}','${sk}',event)`)}
+      <div class="nav-item" style="padding-left:0;font-size:11px;color:#555;flex:1;border-left:2px solid #2a2a2a;padding-left:8px;margin:2px 0 2px 6px;border-radius:0" onclick="navigate('${k}__${sk}')" id="nav-${k}__${sk}"
         onmouseover="this.style.borderColor='${subColor}';this.style.color='#999'"
         onmouseout="this.style.borderColor='#2a2a2a';this.style.color='#555'">
         ${SUBCATS[k][sk].label}
@@ -997,15 +1024,20 @@ function buildSubcatRowsHtml(k){
     const groupKey = k+'__grp__'+gName;
     const safeId = subGroupSafeId(groupKey);
     const isOpen = !!expandedSub[groupKey];
+    const faseAtiva = items.some(e=>isSubAtivo(k, e.sk));
+    const skListJson = items.map(e=>e.sk);
     const groupRow = `
-      <div style="display:flex;align-items:center;gap:5px;padding:5px 6px 5px 1rem;cursor:pointer;user-select:none" onclick="toggleSubGroup('${k}','${gName.replace(/'/g,"\\'")}',event)">
-        <span id="chev-grp-${safeId}" style="color:#555;font-size:9px;transition:transform .15s;transform:rotate(${isOpen?90:0}deg);display:inline-block;flex-shrink:0">▶</span>
-        <span style="font-size:9px;color:#555;flex-shrink:0;min-width:14px">${gIdx+1}.</span>
-        <span style="font-size:11px;color:#888;flex:1">${gName}</span>
-        <span style="font-size:9px;color:#444;background:#1a1a1a;border-radius:8px;padding:1px 6px">${items.length}</span>
+      <div style="display:flex;align-items:center;gap:5px;padding:5px 6px 5px 1rem;user-select:none;${faseAtiva?'':'opacity:.4'}">
+        <span onclick="toggleSubGroup('${k}','${gName.replace(/'/g,"\\'")}',event)" style="cursor:pointer;display:flex;align-items:center;gap:5px;flex:1;min-width:0">
+          <span id="chev-grp-${safeId}" style="color:#555;font-size:9px;transition:transform .15s;transform:rotate(${isOpen?90:0}deg);display:inline-block;flex-shrink:0">▶</span>
+          <span style="font-size:9px;color:#555;flex-shrink:0;min-width:14px">${gIdx+1}.</span>
+          <span style="font-size:11px;color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${gName}</span>
+        </span>
+        <span style="font-size:9px;color:#444;background:#1a1a1a;border-radius:8px;padding:1px 6px;flex-shrink:0">${items.length}</span>
+        ${miniToggleHtml(faseAtiva, `toggleFaseAtivo('${k}',${JSON.stringify(skListJson).replace(/"/g,'&quot;')},event)`)}
       </div>`;
     const itemRows = items.map(e=>renderFlatSubcatRow(k, e.sk, subColor, true)).join('');
-    return groupRow + `<div id="subgrp-${safeId}" style="overflow:hidden;max-height:${isOpen?'900px':'0'};transition:max-height .2s ease">${itemRows}</div>`;
+    return groupRow + `<div id="subgrp-${safeId}" style="overflow:hidden;max-height:${isOpen?'none':'0'}">${itemRows}</div>`;
   }).join('');
 }
 
@@ -1021,7 +1053,7 @@ function toggleExpand(k, e){
     // reconstrói a lista na hora, direto dos dados atuais — não depende
     // do que foi gravado na última vez que o menu inteiro foi desenhado
     list.innerHTML = buildSubcatRowsHtml(k);
-    list.style.maxHeight = '20000px';
+    list.style.maxHeight = 'none';
     if(chev) chev.style.transform='rotate(90deg)';
   } else {
     list.style.maxHeight = '0px';
@@ -4133,12 +4165,13 @@ function renderObraBrutaSteps(){
 
     const itensListHtml = skList.map(sk=>{
       const subLabel = SUBCATS[cat][sk]?.label || sk;
+      const ativo = isSubAtivo(cat, sk);
       const itemGastos = itemsFase.filter(g=>g.subcategoria===sk);
       const itemTotal = itemGastos.reduce((s,g)=>s+getValO(g),0);
       const itemPago = itemGastos.some(g=>g.status==='pago');
       const hasVal = itemTotal>0;
-      return `<div onclick="event.stopPropagation();openModal('${cat}','${sk}')" style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:3px 0;cursor:pointer" title="Lançar em ${subLabel}">
-        <span style="font-size:10px;color:${hasVal?'#999':'#555'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${subLabel}</span>
+      return `<div onclick="event.stopPropagation();openModal('${cat}','${sk}')" style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:3px 0;cursor:pointer;${ativo?'':'opacity:.4'}" title="${ativo?'Lançar em '+subLabel:'Desativado — '+subLabel}">
+        <span style="font-size:10px;color:${hasVal?'#999':'#555'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${ativo?'':'text-decoration:line-through'}">${subLabel}</span>
         <span style="font-size:10px;font-weight:600;color:${hasVal?(itemPago?'#4caf50':corFase):'#3a3a3a'};flex-shrink:0">${hasVal?fmt(itemTotal):'—'}</span>
       </div>`;
     }).join('');
