@@ -192,7 +192,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 09JUL26 (versão 10)</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 09JUL26 (versão 11)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -962,7 +962,8 @@ function miniToggleHtml(ativo, onclickAttr){
 }
 
 function renderFlatSubcatRow(k, sk, subColor, extraIndent){
-  const ativo = isSubAtivo(k, sk);
+  const isObra = k==='obra-bruta';
+  const ativo = isObra ? isSubAtivo(k, sk) : true;
   return `
     <div class="subcat-row" id="subcat-row-${k}-${sk}" draggable="true" style="${ativo?'':'opacity:.4'}"
       ondragstart="subDragStart('${k}','${sk}',event)"
@@ -971,8 +972,8 @@ function renderFlatSubcatRow(k, sk, subColor, extraIndent){
       ondrop="subDragDrop('${k}','${sk}',event)"
       ondragend="subDragEnd(event)">
       <span style="color:#2a2a2a;cursor:grab;font-size:11px;padding:0 4px 0 ${extraIndent?'1.9rem':'1rem'};user-select:none" title="Arrastar">⠿</span>
-      ${miniToggleHtml(ativo, `toggleSubAtivo('${k}','${sk}',event)`)}
-      <div class="nav-item" style="padding-left:0;font-size:11px;color:#555;flex:1;border-left:2px solid #2a2a2a;padding-left:8px;margin:2px 0 2px 6px;border-radius:0" onclick="navigate('${k}__${sk}')" id="nav-${k}__${sk}"
+      ${isObra ? miniToggleHtml(ativo, `toggleSubAtivo('${k}','${sk}',event)`) : ''}
+      <div class="nav-item" style="padding-left:0;font-size:11px;color:#555;flex:1;border-left:2px solid #2a2a2a;padding-left:8px;margin:2px 0 2px ${isObra?'6px':'0'};border-radius:0" onclick="navigate('${k}__${sk}')" id="nav-${k}__${sk}"
         onmouseover="this.style.borderColor='${subColor}';this.style.color='#999'"
         onmouseout="this.style.borderColor='#2a2a2a';this.style.color='#555'">
         ${SUBCATS[k][sk].label}
@@ -4163,15 +4164,14 @@ function renderObraBrutaSteps(){
     const temItens = itemsFase.length>0;
     const corFase = pctFase>=100 ? '#4caf50' : temItens ? info.color : '#333';
 
-    const itensListHtml = skList.map(sk=>{
+    const itensListHtml = skList.filter(sk=>isSubAtivo(cat, sk)).map(sk=>{
       const subLabel = SUBCATS[cat][sk]?.label || sk;
-      const ativo = isSubAtivo(cat, sk);
       const itemGastos = itemsFase.filter(g=>g.subcategoria===sk);
       const itemTotal = itemGastos.reduce((s,g)=>s+getValO(g),0);
       const itemPago = itemGastos.some(g=>g.status==='pago');
       const hasVal = itemTotal>0;
-      return `<div onclick="event.stopPropagation();openModal('${cat}','${sk}')" style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:3px 0;cursor:pointer;${ativo?'':'opacity:.4'}" title="${ativo?'Lançar em '+subLabel:'Desativado — '+subLabel}">
-        <span style="font-size:10px;color:${hasVal?'#999':'#555'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${ativo?'':'text-decoration:line-through'}">${subLabel}</span>
+      return `<div onclick="event.stopPropagation();openModal('${cat}','${sk}')" style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:3px 0;cursor:pointer" title="Lançar em ${subLabel}">
+        <span style="font-size:10px;color:${hasVal?'#999':'#555'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${subLabel}</span>
         <span style="font-size:10px;font-weight:600;color:${hasVal?(itemPago?'#4caf50':corFase):'#3a3a3a'};flex-shrink:0">${hasVal?fmt(itemTotal):'—'}</span>
       </div>`;
     }).join('');
@@ -4190,7 +4190,7 @@ function renderObraBrutaSteps(){
         <div style="font-size:9px;color:#666;text-align:right;margin-top:2px">${pctFase}% pago</div>
       </div>
       <div style="border-top:1px solid #1a1a1a;padding-top:5px;margin-top:2px">
-        ${itensListHtml}
+        ${itensListHtml || '<div style="font-size:10px;color:#444;font-style:italic">nenhum item ativo nessa fase</div>'}
       </div>
     </div>`;
   }).join('');
