@@ -192,7 +192,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 09JUL26 (versão 12)</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 10JUL26 (versão 13)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -256,13 +256,13 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
     </div>
     <div class="form-group">
       <label>Categoria</label>
-      <select id="f-cat" onchange="populateSubCatSelect('f-cat','f-subcat');checkM2Section(this.value)">
+      <select id="f-cat" onchange="populateSubCatSelect('f-cat','f-subcat');checkM2Section(this.value);refreshObraExtraFields('f')">
         <option value="obra">Obra / Reforma</option>
       </select>
     </div>
     <div class="form-group" id="f-subcat-group" style="display:none">
       <label>Cartão (opcional)</label>
-      <select id="f-subcat">
+      <select id="f-subcat" onchange="refreshObraExtraFields('f')">
         <option value="">— Nenhuma —</option>
       </select>
       <div style="margin-top:6px">
@@ -319,6 +319,25 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <option value="necessario">Necessário</option>
         <option value="apagar">Dispensável</option>
       </select>
+    </div>
+
+    <!-- AMBIENTE E PACOTE (só aparece pra Execução de Obra) -->
+    <div id="f-obra-extra" style="display:none">
+      <div class="form-group">
+        <label>Ambiente (opcional)</label>
+        <input type="text" id="f-ambiente" list="f-ambiente-list" placeholder="Ex: Cozinha, Banheiro, Sala...">
+        <datalist id="f-ambiente-list"></datalist>
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" id="f-pacote-check" onchange="togglePacoteSection(this.checked,'f')" style="width:auto">
+          📦 Esse valor é um pacote (cobre vários serviços de uma vez)
+        </label>
+      </div>
+      <div id="f-pacote-section" style="display:none;background:#1a1200;border:1px solid #e8b544;border-radius:8px;padding:10px 12px;margin-bottom:12px">
+        <div style="font-size:11px;color:#e8b544;margin-bottom:8px">Marque os outros serviços que esse mesmo valor também cobre:</div>
+        <div id="f-pacote-list" style="max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:4px"></div>
+      </div>
     </div>
 
     <!-- CALCULADORA M² -->
@@ -2063,6 +2082,45 @@ function applyM2(){
   toast('Valor aplicado!');
 }
 
+function togglePacoteSection(checked, prefix){
+  document.getElementById(prefix+'-pacote-section').style.display = checked ? '' : 'none';
+}
+
+function refreshObraExtraFields(prefix){
+  const catEl = document.getElementById(prefix+'-cat');
+  const subcatEl = document.getElementById(prefix+'-subcat');
+  const extraEl = document.getElementById(prefix+'-obra-extra');
+  if(!catEl || !extraEl) return;
+  const isObra = catEl.value === 'obra-bruta';
+  extraEl.style.display = isObra ? '' : 'none';
+  if(!isObra) return;
+  const listEl = document.getElementById(prefix+'-ambiente-list');
+  if(listEl){
+    const ambientesUsados = [...new Set(gastos.filter(g=>g.categoria==='obra-bruta' && g.ambiente).map(g=>g.ambiente))];
+    listEl.innerHTML = ambientesUsados.map(a=>`<option value="${a}"></option>`).join('');
+  }
+  const pacoteListEl = document.getElementById(prefix+'-pacote-list');
+  if(pacoteListEl){
+    const currentSub = subcatEl?.value;
+    const allSubs = Object.keys(SUBCATS['obra-bruta']||{}).filter(sk=>sk!==currentSub && isSubAtivo('obra-bruta',sk));
+    const grouped = {};
+    allSubs.forEach(sk=>{
+      const entry = SUBCATS['obra-bruta'][sk];
+      const g = entry.grupo || 'Outros';
+      (grouped[g]=grouped[g]||[]).push({sk,label:entry.label,ordem:entry.ordem??0});
+    });
+    const groupNames = Object.keys(grouped).sort((a,b)=>(grouped[a][0]?.ordem??0)-(grouped[b][0]?.ordem??0));
+    pacoteListEl.innerHTML = groupNames.map(gName=>{
+      const items = grouped[gName].sort((a,b)=>a.ordem-b.ordem);
+      return `<div style="font-size:9px;color:#888;text-transform:uppercase;margin-top:6px">${gName}</div>` +
+        items.map(it=>`<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#ccc;cursor:pointer">
+          <input type="checkbox" class="${prefix}-pacote-sub-check" value="${it.sk}" style="width:auto">
+          ${it.label}
+        </label>`).join('');
+    }).join('');
+  }
+}
+
 function openModal(cat, subcat){
   populateCatSelect('f-cat');
   if(cat) document.getElementById('f-cat').value = cat;
@@ -2080,6 +2138,7 @@ function openModal(cat, subcat){
     populateSubCatSelect('f-cat','f-subcat');
     if(subcat) document.getElementById('f-subcat').value = subcat;
     checkM2Section(document.getElementById('f-cat').value);
+    refreshObraExtraFields('f');
     const curCat = document.getElementById('f-cat').value;
     if(statusEl){
       if(curCat==='venda-imovel'){
@@ -2179,7 +2238,17 @@ async function addGasto(){
   try{
     const subcat = document.getElementById('f-subcat')?.value || document.getElementById('modal-overlay').dataset.subcat||'';
     const link = document.getElementById('f-link').value.trim();
-    const inserted = await sbInsert({descricao:desc,categoria:cat,data,valor:val,status:st,obs,orcamento,subcategoria:subcat,link,quantidade:1});
+    const payload = {descricao:desc,categoria:cat,data,valor:val,status:st,obs,orcamento,subcategoria:subcat,link,quantidade:1};
+    if(cat==='obra-bruta'){
+      const ambiente = document.getElementById('f-ambiente')?.value.trim() || '';
+      if(ambiente) payload.ambiente = ambiente;
+      const isPacote = document.getElementById('f-pacote-check')?.checked;
+      if(isPacote){
+        const checked = [...document.querySelectorAll('.f-pacote-sub-check:checked')].map(el=>el.value);
+        if(checked.length) payload.pacote_subs = [subcat, ...checked].join(',');
+      }
+    }
+    const inserted = await sbInsert(payload);
     // upload pending files
     let uploadedGastoId = null;
     if(pendingFiles.length > 0 && inserted?.length){
@@ -2196,6 +2265,10 @@ async function addGasto(){
     document.getElementById('f-obs').value='';
     document.getElementById('f-link').value='';
     document.getElementById('f-anexos-list').innerHTML='';
+    const ambienteEl = document.getElementById('f-ambiente'); if(ambienteEl) ambienteEl.value='';
+    const pacoteCheckEl = document.getElementById('f-pacote-check'); if(pacoteCheckEl) pacoteCheckEl.checked=false;
+    document.querySelectorAll('.f-pacote-sub-check').forEach(el=>el.checked=false);
+    const pacoteSectionEl = document.getElementById('f-pacote-section'); if(pacoteSectionEl) pacoteSectionEl.style.display='none';
     closeModal();
     toast('Gasto salvo com sucesso!');
     await loadGastos();
@@ -4168,10 +4241,17 @@ function renderObraBrutaSteps(){
 
     const itensListHtml = skListAtivos.map(sk=>{
       const subLabel = SUBCATS[cat][sk]?.label || sk;
-      const itemGastos = itemsFase.filter(g=>g.subcategoria===sk);
-      const itemTotal = itemGastos.reduce((s,g)=>s+getValO(g),0);
-      const itemPago = itemGastos.some(g=>g.status==='pago');
+      const itemGastosDireto = itemsFase.filter(g=>g.subcategoria===sk);
+      const pacoteGasto = lista.find(g=>g.subcategoria!==sk && g.pacote_subs && g.pacote_subs.split(',').includes(sk));
+      const itemTotal = itemGastosDireto.reduce((s,g)=>s+getValO(g),0);
+      const itemPago = itemGastosDireto.some(g=>g.status==='pago');
       const hasVal = itemTotal>0;
+      if(pacoteGasto){
+        return `<div onclick="event.stopPropagation();openPacoteModal(${pacoteGasto.id})" style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:3px 0;cursor:pointer" title="Parte do pacote: ${pacoteGasto.descricao}">
+          <span style="font-size:10px;color:#c9a227;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📦 ${subLabel}</span>
+          <span style="font-size:10px;font-weight:700;color:#e8b544;flex-shrink:0">${fmt(getValO(pacoteGasto))}</span>
+        </div>`;
+      }
       return `<div onclick="event.stopPropagation();openModal('${cat}','${sk}')" style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:3px 0;cursor:pointer" title="Lançar em ${subLabel}">
         <span style="font-size:10px;color:${hasVal?'#999':'#555'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${subLabel}</span>
         <span style="font-size:10px;font-weight:600;color:${hasVal?(itemPago?'#4caf50':corFase):'#3a3a3a'};flex-shrink:0">${hasVal?fmt(itemTotal):'—'}</span>
@@ -4196,6 +4276,8 @@ function renderObraBrutaSteps(){
       </div>
     </div>`;
   }).join('');
+
+  const viewMode = localStorage.getItem('obra_view_mode') || 'fase';
 
   document.getElementById('content').innerHTML = `
     <div class="cat-total-card" style="border-left:3px solid ${info.color}">
@@ -4228,12 +4310,56 @@ function renderObraBrutaSteps(){
       <div style="display:flex;justify-content:space-between;font-size:10px;color:#666;margin-bottom:5px"><span>Progresso geral da obra</span><span style="font-weight:700;color:${pctGeral>=100?'#4caf50':info.color}">${pctGeral}%</span></div>
       <div style="height:8px;border-radius:4px;background:#1a1a1a;overflow:hidden"><div style="height:100%;width:${Math.min(pctGeral,100)}%;background:${pctGeral>=100?'#4caf50':info.color};border-radius:4px;transition:width .3s"></div></div>
     </div>
-    <div style="margin:1.25rem 0 8px;font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.06em">Fases da obra (${faseNomes.filter(fn=>fases[fn].subs.some(sk=>isSubAtivo(cat,sk))).length} de ${faseNomes.length} ativas)</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;align-items:start">${stepsHtml}</div>
-    <div style="font-size:10px;color:#555;margin-top:10px">Clique no item pra lançar um gasto nele diretamente, ou no cabeçalho da fase pra ver tudo junto.</div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:1.25rem 0 8px">
+      <span style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.06em">${viewMode==='fase' ? `Fases da obra (${faseNomes.filter(fn=>fases[fn].subs.some(sk=>isSubAtivo(cat,sk))).length} de ${faseNomes.length} ativas)` : 'Por ambiente'}</span>
+      <div style="display:flex;background:#111;border:1px solid #2a2a2a;border-radius:7px;overflow:hidden">
+        <button onclick="setObraViewMode('fase')" style="background:${viewMode==='fase'?info.color:'transparent'};color:${viewMode==='fase'?'#111':'#888'};border:none;padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s">Por fase</button>
+        <button onclick="setObraViewMode('ambiente')" style="background:${viewMode==='ambiente'?info.color:'transparent'};color:${viewMode==='ambiente'?'#111':'#888'};border:none;padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s">Por ambiente</button>
+      </div>
+    </div>
+
+    ${viewMode==='fase' ? `
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;align-items:start">${stepsHtml}</div>
+      <div style="font-size:10px;color:#555;margin-top:10px">Clique no item pra lançar um gasto nele diretamente, ou no cabeçalho da fase pra ver tudo junto.</div>
+    ` : `
+      ${renderColGrid(lista, cat, 'ambiente')}
+      <div style="font-size:10px;color:#555;margin-top:10px">Agrupado pelo ambiente de cada lançamento. Arraste um item entre as colunas pra mudar o status.</div>
+    `}
   `;
 
   obraFaseModalData = {lista, fases, faseNomes, info};
+}
+function setObraViewMode(mode){
+  localStorage.setItem('obra_view_mode', mode);
+  render();
+}
+
+function openPacoteModal(gastoId){
+  const g = gastos.find(x=>x.id===gastoId);
+  if(!g) return;
+  const subs = (g.pacote_subs||'').split(',').filter(Boolean);
+  const val = (g.valor||0)*(g.quantidade||1);
+  document.getElementById('status-detail-title').textContent = '📦 '+g.descricao;
+  const totalEl = document.getElementById('status-detail-total');
+  totalEl.textContent = fmt(val);
+  totalEl.style.color = '#e8b544';
+  const rows = subs.map(sk=>{
+    const label = SUBCATS['obra-bruta']?.[sk]?.label || sk;
+    return `<tr><td colspan="6" style="padding:7px 12px;font-size:12px;color:#ccc">📦 ${label}</td></tr>`;
+  }).join('');
+  const infoRow = `<tr><td colspan="6" style="padding:12px;border-top:1px solid #2a2a2a">
+    <div style="font-size:11px;color:#888"><b>Data:</b> ${fmtDate(g.data)} &nbsp;·&nbsp; <b>Status:</b> ${getColLabel(g.status)}</div>
+    ${g.obs?`<div style="font-size:11px;color:#888;margin-top:6px"><b>Observação:</b> ${g.obs}</div>`:''}
+    ${g.link?`<div style="font-size:11px;margin-top:6px"><a href="${g.link}" target="_blank" style="color:#2a78d6">🔗 Ver link/contrato</a></div>`:''}
+    <div style="margin-top:10px;display:flex;gap:6px">
+      <button onclick="closeStatusDetailModal();openEdit(${g.id})" style="background:#333;border:none;color:#ccc;padding:5px 12px;border-radius:5px;font-size:11px;cursor:pointer"><i class="ti ti-pencil"></i> Editar pacote</button>
+    </div>
+  </td></tr>`;
+  document.getElementById('status-detail-tbody').innerHTML =
+    `<tr><td colspan="6" style="padding:8px 12px;background:#1a150055;font-size:10px;font-weight:700;color:#e8b544;text-transform:uppercase;letter-spacing:.06em">Serviços cobertos por esse pacote (${subs.length})</td></tr>`
+    + rows + infoRow;
+  document.getElementById('status-detail-overlay').classList.add('open');
 }
 
 function openObraFaseModal(idx){
@@ -4410,7 +4536,7 @@ function saveColOrder(contextKey, order){
   localStorage.setItem('col_order_'+(contextKey||'default'), JSON.stringify(order));
 }
 
-function renderColGrid(lista, catKey){
+function renderColGrid(lista, catKey, groupBy){
   const order = getColOrder(catKey||'default');
 
   const BG = {pago:'#0d1a0d', necessario:'#0d1520', apagar:'#1a1500'};
@@ -4453,7 +4579,7 @@ function renderColGrid(lista, catKey){
           <th style="padding:6px 4px;color:#555;font-weight:500;font-size:10px;border-bottom:1px solid ${border}">Qtd</th>
           <th style="padding:6px 4px;border-bottom:1px solid ${border}"></th>
         </tr></thead>
-        <tbody>${renderRowsFiltered(lista,status,catKey,border)}</tbody>
+        <tbody>${renderRowsFiltered(lista,status,catKey,border,groupBy)}</tbody>
       </table>
     </div>`;
   }).join('');
@@ -4550,7 +4676,7 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed){
   </tr>`;
 }
 
-function renderRowsFiltered(list, status, catKey, borderColor){
+function renderRowsFiltered(list, status, catKey, borderColor, groupBy){
   const filtered = list.filter(g=>g.status===status);
   const rowBorder = borderColor||'#1f1f1f';
   if(!filtered.length) return `<tr><td colspan="6" style="padding:1.5rem;text-align:center;color:#444;font-size:12px">Nenhum item</td></tr>`;
@@ -4560,6 +4686,34 @@ function renderRowsFiltered(list, status, catKey, borderColor){
   const sorted = order.length
     ? [...filtered].sort((a,b)=>{ const ai=order.indexOf(a.id); const bi=order.indexOf(b.id); return (ai===-1?9999:ai)-(bi===-1?9999:bi); })
     : filtered;
+
+  // Agrupamento por ambiente (usado só na visão "por ambiente" da Execução de Obra)
+  if(groupBy==='ambiente'){
+    const groupMap = {};
+    sorted.forEach(g=>{
+      const key = g.ambiente || '';
+      if(!groupMap[key]) groupMap[key] = { label: key || 'Sem ambiente', items: [] };
+      groupMap[key].items.push(g);
+    });
+    const groupNames = Object.keys(groupMap).sort((a,b)=>{
+      if(!a) return 1; if(!b) return -1;
+      return a.localeCompare(b);
+    });
+    if(groupNames.length > 1){
+      return groupNames.map((gk,i)=>{
+        const grp = groupMap[gk];
+        const color = gk ? subGroupColor(i) : '#555';
+        const header = `<tr class="subcat-group-header"><td colspan="6" style="padding:5px 8px;background:${color}1c;border-top:1px solid ${color}55;border-bottom:1px solid ${color}33">
+          <span style="display:inline-flex;align-items:center;gap:6px;font-size:9px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.09em">
+            <span style="width:6px;height:6px;border-radius:50%;background:${color};display:inline-block"></span>${grp.label}
+          </span>
+        </td></tr>`;
+        const rows = grp.items.map(g=>renderOneRow(g,status,catKey,rowBorder,false)).join('');
+        return header + rows;
+      }).join('');
+    }
+    return sorted.map(g=>renderOneRow(g,status,catKey,rowBorder,true)).join('');
+  }
 
   // Agrupa por subcategoria (ambiente), seguindo a mesma ordem em Pago/Necessário/Dispensável
   const subKeysOrder = catKey && SUBCATS[catKey] ? Object.keys(SUBCATS[catKey]) : [];
