@@ -192,7 +192,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 09JUL26 (versão 4)</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 09JUL26 (versão 5)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -1859,51 +1859,44 @@ function ensureObraBrutaPhases(){
       {fase:'Instalação de Eletrodomésticos e Mudança', itens:['Geladeira','Cooktop','Forno','Coifa','Lava-louças','Máquina de lavar','Ar-condicionado','Mudança','Montagem dos móveis soltos','Decoração']},
     ];
     if(!SUBCATS['obra-bruta']) SUBCATS['obra-bruta'] = {};
-    let mudou = false;
 
-    // remove a versão antiga (só as 17 fases soltas, sem os itens de dentro), se existir
+    // Apaga TUDO que essa função criou antes (marcado com auto:true) e recria do
+    // zero, sempre. Isso evita qualquer bug de comparação de texto/acumulação —
+    // é sempre a mesma foto limpa das 17 fases, todo carregamento.
     Object.keys(SUBCATS['obra-bruta']).forEach(k=>{
-      const entry = SUBCATS['obra-bruta'][k];
-      if(!entry.grupo && FASES.find(f=>f.fase.toLowerCase()===(entry.label||'').toLowerCase())){
-        delete SUBCATS['obra-bruta'][k];
-        mudou = true;
-      }
+      if(SUBCATS['obra-bruta'][k].auto) delete SUBCATS['obra-bruta'][k];
     });
 
-    const existentes = Object.values(SUBCATS['obra-bruta']).map(s=>(s.label||'').toLowerCase());
     FASES.forEach((f,fi)=>{
       f.itens.forEach((itemLabel,ii)=>{
-        if(existentes.includes(itemLabel.toLowerCase())) return;
-        let key = (f.fase+'-'+itemLabel).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
-        let i=1; const base=key;
-        while(SUBCATS['obra-bruta'][key]) key = base+'-'+(i++);
-        SUBCATS['obra-bruta'][key] = {label:itemLabel, grupo:f.fase, ordem:fi*100+ii};
-        mudou = true;
+        const slug = (f.fase+'-'+itemLabel).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+        SUBCATS['obra-bruta'][slug] = {label:itemLabel, grupo:f.fase, ordem:fi*100+ii, auto:true};
       });
     });
 
-    // Qualquer item que não pertença às 17 fases novas (ex.: "Mão de Obra", "Material
-    // Bruto", ou as antigas "Elétrica"/"Hidráulica" soltas) sai da etapa — fica
-    // disponível no Diagnóstico pra você decidir depois onde encaixar. Os lançamentos
-    // em si nunca são apagados, só deixam de aparecer aqui.
+    // Qualquer coisa que sobrou sem 'grupo' (não faz parte das 17 fases — ex.:
+    // "Mão de Obra", "Material Bruto") sai da etapa e vai pro Diagnóstico. O
+    // lançamento em si nunca é apagado, só a definição do ambiente aqui.
     Object.keys(SUBCATS['obra-bruta']).forEach(k=>{
-      if(!SUBCATS['obra-bruta'][k].grupo){
-        delete SUBCATS['obra-bruta'][k];
-        mudou = true;
-      }
+      if(!SUBCATS['obra-bruta'][k].grupo) delete SUBCATS['obra-bruta'][k];
     });
 
-    if(mudou) saveSubCats();
+    saveSubCats();
 
-    // Diagnóstico: mostra a estrutura final pra investigar bugs de agrupamento
+    // Reseta uma única vez o estado de "aberto/fechado" salvo — pode ter ficado
+    // bagunçado pelas tentativas anteriores com bug
+    if(!localStorage.getItem('obra_expand_reset_v1')){
+      localStorage.setItem('pirati_expanded_sub', '{}');
+      localStorage.setItem('obra_expand_reset_v1', '1');
+    }
+
+    // Diagnóstico: mostra a estrutura final pra confirmar que ficou certo
     const finalEntries = Object.keys(SUBCATS['obra-bruta']).map(k=>({key:k, label:SUBCATS['obra-bruta'][k].label, grupo:SUBCATS['obra-bruta'][k].grupo||'(SEM GRUPO)', ordem:SUBCATS['obra-bruta'][k].ordem}));
     const semGrupo = finalEntries.filter(e=>e.grupo==='(SEM GRUPO)');
     const gruposUnicos = [...new Set(finalEntries.map(e=>e.grupo))];
-    console.log('[piratininga][obra-bruta-debug] Total de entradas:', finalEntries.length);
+    console.log('[piratininga][obra-bruta-debug] Total de entradas:', finalEntries.length, '(esperado: 85)');
     console.log('[piratininga][obra-bruta-debug] Entradas SEM grupo (deveria ser 0):', semGrupo.length, semGrupo);
     console.log('[piratininga][obra-bruta-debug] Grupos únicos encontrados (deveria ser 17):', gruposUnicos.length, gruposUnicos);
-    console.log('[piratininga][obra-bruta-debug] Todas as entradas:', finalEntries);
-    console.log('[piratininga][obra-bruta-debug] Estado de expansão salvo (pirati_expanded_sub):', localStorage.getItem('pirati_expanded_sub'));
   }catch(e){ console.warn('Erro ao criar fases da Execução de Obra:', e); }
 }
 
