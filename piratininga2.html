@@ -155,7 +155,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
 .legend-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;align-items:center;justify-content:center}
 .modal-overlay.open{display:flex}
-.modal{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:1.5rem;width:420px;max-width:95vw}
+.modal{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:1.5rem;width:640px;max-width:95vw;max-height:90vh;overflow-y:auto}
 .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem}
 .modal-title{font-size:14px;font-weight:500}
 .modal-close{background:none;border:none;color:#555;font-size:18px;cursor:pointer;padding:4px}
@@ -192,7 +192,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 10JUL26 (versão 13)</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 10JUL26 (versão 14)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -250,15 +250,17 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       <span class="modal-title" id="main-modal-title">Lançar gasto</span>
       <button class="modal-close" onclick="closeModal()"><i class="ti ti-x"></i></button>
     </div>
-    <div class="form-group">
-      <label>Descrição</label>
-      <input type="text" id="f-desc" spellcheck="true" lang="pt-BR" placeholder="Ex: Piso porcelanato sala">
-    </div>
-    <div class="form-group">
-      <label>Categoria</label>
-      <select id="f-cat" onchange="populateSubCatSelect('f-cat','f-subcat');checkM2Section(this.value);refreshObraExtraFields('f')">
-        <option value="obra">Obra / Reforma</option>
-      </select>
+    <div class="modal-row">
+      <div class="form-group">
+        <label>Descrição</label>
+        <input type="text" id="f-desc" spellcheck="true" lang="pt-BR" placeholder="Ex: Piso porcelanato sala">
+      </div>
+      <div class="form-group">
+        <label>Categoria</label>
+        <select id="f-cat" onchange="populateSubCatSelect('f-cat','f-subcat');checkM2Section(this.value);refreshObraExtraFields('f')">
+          <option value="obra">Obra / Reforma</option>
+        </select>
+      </div>
     </div>
     <div class="form-group" id="f-subcat-group" style="display:none">
       <label>Cartão (opcional)</label>
@@ -312,22 +314,24 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <input type="date" id="f-data">
       </div>
     </div>
-    <div class="form-group">
-      <label>Status</label>
-      <select id="f-status">
-        <option value="pago">Pago</option>
-        <option value="necessario">Necessário</option>
-        <option value="apagar">Dispensável</option>
-      </select>
-    </div>
-
-    <!-- AMBIENTE E PACOTE (só aparece pra Execução de Obra) -->
-    <div id="f-obra-extra" style="display:none">
+    <div class="modal-row" id="f-status-ambiente-row">
       <div class="form-group">
+        <label>Status</label>
+        <select id="f-status">
+          <option value="pago">Pago</option>
+          <option value="necessario">Necessário</option>
+          <option value="apagar">Dispensável</option>
+        </select>
+      </div>
+      <div class="form-group" id="f-ambiente-group" style="display:none">
         <label>Ambiente (opcional)</label>
         <input type="text" id="f-ambiente" list="f-ambiente-list" placeholder="Ex: Cozinha, Banheiro, Sala...">
         <datalist id="f-ambiente-list"></datalist>
       </div>
+    </div>
+
+    <!-- PACOTE (só aparece pra Execução de Obra) -->
+    <div id="f-obra-extra" style="display:none">
       <div class="form-group">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
           <input type="checkbox" id="f-pacote-check" onchange="togglePacoteSection(this.checked,'f')" style="width:auto">
@@ -2093,6 +2097,8 @@ function refreshObraExtraFields(prefix){
   if(!catEl || !extraEl) return;
   const isObra = catEl.value === 'obra-bruta';
   extraEl.style.display = isObra ? '' : 'none';
+  const ambienteGroupEl = document.getElementById(prefix+'-ambiente-group');
+  if(ambienteGroupEl) ambienteGroupEl.style.display = isObra ? '' : 'none';
   if(!isObra) return;
   const listEl = document.getElementById(prefix+'-ambiente-list');
   if(listEl){
