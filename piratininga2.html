@@ -192,7 +192,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 09JUL26 (versão 5)</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 09JUL26 (versão 6)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -948,7 +948,7 @@ function renderFlatSubcatRow(k, sk, subColor, extraIndent){
       <div class="nav-item" style="padding-left:0;font-size:11px;color:#555;flex:1;border-left:2px solid #2a2a2a;padding-left:8px;margin:2px 0;border-radius:0" onclick="navigate('${k}__${sk}')" id="nav-${k}__${sk}"
         onmouseover="this.style.borderColor='${subColor}';this.style.color='#999'"
         onmouseout="this.style.borderColor='#2a2a2a';this.style.color='#555'">
-        ${SUBCATS[k][sk].label}
+        ${SUBCATS[k][sk].label} <span style="color:#e91e8c;font-size:9px">[${sk}]</span>
       </div>
       <button class="subcat-dots-btn" style="background:none;border:none;color:#444;cursor:pointer;padding:4px 6px;font-size:13px;transition:opacity .15s" onclick="toggleSubCatMenu('${k}','${sk}',event)"><i class="ti ti-dots-vertical"></i></button>
     </div>`;
@@ -1000,7 +1000,7 @@ function buildSubcatRowsHtml(k){
     const groupRow = `
       <div style="display:flex;align-items:center;gap:5px;padding:5px 6px 5px 1rem;cursor:pointer;user-select:none" onclick="toggleSubGroup('${k}','${gName.replace(/'/g,"\\'")}',event)">
         <span id="chev-grp-${safeId}" style="color:#555;font-size:9px;transition:transform .15s;transform:rotate(${isOpen?90:0}deg);display:inline-block">▶</span>
-        <span style="font-size:11px;color:#888;flex:1">${gName}</span>
+        <span style="font-size:11px;color:#888;flex:1">${gName} <span style="color:#e91e8c;font-size:9px">[v5]</span></span>
         <span style="font-size:9px;color:#444;background:#1a1a1a;border-radius:8px;padding:1px 6px">${items.length}</span>
       </div>`;
     const itemRows = items.map(e=>renderFlatSubcatRow(k, e.sk, subColor, true)).join('');
@@ -1883,12 +1883,8 @@ function ensureObraBrutaPhases(){
 
     saveSubCats();
 
-    // Reseta uma única vez o estado de "aberto/fechado" salvo — pode ter ficado
-    // bagunçado pelas tentativas anteriores com bug
-    if(!localStorage.getItem('obra_expand_reset_v1')){
-      localStorage.setItem('pirati_expanded_sub', '{}');
-      localStorage.setItem('obra_expand_reset_v1', '1');
-    }
+    // (temporário, só pra diagnóstico) força sempre fechado, sem depender de estado salvo
+    localStorage.setItem('pirati_expanded_sub', '{}');
 
     // Diagnóstico: mostra a estrutura final pra confirmar que ficou certo
     const finalEntries = Object.keys(SUBCATS['obra-bruta']).map(k=>({key:k, label:SUBCATS['obra-bruta'][k].label, grupo:SUBCATS['obra-bruta'][k].grupo||'(SEM GRUPO)', ordem:SUBCATS['obra-bruta'][k].ordem}));
