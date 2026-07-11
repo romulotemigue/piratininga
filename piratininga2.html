@@ -778,17 +778,18 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
   </div>
 </div>
 
-<div class="modal-overlay" id="emp-ambiente-modal-overlay" style="z-index:200" onclick="if(event.target===this) closeAmbienteModal()">
+<div class="modal-overlay" id="emp-ambiente-modal-overlay" style="z-index:200" onclick="if(event.target===this) cancelAmbienteModal()">
   <div class="modal" style="max-width:900px;width:94vw;max-height:88vh;display:flex;flex-direction:column">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
       <h3 style="margin:0;font-size:15px">Locais/ambientes — <span id="emp-ambiente-modal-title" style="color:#e8b544"></span></h3>
-      <button onclick="closeAmbienteModal()" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer">×</button>
+      <button onclick="cancelAmbienteModal()" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer">×</button>
     </div>
     <div id="emp-ambiente-modal-body" style="overflow-y:auto;flex:1"></div>
     <div style="display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid #333">
       <input type="text" id="emp-amb-new-modal" placeholder="novo local/ambiente..." style="flex:1;background:#111;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#ccc;font-size:13px" onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomAmbienteRowModal();}">
       <button type="button" onclick="addCustomAmbienteRowModal()" style="background:#2a2000;border:1px solid #8a6d1f;color:#e8b544;border-radius:6px;padding:8px 16px;font-size:13px;cursor:pointer;flex-shrink:0">+ Adicionar</button>
-      <button type="button" onclick="closeAmbienteModal()" style="background:#e8b544;border:none;color:#111;font-weight:600;border-radius:6px;padding:8px 20px;font-size:13px;cursor:pointer;flex-shrink:0">Fechar</button>
+      <button type="button" onclick="cancelAmbienteModal()" style="background:#222;border:none;color:#ccc;border-radius:6px;padding:8px 18px;font-size:13px;cursor:pointer;flex-shrink:0">Cancelar</button>
+      <button type="button" onclick="confirmAmbienteModal()" style="background:#e8b544;border:none;color:#111;font-weight:600;border-radius:6px;padding:8px 20px;font-size:13px;cursor:pointer;flex-shrink:0">Confirmar</button>
     </div>
   </div>
 </div>
@@ -2405,6 +2406,7 @@ function renderEmpreitadaServiceGrid(){
 // (a simples presença da chave = ambiente marcado).
 let ambienteData = {};
 let currentAmbienteModalRi = null;
+let ambienteModalSnapshot = null;
 
 function getAmbienteDataForRow(ri){
   if(!ambienteData[ri]) ambienteData[ri] = {};
@@ -2415,6 +2417,7 @@ function escJs(s){ return String(s).replace(/'/g,"\\'"); }
 
 function openAmbienteModal(ri, label){
   currentAmbienteModalRi = ri;
+  ambienteModalSnapshot = JSON.parse(JSON.stringify(getAmbienteDataForRow(ri)));
   document.getElementById('emp-ambiente-modal-title').textContent = label;
   renderAmbienteModalBody(ri);
   document.getElementById('emp-ambiente-modal-overlay').classList.add('open');
@@ -2422,13 +2425,28 @@ function openAmbienteModal(ri, label){
 function closeAmbienteModal(){
   document.getElementById('emp-ambiente-modal-overlay').classList.remove('open');
   currentAmbienteModalRi = null;
+  ambienteModalSnapshot = null;
+}
+// Mantém tudo o que foi marcado/preenchido nessa sessão da janela.
+function confirmAmbienteModal(){
+  if(currentAmbienteModalRi!=null) updateAmbienteBtnLabel(currentAmbienteModalRi);
+  closeAmbienteModal();
+}
+// Desfaz qualquer alteração feita desde que a janela foi aberta, voltando
+// exatamente ao que estava confirmado antes.
+function cancelAmbienteModal(){
+  if(currentAmbienteModalRi!=null){
+    ambienteData[currentAmbienteModalRi] = ambienteModalSnapshot || {};
+    updateAmbienteBtnLabel(currentAmbienteModalRi);
+  }
+  closeAmbienteModal();
 }
 
 function renderAmbienteModalBody(ri){
   const showArea = !!empreitadaRowShowArea[ri];
   const options = getAmbienteOptions();
   const data = getAmbienteDataForRow(ri);
-  document.getElementById('emp-ambiente-modal-body').innerHTML = options.map(a=>{
+  document.getElementById('emp-ambiente-modal-body').innerHTML = options.map((a,ai)=>{
     const checked = !!data[a];
     const vals = data[a] || {};
     return `<div style="display:flex;align-items:center;gap:16px;padding:12px 6px;border-bottom:1px solid #262626">
@@ -2440,16 +2458,16 @@ function renderAmbienteModalBody(ri){
       <div style="display:flex;align-items:center;gap:12px;flex:1;flex-wrap:wrap">
         <div style="display:flex;align-items:center;gap:4px;background:#111;border:1px solid #3a3a3a;border-radius:6px;padding:3px">
           <button type="button" onclick="stepAmbienteM2(${ri},'${escJs(a)}',-1)" style="background:#232323;border:none;color:#ccc;width:30px;height:30px;border-radius:5px;cursor:pointer;font-size:16px">−</button>
-          <input type="text" inputmode="numeric" value="${vals.m2||''}" placeholder="0" oninput="setAmbienteField(${ri},'${escJs(a)}','m2',this.value.replace(/[^0-9]/g,''))" style="width:50px;text-align:center;background:none;border:none;color:#e8e7e2;font-size:14px;outline:none">
+          <input type="text" inputmode="numeric" id="amb-m2-${ri}-${ai}" value="${vals.m2||''}" placeholder="0" oninput="setAmbienteField(${ri},'${escJs(a)}','m2',this.value.replace(/[^0-9]/g,''))" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('amb-val-${ri}-${ai}').focus();document.getElementById('amb-val-${ri}-${ai}').select();}" style="width:50px;text-align:center;background:none;border:none;color:#e8e7e2;font-size:14px;outline:none">
           <button type="button" onclick="stepAmbienteM2(${ri},'${escJs(a)}',1)" style="background:#232323;border:none;color:#ccc;width:30px;height:30px;border-radius:5px;cursor:pointer;font-size:16px">+</button>
           <span style="color:#777;font-size:12px;padding:0 8px 0 4px">m²</span>
         </div>
         <div style="display:flex;align-items:center;gap:6px;background:#111;border:1px solid #3a3a3a;border-radius:6px;padding:7px 10px">
           <span style="color:#777;font-size:12px;flex-shrink:0">R$</span>
-          <input type="text" value="${vals.valorM2||''}" placeholder="0,00" oninput="setAmbienteField(${ri},'${escJs(a)}','valorM2',this.value)" style="width:66px;background:none;border:none;color:#e8e7e2;font-size:14px;outline:none">
+          <input type="text" id="amb-val-${ri}-${ai}" value="${vals.valorM2||''}" placeholder="0,00" oninput="setAmbienteField(${ri},'${escJs(a)}','valorM2',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('amb-tipo-${ri}-${ai}').focus();document.getElementById('amb-tipo-${ri}-${ai}').select();}" style="width:66px;background:none;border:none;color:#e8e7e2;font-size:14px;outline:none">
           <span style="color:#777;font-size:12px;flex-shrink:0">/m²</span>
         </div>
-        <input type="text" value="${vals.tipo||''}" placeholder="tipo / material do revestimento" oninput="setAmbienteField(${ri},'${escJs(a)}','tipo',this.value)" style="flex:1;min-width:220px;background:#111;border:1px solid #3a3a3a;border-radius:6px;padding:8px 10px;color:#e8e7e2;font-size:13px">
+        <input type="text" id="amb-tipo-${ri}-${ai}" value="${vals.tipo||''}" placeholder="tipo / material do revestimento" oninput="setAmbienteField(${ri},'${escJs(a)}','tipo',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" style="flex:1;min-width:220px;background:#111;border:1px solid #3a3a3a;border-radius:6px;padding:8px 10px;color:#e8e7e2;font-size:13px">
       </div>` : `<div style="flex:1"></div>`}
     </div>`;
   }).join('');
