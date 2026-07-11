@@ -751,11 +751,21 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       <p style="font-size:13px;color:#ccc;margin:0 0 14px">Esse lançamento faz parte de um pacote de empreitada. O que você quer excluir?</p>
       <div style="display:flex;flex-direction:column;gap:8px">
         <button onclick="choosePacoteDeleteScope('item')" style="text-align:left;background:#111;border:1px solid #333;color:#e8e7e2;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:13px">
-          <b>Apenas este item</b><br><span id="pacote-delete-item-desc" style="font-size:11px;color:#888"></span>
+          <b>Apenas este serviço</b><br><span id="pacote-delete-item-desc" style="font-size:11px;color:#888"></span>
         </button>
         <button onclick="choosePacoteDeleteScope('pacote')" style="text-align:left;background:#1a0d0d;border:1px solid #5c2b2b;color:#ef9a9a;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:13px">
           <b>O pacote inteiro</b><br><span id="pacote-delete-pacote-desc" style="font-size:11px;color:#c88"></span>
         </button>
+      </div>
+    </div>
+    <div id="pacote-delete-step1b" style="display:none">
+      <p style="font-size:13px;color:#ccc;margin:0 0 6px">Remover <b id="pacote-delete-item-name" style="color:#e8b544"></b> de <u>todos</u> os ambientes onde ele aparece nesse pacote.</p>
+      <p style="font-size:12px;color:#888;margin:0 0 10px">Se o empreiteiro concedeu um desconto por causa dessa remoção, informe o valor abaixo — ele será subtraído do total do pacote.</p>
+      <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Desconto (R$) — opcional</label>
+      <input type="text" id="pacote-delete-desconto" placeholder="0,00" style="width:100%;background:#111;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#e8e7e2;font-size:13px;box-sizing:border-box">
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+        <button onclick="closePacoteDeleteModal()" style="background:#222;border:none;color:#ccc;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px">Cancelar</button>
+        <button onclick="deleteJustPacoteItem()" style="background:#e8b544;border:none;color:#111;font-weight:600;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px">Remover serviço</button>
       </div>
     </div>
     <div id="pacote-delete-step2" style="display:none">
@@ -799,7 +809,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       </div>
     </div>
     <div style="font-size:11px;color:#888;margin-bottom:8px">Marque os serviços cobertos por esse pacote e, se quiser, escreva o ambiente de cada um:</div>
-    <div id="emp-service-grid" style="overflow-y:auto;flex:1;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;align-content:start;padding-bottom:8px"></div>
+    <div id="emp-service-grid" style="overflow-y:auto;flex:1;display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:12px;align-content:start;padding-bottom:8px"></div>
     <button class="btn-confirm" id="emp-btn-confirm" onclick="confirmEmpreitada()" style="margin-top:14px">Confirmar pacote</button>
   </div>
 </div>
@@ -2389,15 +2399,22 @@ function renderEmpreitadaServiceGrid(){
 function renderAmbientePopoverOptions(ri){
   const ambienteOptions = getAmbienteOptions();
   return ambienteOptions.map((a,ai)=>`
-    <div style="padding:4px 0;border-bottom:1px solid #262626">
-      <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#ccc;cursor:pointer">
+    <div style="padding:5px 0;border-bottom:1px solid #262626">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#ccc;cursor:pointer">
         <input type="checkbox" class="emp-amb-check-row-${ri}" data-amb-idx="${ai}" value="${a}" onchange="updateAmbienteBtnLabel(${ri});document.getElementById('emp-amb-detail-${ri}-${ai}').style.display=this.checked?'flex':'none'" style="width:auto;flex-shrink:0">
         <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a}</span>
       </label>
-      <div id="emp-amb-detail-${ri}-${ai}" style="display:none;gap:4px;margin:4px 0 0 22px;flex-wrap:wrap">
-        <input type="number" step="0.01" min="0" placeholder="m²" title="Metragem (m²)" id="emp-amb-m2-${ri}-${ai}" style="width:56px;background:#111;border:1px solid #333;border-radius:4px;padding:3px 4px;color:#ccc;font-size:10px">
-        <input type="text" placeholder="R$/m²" title="Valor por m²" id="emp-amb-valm2-${ri}-${ai}" style="width:60px;background:#111;border:1px solid #333;border-radius:4px;padding:3px 4px;color:#ccc;font-size:10px">
-        <input type="text" placeholder="tipo/revest." title="Tipo ou material do revestimento" id="emp-amb-tipo-${ri}-${ai}" style="flex:1;min-width:90px;background:#111;border:1px solid #333;border-radius:4px;padding:3px 4px;color:#ccc;font-size:10px">
+      <div id="emp-amb-detail-${ri}-${ai}" style="display:none;gap:8px;margin:6px 0 2px 24px;align-items:center;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:5px;background:#111;border:1px solid #383838;border-radius:6px;padding:4px 8px">
+          <input type="number" step="1" min="0" placeholder="0" title="Metragem (m²)" id="emp-amb-m2-${ri}-${ai}" style="width:52px;background:none;border:none;color:#e8e7e2;font-size:12px;outline:none;-moz-appearance:auto">
+          <span style="color:#777;font-size:11px;flex-shrink:0">m²</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;background:#111;border:1px solid #383838;border-radius:6px;padding:4px 8px">
+          <span style="color:#777;font-size:11px;flex-shrink:0">R$</span>
+          <input type="text" placeholder="0,00" title="Valor por m²" id="emp-amb-valm2-${ri}-${ai}" style="width:60px;background:none;border:none;color:#e8e7e2;font-size:12px;outline:none">
+          <span style="color:#777;font-size:11px;flex-shrink:0">/m²</span>
+        </div>
+        <input type="text" placeholder="tipo / material do revestimento" title="Tipo ou material do revestimento" id="emp-amb-tipo-${ri}-${ai}" style="flex:1;min-width:160px;background:#111;border:1px solid #383838;border-radius:6px;padding:6px 8px;color:#e8e7e2;font-size:12px">
       </div>
     </div>`).join('');
 }
@@ -2743,10 +2760,15 @@ function openPacoteDeleteModal(gastoId, sub, ambiente){
   if(!g) return;
   pacoteDeleteState = {gastoId, sub, ambiente};
   const label = SUBCATS['obra-bruta']?.[sub]?.label || sub;
-  document.getElementById('pacote-delete-item-desc').textContent = label + (ambiente ? ' — '+ambiente : '');
+  const servicos = parsePacoteSubs(g.pacote_subs);
+  const ambientesDoServico = servicos.filter(s=>s.sub===sub).map(s=>s.ambiente).filter(Boolean);
+  document.getElementById('pacote-delete-item-desc').textContent = label + (ambientesDoServico.length ? ` — ${ambientesDoServico.join(', ')}` : '');
+  document.getElementById('pacote-delete-item-name').textContent = label;
   document.getElementById('pacote-delete-pacote-desc').textContent = `Remove o pacote "${g.descricao}" (${fmt((g.valor||0)*(g.quantidade||1))}) inteiro, de todos os ambientes e serviços.`;
   document.getElementById('pacote-delete-step1').style.display = '';
+  document.getElementById('pacote-delete-step1b').style.display = 'none';
   document.getElementById('pacote-delete-step2').style.display = 'none';
+  document.getElementById('pacote-delete-desconto').value = '';
   document.getElementById('pacote-delete-title').textContent = 'Excluir item do pacote';
   document.getElementById('pacote-delete-overlay').classList.add('open');
 }
@@ -2756,7 +2778,9 @@ function closePacoteDeleteModal(){
 }
 function choosePacoteDeleteScope(scope){
   if(scope==='item'){
-    deleteJustPacoteItem();
+    document.getElementById('pacote-delete-step1').style.display = 'none';
+    document.getElementById('pacote-delete-step1b').style.display = '';
+    setTimeout(()=>document.getElementById('pacote-delete-desconto').focus(),50);
     return;
   }
   const g = gastos.find(x=>x.id===pacoteDeleteState.gastoId);
@@ -2764,25 +2788,29 @@ function choosePacoteDeleteScope(scope){
   document.getElementById('pacote-delete-step1').style.display = 'none';
   document.getElementById('pacote-delete-step2').style.display = '';
 }
+// Remove o SERVIÇO inteiro do pacote — em TODOS os ambientes onde ele aparece de uma vez,
+// sem precisar ir sub por sub apagando cada ocorrência. Desconta o valor informado (se houver).
 async function deleteJustPacoteItem(){
-  const {gastoId, sub, ambiente} = pacoteDeleteState;
+  const {gastoId, sub} = pacoteDeleteState;
   const g = gastos.find(x=>x.id===gastoId);
   if(!g){ closePacoteDeleteModal(); return; }
+  const desconto = parseMoney(document.getElementById('pacote-delete-desconto').value) || 0;
   let servicos = parsePacoteSubs(g.pacote_subs);
-  servicos = servicos.filter(s=> !(s.sub===sub && (s.ambiente||'')===(ambiente||'')));
+  servicos = servicos.filter(s=> s.sub !== sub);
+  const novoValor = Math.max(0, (g.valor||0) - desconto);
   try{
     if(!servicos.length){
       // não sobrou nenhum serviço no pacote — remove o lançamento inteiro
       await sbDelete(gastoId);
-      toast('Item removido — era o último do pacote, então o lançamento foi excluído.');
+      toast('Serviço removido — era o último do pacote, então o lançamento foi excluído.');
     } else {
       const primeiro = servicos[0];
       const res = await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${gastoId}`,{
         method:'PATCH', headers:{...HEADERS,'Prefer':'return=representation'},
-        body:JSON.stringify({ subcategoria: primeiro.sub, ambiente: primeiro.ambiente, pacote_subs: JSON.stringify(servicos) })
+        body:JSON.stringify({ subcategoria: primeiro.sub, ambiente: primeiro.ambiente, pacote_subs: JSON.stringify(servicos), valor: novoValor })
       });
       if(!res.ok) throw new Error(await res.text());
-      toast('Item removido do pacote.');
+      toast(desconto>0 ? `Serviço removido de todos os ambientes — desconto de ${fmt(desconto)} aplicado.` : 'Serviço removido de todos os ambientes do pacote.');
     }
     await loadGastos();
   } catch(e){
