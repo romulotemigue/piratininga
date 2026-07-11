@@ -1142,7 +1142,7 @@ function buildSubcatRowsHtml(k){
         <button id="chev-grp-btn-${safeId}" onclick="toggleSubGroup('${k}','${gNameEsc}',event)" title="Expandir/recolher itens" style="background:none;border:none;cursor:pointer;padding:2px 4px;flex-shrink:0">
           <span id="chev-grp-${safeId}" style="color:#555;font-size:9px;transition:transform .15s;transform:rotate(${isOpen?90:0}deg);display:inline-block">▶</span>
         </button>
-        <span onclick="handleNavGroupClick('${k}','${gNameEsc}',event)" id="nav-${k}__grupo:${encodeURIComponent(gName)}" style="cursor:pointer;display:flex;align-items:center;gap:5px;flex:1;min-width:0">
+        <span class="nav-item" onclick="handleNavGroupClick('${k}','${gNameEsc}',event)" id="nav-${k}__grupo:${encodeURIComponent(gName)}" style="padding:0 0 0 4px;cursor:pointer;display:flex;align-items:center;gap:5px;flex:1;min-width:0">
           <span style="font-size:9px;color:#555;flex-shrink:0;min-width:14px">${gIdx+1}.</span>
           <span style="font-size:11px;color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${gName}</span>
         </span>
@@ -2270,18 +2270,31 @@ function openObraEmpreitadaModalForEdit(g){
   document.getElementById('emp-btn-confirm').textContent = 'Salvar alterações';
   renderEmpreitadaServiceGrid();
   const servicos = parsePacoteSubs(g.pacote_subs);
-  // Agrupa os ambientes marcados por sub, pra marcar os checkboxes certos
-  const ambientesPorSub = {};
-  servicos.forEach(s=>{ (ambientesPorSub[s.sub]=ambientesPorSub[s.sub]||[]).push(s.ambiente); });
-  Object.keys(ambientesPorSub).forEach(sk=>{
+  // Agrupa por sub pra marcar os checkboxes certos, com todos os detalhes de cada ambiente
+  const porSub = {};
+  servicos.forEach(s=>{ (porSub[s.sub]=porSub[s.sub]||[]).push(s); });
+  Object.keys(porSub).forEach(sk=>{
     const checkEl = document.querySelector(`.emp-sub-check[value="${sk}"]`);
     if(!checkEl) return;
     checkEl.checked = true;
     checkEl.dispatchEvent(new Event('change'));
     const ri = checkEl.dataset.row;
-    ambientesPorSub[sk].filter(Boolean).forEach(amb=>{
-      const ambCheck = document.querySelector(`.emp-amb-check-row-${ri}[value="${amb}"]`);
-      if(ambCheck){ ambCheck.checked = true; }
+    const options = getAmbienteOptions();
+    porSub[sk].filter(s=>s.ambiente).forEach(s=>{
+      const ai = options.findIndex(o=>o.toLowerCase()===s.ambiente.toLowerCase());
+      if(ai<0) return;
+      const ambCheck = document.querySelector(`.emp-amb-check-row-${ri}[data-amb-idx="${ai}"]`);
+      if(ambCheck){
+        ambCheck.checked = true;
+        const detail = document.getElementById(`emp-amb-detail-${ri}-${ai}`);
+        if(detail) detail.style.display = 'flex';
+        const m2El = document.getElementById(`emp-amb-m2-${ri}-${ai}`);
+        const valEl = document.getElementById(`emp-amb-valm2-${ri}-${ai}`);
+        const tipoEl = document.getElementById(`emp-amb-tipo-${ri}-${ai}`);
+        if(m2El && s.m2) m2El.value = s.m2;
+        if(valEl && s.valorM2) valEl.value = s.valorM2;
+        if(tipoEl && s.tipo) tipoEl.value = s.tipo;
+      }
     });
     updateAmbienteBtnLabel(ri);
   });
@@ -2293,6 +2306,7 @@ function getAmbienteOptions(){
   const usados = [...new Set(gastos.filter(g=>g.categoria==='obra-bruta' && g.ambiente).map(g=>g.ambiente))];
   const combinados = [...padrao];
   usados.forEach(u=>{ if(!combinados.some(c=>c.toLowerCase()===u.toLowerCase())) combinados.push(u); });
+  getCustomAmbientes().forEach(u=>{ if(!combinados.some(c=>c.toLowerCase()===u.toLowerCase())) combinados.push(u); });
   return combinados;
 }
 
@@ -2305,7 +2319,6 @@ function renderEmpreitadaServiceGrid(){
     fases[e.grupo].subs.push(e);
   });
   const faseNomes = Object.keys(fases).sort((a,b)=>fases[a].ordem-fases[b].ordem);
-  const ambienteOptions = getAmbienteOptions();
 
   // Cada linha recebe um índice ÚNICO (rowIdx), independente do sk/slug do serviço.
   // Isso evita qualquer colisão de id/classe caso dois serviços de fases diferentes
@@ -2326,11 +2339,12 @@ function renderEmpreitadaServiceGrid(){
           style="width:92px;flex-shrink:0;background:#111;border:1px solid #333;border-radius:4px;padding:3px 5px;color:#666;font-size:10px;text-align:left;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
           ambiente
         </button>
-        <div id="emp-amb-popover-${ri}" style="display:none;position:absolute;top:100%;right:0;z-index:30;background:#1a1a1a;border:1px solid #444;border-radius:6px;padding:8px;min-width:170px;max-height:220px;overflow-y:auto;box-shadow:0 6px 20px rgba(0,0,0,.6)">
-          ${ambienteOptions.map(a=>`<label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#ccc;padding:3px 0;cursor:pointer;white-space:nowrap">
-            <input type="checkbox" class="emp-amb-check-row-${ri}" value="${a}" onchange="updateAmbienteBtnLabel(${ri})" style="width:auto;flex-shrink:0">
-            ${a}
-          </label>`).join('')}
+        <div id="emp-amb-popover-${ri}" style="display:none;position:absolute;top:100%;right:0;z-index:30;background:#1a1a1a;border:1px solid #444;border-radius:6px;padding:8px;width:320px;max-height:280px;overflow-y:auto;box-shadow:0 6px 20px rgba(0,0,0,.6)">
+          <div id="emp-amb-options-${ri}">${renderAmbientePopoverOptions(ri)}</div>
+          <div style="display:flex;gap:4px;margin-top:6px;padding-top:6px;border-top:1px solid #333">
+            <input type="text" id="emp-amb-new-${ri}" placeholder="novo ambiente..." style="flex:1;background:#111;border:1px solid #333;border-radius:4px;padding:3px 6px;color:#ccc;font-size:10px" onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomAmbienteRow(${ri});}">
+            <button type="button" onclick="addCustomAmbienteRow(${ri})" title="Adicionar ambiente" style="background:#2a2000;border:1px solid #8a6d1f;color:#e8b544;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;flex-shrink:0">+</button>
+          </div>
         </div>
       </div>`;
     }).join('');
@@ -2339,6 +2353,47 @@ function renderEmpreitadaServiceGrid(){
       ${rows}
     </div>`;
   }).join('');
+}
+
+// Renderiza as opções de ambiente (checkbox + m² + valor/m² + tipo de revestimento)
+// dentro do popover de uma linha específica (ri).
+function renderAmbientePopoverOptions(ri){
+  const ambienteOptions = getAmbienteOptions();
+  return ambienteOptions.map((a,ai)=>`
+    <div style="padding:4px 0;border-bottom:1px solid #262626">
+      <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#ccc;cursor:pointer;white-space:nowrap">
+        <input type="checkbox" class="emp-amb-check-row-${ri}" data-amb-idx="${ai}" value="${a}" onchange="updateAmbienteBtnLabel(${ri});document.getElementById('emp-amb-detail-${ri}-${ai}').style.display=this.checked?'flex':'none'" style="width:auto;flex-shrink:0">
+        ${a}
+      </label>
+      <div id="emp-amb-detail-${ri}-${ai}" style="display:none;gap:4px;margin:4px 0 0 22px">
+        <input type="number" step="0.01" min="0" placeholder="m²" title="Metragem (m²)" id="emp-amb-m2-${ri}-${ai}" style="width:56px;background:#111;border:1px solid #333;border-radius:4px;padding:3px 4px;color:#ccc;font-size:10px">
+        <input type="text" placeholder="R$/m²" title="Valor por m²" id="emp-amb-valm2-${ri}-${ai}" style="width:60px;background:#111;border:1px solid #333;border-radius:4px;padding:3px 4px;color:#ccc;font-size:10px">
+        <input type="text" placeholder="tipo/revest." title="Tipo ou material do revestimento" id="emp-amb-tipo-${ri}-${ai}" style="flex:1;min-width:0;background:#111;border:1px solid #333;border-radius:4px;padding:3px 4px;color:#ccc;font-size:10px">
+      </div>
+    </div>`).join('');
+}
+
+// ── Ambientes customizados (persistem entre pacotes, num item específico do projeto) ──
+function getCustomAmbientes(){ try{ return JSON.parse(localStorage.getItem('pirati_custom_ambientes')||'[]'); }catch(e){ return []; } }
+function saveCustomAmbiente(nome){
+  const list = getCustomAmbientes();
+  if(!list.some(c=>c.toLowerCase()===nome.toLowerCase())) list.push(nome);
+  localStorage.setItem('pirati_custom_ambientes', JSON.stringify(list));
+}
+function addCustomAmbienteRow(ri){
+  const input = document.getElementById('emp-amb-new-'+ri);
+  const nome = (input.value||'').trim();
+  if(!nome) return;
+  saveCustomAmbiente(nome);
+  input.value = '';
+  document.getElementById('emp-amb-options-'+ri).innerHTML = renderAmbientePopoverOptions(ri);
+  // marca automaticamente o ambiente recém-criado
+  const options = getAmbienteOptions();
+  const idx = options.findIndex(o=>o.toLowerCase()===nome.toLowerCase());
+  if(idx>=0){
+    const chk = document.querySelector(`.emp-amb-check-row-${ri}[data-amb-idx="${idx}"]`);
+    if(chk){ chk.checked = true; chk.dispatchEvent(new Event('change')); }
+  }
 }
 
 let empreitadaRowMap = {};
@@ -2373,9 +2428,15 @@ async function confirmEmpreitada(){
   checks.forEach(el=>{
     const ri = el.dataset.row;
     const sk = empreitadaRowMap[ri];
-    const ambientesMarcados = [...document.querySelectorAll('.emp-amb-check-row-'+ri+':checked')].map(a=>a.value);
-    if(ambientesMarcados.length){
-      ambientesMarcados.forEach(ambiente=>servicos.push({sub:sk, ambiente}));
+    const ambCheckEls = [...document.querySelectorAll('.emp-amb-check-row-'+ri+':checked')];
+    if(ambCheckEls.length){
+      ambCheckEls.forEach(a=>{
+        const ai = a.dataset.ambIdx;
+        const m2 = document.getElementById(`emp-amb-m2-${ri}-${ai}`)?.value.trim() || '';
+        const valorM2 = document.getElementById(`emp-amb-valm2-${ri}-${ai}`)?.value.trim() || '';
+        const tipo = document.getElementById(`emp-amb-tipo-${ri}-${ai}`)?.value.trim() || '';
+        servicos.push({sub:sk, ambiente:a.value, m2, valorM2, tipo});
+      });
     } else {
       servicos.push({sub:sk, ambiente:''});
     }
@@ -4542,7 +4603,7 @@ function renderFaseGroup(catKey, gName){
         </button>
       </div>
     </div>
-    ${renderColGrid(lista, catKey+'__grupo:'+encodeURIComponent(gName), 'ambiente')}
+    ${renderColGrid(lista, catKey+'__grupo:'+encodeURIComponent(gName), 'ambiente', skList)}
   `;
 }
 
@@ -4594,7 +4655,7 @@ function renderSubCat(page){
         </button>
       </div>
     </div>
-    ${renderColGrid(lista, catKey)}
+    ${catKey==='obra-bruta' ? renderColGrid(lista, catKey, 'ambiente', [subKey]) : renderColGrid(lista, catKey)}
   `;
 }
 
@@ -4755,7 +4816,12 @@ function openPacoteModal(gastoId){
   totalEl.style.color = '#e8b544';
   const rows = subs.map(item=>{
     const label = SUBCATS['obra-bruta']?.[item.sub]?.label || item.sub;
-    return `<tr><td colspan="6" style="padding:7px 12px;font-size:12px;color:#ccc">📦 ${label}${item.ambiente?` <span style="color:#666;font-size:10px">— ${item.ambiente}</span>`:''}</td></tr>`;
+    const detailParts = [];
+    if(item.m2) detailParts.push(`${item.m2} m²`);
+    if(item.valorM2) detailParts.push(`R$ ${item.valorM2}/m²`);
+    if(item.tipo) detailParts.push(item.tipo);
+    const detailStr = detailParts.length ? ` <span style="color:#777;font-size:10px">(${detailParts.join(' · ')})</span>` : '';
+    return `<tr><td colspan="6" style="padding:7px 12px;font-size:12px;color:#ccc">📦 ${label}${item.ambiente?` <span style="color:#666;font-size:10px">— ${item.ambiente}</span>`:''}${detailStr}</td></tr>`;
   }).join('');
   const tipoTag = g.tipo_contratacao ? (g.tipo_contratacao==='com-material'?'<span style="background:#0d1a10;color:#4caf50;border-radius:4px;padding:2px 7px;font-size:10px">🧱 com material</span>':'<span style="background:#1a1500;color:#e8b544;border-radius:4px;padding:2px 7px;font-size:10px">⚠ sem material</span>') : '';
   const infoRow = `<tr><td colspan="6" style="padding:12px;border-top:1px solid #2a2a2a">
@@ -4946,7 +5012,7 @@ function saveColOrder(contextKey, order){
   localStorage.setItem('col_order_'+(contextKey||'default'), JSON.stringify(order));
 }
 
-function renderColGrid(lista, catKey, groupBy){
+function renderColGrid(lista, catKey, groupBy, relevantSubs){
   const order = getColOrder(catKey||'default');
 
   const BG = {pago:'#0d1a0d', necessario:'#0d1520', apagar:'#1a1500'};
@@ -4989,7 +5055,7 @@ function renderColGrid(lista, catKey, groupBy){
           <th style="padding:6px 4px;color:#555;font-weight:500;font-size:10px;border-bottom:1px solid ${border}">Qtd</th>
           <th style="padding:6px 4px;border-bottom:1px solid ${border}"></th>
         </tr></thead>
-        <tbody>${renderRowsFiltered(lista,status,catKey,border,groupBy)}</tbody>
+        <tbody>${renderRowsFiltered(lista,status,catKey,border,groupBy,relevantSubs)}</tbody>
       </table>
     </div>`;
   }).join('');
@@ -5060,11 +5126,20 @@ function tableCardHeader(label, color, icon, status, catKey){
 const SUBCAT_GROUP_PALETTE = ['#42a5f5','#e8b544','#ab47bc','#4caf50','#ef5350','#26c6da','#ff7043','#8d6e63','#7cb342','#5c6bc0','#ec407a','#26a69a'];
 function subGroupColor(idx){ return SUBCAT_GROUP_PALETTE[idx % SUBCAT_GROUP_PALETTE.length]; }
 
-function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed){
-  const subLabel = showSubLabel && g.subcategoria && SUBCATS[catKey||g.categoria]?.[g.subcategoria]?.label || '';
+function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKeyOverride){
+  const effSub = subKeyOverride || g.subcategoria;
+  const baseCat = catKey && catKey.includes('__') ? catKey.split('__')[0] : (catKey||g.categoria);
+  const subLabelText = effSub && SUBCATS[baseCat]?.[effSub]?.label || '';
+  const canNavSub = !!(effSub && SUBCATS[baseCat]?.[effSub]);
+  const subLabel = (showSubLabel || subKeyOverride) ? subLabelText : '';
   const val = (g.valor||0)*(g.quantidade||1);
   const isPacote = !!g.pacote_subs;
   const pacoteBadge = isPacote ? `<span onclick="event.stopPropagation();openPacoteModal(${g.id})" title="Ver todos os serviços deste pacote" style="cursor:pointer;color:#e8b544;font-size:10px;font-weight:700;margin-left:6px;background:#1a1500;border:1px solid #8a6d1f;border-radius:4px;padding:1px 5px">📦 pacote</span>` : '';
+  const subLabelHtml = subLabel
+    ? (canNavSub
+        ? `<div onclick="event.stopPropagation();navigate('${baseCat}__${effSub}')" title="Ver essa sub-etapa" style="font-size:10px;color:#7aa7d9;margin-top:2px;cursor:pointer;text-decoration:underline;text-decoration-color:transparent;transition:text-decoration-color .15s" onmouseover="this.style.textDecorationColor='#7aa7d9'" onmouseout="this.style.textDecorationColor='transparent'">${subLabelText}</div>`
+        : `<div style="font-size:10px;color:#555;margin-top:2px">${subLabelText}</div>`)
+    : '';
   return `<tr draggable="true" data-id="${g.id}" data-status="${status}" data-catkey="${catKey||''}"
     onDragStart="onRowDragStart(event,${g.id})"
     onDragEnd="onRowDragEnd(event)"
@@ -5075,7 +5150,7 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed){
     <td style="width:32px;vertical-align:middle;padding:4px">${fmtDate(g.data)}</td>
     <td style="font-size:12px;padding:4px">
       <div>${g.descricao||''}${pacoteBadge}</div>
-      ${subLabel?`<div style="font-size:10px;color:#555;margin-top:2px">${subLabel}</div>`:''}
+      ${subLabelHtml}
     </td>
     <td style="text-align:right;font-weight:500;font-size:11px;white-space:nowrap;padding:4px">${fmtShort(val)}</td>
     <td style="padding:4px 2px"><div class="qty-wrap"><button class="qty-btn" onclick="changeQty(${g.id},-1)">−</button><input class="qty-input" type="number" min="1" value="${g.quantidade||1}" onchange="setQty(${g.id},this)" onclick="event.stopPropagation()"><button class="qty-btn" onclick="changeQty(${g.id},1)">+</button></div></td>
@@ -5088,7 +5163,7 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed){
   </tr>`;
 }
 
-function renderRowsFiltered(list, status, catKey, borderColor, groupBy){
+function renderRowsFiltered(list, status, catKey, borderColor, groupBy, relevantSubs){
   const filtered = list.filter(g=>g.status===status);
   const rowBorder = borderColor||'#1f1f1f';
   if(!filtered.length) return `<tr><td colspan="6" style="padding:1.5rem;text-align:center;color:#444;font-size:12px">Nenhum item</td></tr>`;
@@ -5099,19 +5174,25 @@ function renderRowsFiltered(list, status, catKey, borderColor, groupBy){
     ? [...filtered].sort((a,b)=>{ const ai=order.indexOf(a.id); const bi=order.indexOf(b.id); return (ai===-1?9999:ai)-(bi===-1?9999:bi); })
     : filtered;
 
-  // Agrupamento por ambiente (usado só na visão "por ambiente" da Execução de Obra)
+  // Agrupamento por ambiente (usado na visão "por ambiente" da Execução de Obra,
+  // na visão de uma fase inteira, e na visão de uma sub específica).
+  // relevantSubs, se informado, restringe quais (sub,ambiente) de um pacote entram aqui
+  // — evita mostrar ambientes de OUTRO serviço do mesmo pacote quando a pessoa
+  // está olhando só uma sub ou uma fase específica.
   if(groupBy==='ambiente'){
     const groupMap = {};
     sorted.forEach(g=>{
-      let ambientesDoItem = [];
+      let entries = [];
       if(g.pacote_subs){
-        const parsed = parsePacoteSubs(g.pacote_subs);
-        ambientesDoItem = [...new Set(parsed.map(p=>p.ambiente).filter(Boolean))];
+        let parsed = parsePacoteSubs(g.pacote_subs);
+        if(relevantSubs) parsed = parsed.filter(p=>relevantSubs.includes(p.sub));
+        entries = parsed.map(p=>({ambiente:p.ambiente||'', sub:p.sub}));
       }
-      if(!ambientesDoItem.length) ambientesDoItem = [g.ambiente || ''];
-      ambientesDoItem.forEach(amb=>{
+      if(!entries.length) entries = [{ambiente:g.ambiente||'', sub:g.subcategoria}];
+      entries.forEach(en=>{
+        const amb = en.ambiente;
         if(!groupMap[amb]) groupMap[amb] = { label: amb || 'Sem ambiente', items: [] };
-        groupMap[amb].items.push(g);
+        groupMap[amb].items.push({g, sub:en.sub});
       });
     });
     const groupNames = Object.keys(groupMap).sort((a,b)=>{
@@ -5127,11 +5208,11 @@ function renderRowsFiltered(list, status, catKey, borderColor, groupBy){
             <span style="width:6px;height:6px;border-radius:50%;background:${color};display:inline-block"></span>${grp.label}
           </span>
         </td></tr>`;
-        const rows = grp.items.map(g=>renderOneRow(g,status,catKey,rowBorder,false)).join('');
+        const rows = grp.items.map(({g,sub})=>renderOneRow(g,status,catKey,rowBorder,false,false,sub)).join('');
         return header + rows;
       }).join('');
     }
-    return sorted.map(g=>renderOneRow(g,status,catKey,rowBorder,true)).join('');
+    return sorted.map(g=>renderOneRow(g,status,catKey,rowBorder,true,false,g.subcategoria)).join('');
   }
 
   // Agrupa por subcategoria (ambiente), seguindo a mesma ordem em Pago/Necessário/Dispensável
