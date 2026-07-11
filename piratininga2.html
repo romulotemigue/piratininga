@@ -2248,23 +2248,33 @@ function renderEmpreitadaServiceGrid(){
   const faseNomes = Object.keys(fases).sort((a,b)=>fases[a].ordem-fases[b].ordem);
   const ambienteOptions = getAmbienteOptions();
 
+  // Cada linha recebe um índice ÚNICO (rowIdx), independente do sk/slug do serviço.
+  // Isso evita qualquer colisão de id/classe caso dois serviços de fases diferentes
+  // gerem o mesmo slug (o que quebrava o popover/checkbox de ambiente de um deles).
+  let rowIdx = 0;
+  empreitadaRowMap = {}; // rowIdx -> sk (usado no confirmEmpreitada)
+
   document.getElementById('emp-service-grid').innerHTML = faseNomes.map((faseName,fi)=>{
     const items = fases[faseName].subs.sort((a,b)=>(a.ordem??0)-(b.ordem??0));
-    const rows = items.map(it=>`
+    const rows = items.map(it=>{
+      const ri = rowIdx++;
+      empreitadaRowMap[ri] = it.sk;
+      return `
       <div style="display:flex;align-items:center;gap:6px;padding:3px 0;position:relative">
-        <input type="checkbox" class="emp-sub-check" value="${it.sk}" onchange="document.getElementById('emp-amb-btn-${it.sk}').disabled=!this.checked" style="width:auto;flex-shrink:0">
+        <input type="checkbox" class="emp-sub-check" data-row="${ri}" onchange="document.getElementById('emp-amb-btn-${ri}').disabled=!this.checked" style="width:auto;flex-shrink:0">
         <span style="font-size:11px;color:#ccc;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${it.label}">${it.label}</span>
-        <button type="button" onclick="toggleAmbientePopover('${it.sk}',event)" id="emp-amb-btn-${it.sk}" disabled
+        <button type="button" onclick="toggleAmbientePopover(${ri},event)" id="emp-amb-btn-${ri}" disabled
           style="width:92px;flex-shrink:0;background:#111;border:1px solid #333;border-radius:4px;padding:3px 5px;color:#666;font-size:10px;text-align:left;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
           ambiente
         </button>
-        <div id="emp-amb-popover-${it.sk}" style="display:none;position:absolute;top:100%;right:0;z-index:30;background:#1a1a1a;border:1px solid #444;border-radius:6px;padding:8px;min-width:170px;max-height:220px;overflow-y:auto;box-shadow:0 6px 20px rgba(0,0,0,.6)">
+        <div id="emp-amb-popover-${ri}" style="display:none;position:absolute;top:100%;right:0;z-index:30;background:#1a1a1a;border:1px solid #444;border-radius:6px;padding:8px;min-width:170px;max-height:220px;overflow-y:auto;box-shadow:0 6px 20px rgba(0,0,0,.6)">
           ${ambienteOptions.map(a=>`<label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#ccc;padding:3px 0;cursor:pointer;white-space:nowrap">
-            <input type="checkbox" class="emp-amb-check-${it.sk}" value="${a}" onchange="updateAmbienteBtnLabel('${it.sk}')" style="width:auto;flex-shrink:0">
+            <input type="checkbox" class="emp-amb-check-row-${ri}" value="${a}" onchange="updateAmbienteBtnLabel(${ri})" style="width:auto;flex-shrink:0">
             ${a}
           </label>`).join('')}
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
     return `<div style="background:#0e0e0e;border:1px solid #2a2a2a;border-radius:8px;padding:10px 12px">
       <div style="font-size:11px;font-weight:700;color:#e8b544;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #2a2a2a">${fi+1}. ${faseName}</div>
       ${rows}
@@ -2272,10 +2282,12 @@ function renderEmpreitadaServiceGrid(){
   }).join('');
 }
 
-function toggleAmbientePopover(sk, e){
+let empreitadaRowMap = {};
+
+function toggleAmbientePopover(ri, e){
   if(e) e.stopPropagation();
-  document.querySelectorAll('[id^="emp-amb-popover-"]').forEach(el=>{ if(el.id !== 'emp-amb-popover-'+sk) el.style.display='none'; });
-  const pop = document.getElementById('emp-amb-popover-'+sk);
+  document.querySelectorAll('[id^="emp-amb-popover-"]').forEach(el=>{ if(el.id !== 'emp-amb-popover-'+ri) el.style.display='none'; });
+  const pop = document.getElementById('emp-amb-popover-'+ri);
   if(pop) pop.style.display = (pop.style.display==='none'||!pop.style.display) ? 'block' : 'none';
 }
 document.addEventListener('click', function(e){
@@ -2283,9 +2295,9 @@ document.addEventListener('click', function(e){
     document.querySelectorAll('[id^="emp-amb-popover-"]').forEach(el=>el.style.display='none');
   }
 });
-function updateAmbienteBtnLabel(sk){
-  const checked = [...document.querySelectorAll('.emp-amb-check-'+sk+':checked')].map(el=>el.value);
-  const btn = document.getElementById('emp-amb-btn-'+sk);
+function updateAmbienteBtnLabel(ri){
+  const checked = [...document.querySelectorAll('.emp-amb-check-row-'+ri+':checked')].map(el=>el.value);
+  const btn = document.getElementById('emp-amb-btn-'+ri);
   if(btn){ btn.textContent = checked.length ? checked.join(', ') : 'ambiente'; btn.style.color = checked.length ? '#e8e7e2' : '#666'; }
 }
 
@@ -2300,14 +2312,16 @@ async function confirmEmpreitada(){
   if(!checks.length){ alert('Marque pelo menos um serviço coberto pelo pacote.'); return; }
   const servicos = [];
   checks.forEach(el=>{
-    const sk = el.value;
-    const ambientesMarcados = [...document.querySelectorAll('.emp-amb-check-'+sk+':checked')].map(a=>a.value);
+    const ri = el.dataset.row;
+    const sk = empreitadaRowMap[ri];
+    const ambientesMarcados = [...document.querySelectorAll('.emp-amb-check-row-'+ri+':checked')].map(a=>a.value);
     if(ambientesMarcados.length){
       ambientesMarcados.forEach(ambiente=>servicos.push({sub:sk, ambiente}));
     } else {
       servicos.push({sub:sk, ambiente:''});
     }
   });
+  console.log('[piratininga][empreitada-debug] serviços marcados no pacote:', servicos.length, servicos);
   const primeiro = servicos[0];
   const btn = document.getElementById('emp-btn-confirm');
   btn.disabled = true; btn.textContent = 'Salvando...';
@@ -2328,6 +2342,7 @@ async function confirmEmpreitada(){
     btn.disabled=false; btn.textContent='Confirmar pacote';
   }
 }
+
 
 function togglePacoteSection(checked, prefix){
   document.getElementById(prefix+'-pacote-section').style.display = checked ? '' : 'none';
