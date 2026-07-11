@@ -2323,14 +2323,10 @@ function openObraEmpreitadaModalForEdit(g){
       const ambCheck = document.querySelector(`.emp-amb-check-row-${ri}[data-amb-idx="${ai}"]`);
       if(ambCheck){
         ambCheck.checked = true;
-        const detail = document.getElementById(`emp-amb-detail-${ri}-${ai}`);
-        if(detail) detail.style.display = 'flex';
-        const m2El = document.getElementById(`emp-amb-m2-${ri}-${ai}`);
-        const valEl = document.getElementById(`emp-amb-valm2-${ri}-${ai}`);
-        const tipoEl = document.getElementById(`emp-amb-tipo-${ri}-${ai}`);
-        if(m2El && s.m2) m2El.value = s.m2;
-        if(valEl && s.valorM2) valEl.value = s.valorM2;
-        if(tipoEl && s.tipo) tipoEl.value = s.tipo;
+        if(s.m2 || s.valorM2 || s.tipo){
+          ambienteConfirmed[ri+'-'+ai] = {m2:s.m2||'', valorM2:s.valorM2||'', tipo:s.tipo||''};
+          showAmbienteView(ri, ai);
+        }
       }
     });
     updateAmbienteBtnLabel(ri);
@@ -2347,6 +2343,11 @@ function getAmbienteOptions(){
   return combinados;
 }
 
+// Fases cujos serviços tipicamente são medidos por metro quadrado — só nessas
+// mostramos os campos de metragem/valor por m²/tipo de revestimento. As demais
+// (elétrica, hidráulica, esquadrias, marcenaria, etc.) só precisam do ambiente.
+const FASES_COM_METRAGEM = ['Demolição','Impermeabilização','Contrapiso e Regularização','Revestimentos de Parede','Pisos e Rodapés','Pintura (Preparação)','Pintura Final e Limpeza Pós-Obra'];
+
 function renderEmpreitadaServiceGrid(){
   const cat = 'obra-bruta';
   const subEntries = Object.keys(SUBCATS[cat]||{}).map(sk=>({sk, ...SUBCATS[cat][sk]})).filter(e=>e.grupo && isSubAtivo(cat, e.sk));
@@ -2362,12 +2363,16 @@ function renderEmpreitadaServiceGrid(){
   // gerem o mesmo slug (o que quebrava o popover/checkbox de ambiente de um deles).
   let rowIdx = 0;
   empreitadaRowMap = {}; // rowIdx -> sk (usado no confirmEmpreitada)
+  empreitadaRowShowArea = {}; // rowIdx -> bool (se a fase usa campos de m²)
+  ambienteConfirmed = {}; // reseta os detalhes confirmados de m²/valor/tipo do pacote anterior
 
   document.getElementById('emp-service-grid').innerHTML = faseNomes.map((faseName,fi)=>{
     const items = fases[faseName].subs.sort((a,b)=>(a.ordem??0)-(b.ordem??0));
+    const showArea = FASES_COM_METRAGEM.includes(faseName);
     const rows = items.map(it=>{
       const ri = rowIdx++;
       empreitadaRowMap[ri] = it.sk;
+      empreitadaRowShowArea[ri] = showArea;
       return `
       <div style="padding:3px 0">
         <div style="display:flex;align-items:center;gap:6px">
@@ -2378,8 +2383,8 @@ function renderEmpreitadaServiceGrid(){
             ambiente
           </button>
         </div>
-        <div id="emp-amb-popover-${ri}" style="display:none;margin:5px 0 8px 22px;z-index:30;background:#1a1a1a;border:1px solid #444;border-radius:6px;padding:8px;max-height:260px;overflow-y:auto;box-shadow:0 6px 20px rgba(0,0,0,.6)">
-          <div id="emp-amb-options-${ri}">${renderAmbientePopoverOptions(ri)}</div>
+        <div id="emp-amb-popover-${ri}" style="display:none;margin:5px 0 8px 22px;z-index:30;background:#1a1a1a;border:1px solid #444;border-radius:6px;padding:8px;max-height:320px;overflow-y:auto;box-shadow:0 6px 20px rgba(0,0,0,.6)">
+          <div id="emp-amb-options-${ri}">${renderAmbientePopoverOptions(ri, showArea)}</div>
           <div style="display:flex;gap:4px;margin-top:6px;padding-top:6px;border-top:1px solid #333">
             <input type="text" id="emp-amb-new-${ri}" placeholder="novo ambiente..." style="flex:1;min-width:0;background:#111;border:1px solid #333;border-radius:4px;padding:3px 6px;color:#ccc;font-size:10px" onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomAmbienteRow(${ri});}">
             <button type="button" onclick="addCustomAmbienteRow(${ri})" title="Adicionar ambiente" style="background:#2a2000;border:1px solid #8a6d1f;color:#e8b544;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;flex-shrink:0">+</button>
@@ -2394,29 +2399,121 @@ function renderEmpreitadaServiceGrid(){
   }).join('');
 }
 
-// Renderiza as opções de ambiente (checkbox + m² + valor/m² + tipo de revestimento)
+// Guarda os detalhes (m²/valor/tipo) já CONFIRMADOS de cada (linha, ambiente).
+// Enquanto não confirmado, a edição fica "em aberto" e pode ser cancelada sem
+// perder o que já estava salvo antes.
+let ambienteConfirmed = {};
+
+// Renderiza as opções de ambiente (checkbox + detalhes, se a fase usar m²)
 // dentro do popover de uma linha específica (ri).
-function renderAmbientePopoverOptions(ri){
+function renderAmbientePopoverOptions(ri, showArea){
   const ambienteOptions = getAmbienteOptions();
   return ambienteOptions.map((a,ai)=>`
     <div style="padding:5px 0;border-bottom:1px solid #262626">
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#ccc;cursor:pointer">
-        <input type="checkbox" class="emp-amb-check-row-${ri}" data-amb-idx="${ai}" value="${a}" onchange="updateAmbienteBtnLabel(${ri});document.getElementById('emp-amb-detail-${ri}-${ai}').style.display=this.checked?'flex':'none'" style="width:auto;flex-shrink:0">
+        <input type="checkbox" class="emp-amb-check-row-${ri}" data-amb-idx="${ai}" value="${a}" onchange="onAmbienteCheckToggle(${ri},${ai},this.checked)" style="width:auto;flex-shrink:0">
         <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a}</span>
       </label>
-      <div id="emp-amb-detail-${ri}-${ai}" style="display:none;gap:8px;margin:6px 0 2px 24px;align-items:center;flex-wrap:wrap">
-        <div style="display:flex;align-items:center;gap:5px;background:#111;border:1px solid #383838;border-radius:6px;padding:4px 8px">
-          <input type="number" step="1" min="0" placeholder="0" title="Metragem (m²)" id="emp-amb-m2-${ri}-${ai}" style="width:52px;background:none;border:none;color:#e8e7e2;font-size:12px;outline:none;-moz-appearance:auto">
-          <span style="color:#777;font-size:11px;flex-shrink:0">m²</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:5px;background:#111;border:1px solid #383838;border-radius:6px;padding:4px 8px">
-          <span style="color:#777;font-size:11px;flex-shrink:0">R$</span>
-          <input type="text" placeholder="0,00" title="Valor por m²" id="emp-amb-valm2-${ri}-${ai}" style="width:60px;background:none;border:none;color:#e8e7e2;font-size:12px;outline:none">
-          <span style="color:#777;font-size:11px;flex-shrink:0">/m²</span>
-        </div>
-        <input type="text" placeholder="tipo / material do revestimento" title="Tipo ou material do revestimento" id="emp-amb-tipo-${ri}-${ai}" style="flex:1;min-width:160px;background:#111;border:1px solid #383838;border-radius:6px;padding:6px 8px;color:#e8e7e2;font-size:12px">
+      ${showArea ? `
+      <div id="emp-amb-view-${ri}-${ai}" style="display:none;align-items:center;gap:8px;margin:5px 0 2px 24px;font-size:11px;color:#999">
+        <span id="emp-amb-view-text-${ri}-${ai}"></span>
+        <button type="button" onclick="editAmbienteDetail(${ri},${ai})" title="Editar detalhes" style="background:none;border:none;color:#7aa7d9;cursor:pointer;font-size:12px;padding:2px 4px"><i class="ti ti-pencil"></i></button>
       </div>
+      <div id="emp-amb-edit-${ri}-${ai}" style="display:none;flex-direction:column;gap:8px;margin:6px 0 2px 24px;background:#141414;border:1px solid #333;border-radius:6px;padding:8px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:2px;background:#111;border:1px solid #3a3a3a;border-radius:6px;padding:2px">
+            <button type="button" onclick="stepAmbienteM2(${ri},${ai},-1)" style="background:#232323;border:none;color:#ccc;width:26px;height:26px;border-radius:4px;cursor:pointer;font-size:15px;line-height:1">−</button>
+            <input type="text" inputmode="numeric" placeholder="0" title="Metragem (m²)" id="emp-amb-m2-${ri}-${ai}" style="width:42px;text-align:center;background:none;border:none;color:#e8e7e2;font-size:13px;outline:none" onkeydown="if(!/[0-9]|Backspace|Delete|Arrow|Tab/.test(event.key))event.preventDefault()">
+            <button type="button" onclick="stepAmbienteM2(${ri},${ai},1)" style="background:#232323;border:none;color:#ccc;width:26px;height:26px;border-radius:4px;cursor:pointer;font-size:15px;line-height:1">+</button>
+            <span style="color:#777;font-size:11px;padding:0 6px 0 2px">m²</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;background:#111;border:1px solid #3a3a3a;border-radius:6px;padding:6px 8px">
+            <span style="color:#777;font-size:11px;flex-shrink:0">R$</span>
+            <input type="text" placeholder="0,00" title="Valor por m²" id="emp-amb-valm2-${ri}-${ai}" style="width:62px;background:none;border:none;color:#e8e7e2;font-size:13px;outline:none">
+            <span style="color:#777;font-size:11px;flex-shrink:0">/m²</span>
+          </div>
+          <input type="text" placeholder="tipo / material do revestimento" title="Tipo ou material do revestimento" id="emp-amb-tipo-${ri}-${ai}" style="flex:1;min-width:150px;background:#111;border:1px solid #3a3a3a;border-radius:6px;padding:6px 8px;color:#e8e7e2;font-size:12px">
+        </div>
+        <div style="display:flex;gap:6px;justify-content:flex-end">
+          <button type="button" onclick="cancelAmbienteDetail(${ri},${ai})" style="background:#222;border:none;color:#bbb;padding:5px 10px;border-radius:5px;cursor:pointer;font-size:11px">Cancelar</button>
+          <button type="button" onclick="confirmAmbienteDetail(${ri},${ai})" style="background:#e8b544;border:none;color:#111;font-weight:600;padding:5px 10px;border-radius:5px;cursor:pointer;font-size:11px">Confirmar</button>
+        </div>
+      </div>` : ''}
     </div>`).join('');
+}
+
+function stepAmbienteM2(ri, ai, delta){
+  const el = document.getElementById(`emp-amb-m2-${ri}-${ai}`);
+  if(!el) return;
+  let v = parseInt(el.value||'0',10) || 0;
+  v = Math.max(0, v+delta);
+  el.value = v;
+}
+
+function onAmbienteCheckToggle(ri, ai, checked){
+  updateAmbienteBtnLabel(ri);
+  const key = ri+'-'+ai;
+  const hasAreaUI = !!document.getElementById(`emp-amb-edit-${ri}-${ai}`);
+  if(!checked){
+    delete ambienteConfirmed[key];
+    if(hasAreaUI){
+      document.getElementById(`emp-amb-view-${ri}-${ai}`).style.display='none';
+      document.getElementById(`emp-amb-edit-${ri}-${ai}`).style.display='none';
+    }
+    return;
+  }
+  if(!hasAreaUI) return; // fase sem campos de área — só o ambiente já basta
+  if(ambienteConfirmed[key]) showAmbienteView(ri,ai);
+  else editAmbienteDetail(ri,ai,true);
+}
+
+function editAmbienteDetail(ri, ai, isNew){
+  const viewEl = document.getElementById(`emp-amb-view-${ri}-${ai}`);
+  const editEl = document.getElementById(`emp-amb-edit-${ri}-${ai}`);
+  if(viewEl) viewEl.style.display='none';
+  editEl.style.display='flex';
+  editEl.dataset.isNew = isNew ? '1':'0';
+  const conf = ambienteConfirmed[ri+'-'+ai] || {};
+  document.getElementById(`emp-amb-m2-${ri}-${ai}`).value = conf.m2||'';
+  document.getElementById(`emp-amb-valm2-${ri}-${ai}`).value = conf.valorM2||'';
+  document.getElementById(`emp-amb-tipo-${ri}-${ai}`).value = conf.tipo||'';
+}
+
+function showAmbienteView(ri, ai){
+  const viewEl = document.getElementById(`emp-amb-view-${ri}-${ai}`);
+  const editEl = document.getElementById(`emp-amb-edit-${ri}-${ai}`);
+  editEl.style.display='none';
+  viewEl.style.display='flex';
+  const conf = ambienteConfirmed[ri+'-'+ai] || {};
+  const parts = [];
+  if(conf.m2) parts.push(conf.m2+' m²');
+  if(conf.valorM2) parts.push('R$ '+conf.valorM2+'/m²');
+  if(conf.tipo) parts.push(conf.tipo);
+  document.getElementById(`emp-amb-view-text-${ri}-${ai}`).textContent = parts.length ? parts.join(' · ') : 'sem detalhes preenchidos';
+}
+
+function confirmAmbienteDetail(ri, ai){
+  const m2 = document.getElementById(`emp-amb-m2-${ri}-${ai}`).value.trim();
+  const valorM2 = document.getElementById(`emp-amb-valm2-${ri}-${ai}`).value.trim();
+  const tipo = document.getElementById(`emp-amb-tipo-${ri}-${ai}`).value.trim();
+  ambienteConfirmed[ri+'-'+ai] = {m2, valorM2, tipo};
+  showAmbienteView(ri, ai);
+}
+
+function cancelAmbienteDetail(ri, ai){
+  const editEl = document.getElementById(`emp-amb-edit-${ri}-${ai}`);
+  const isNew = editEl.dataset.isNew === '1';
+  if(isNew && !ambienteConfirmed[ri+'-'+ai]){
+    // ambiente recém-marcado, sem nada confirmado antes — desmarca de vez
+    const chk = document.querySelector(`.emp-amb-check-row-${ri}[data-amb-idx="${ai}"]`);
+    if(chk) chk.checked = false;
+    updateAmbienteBtnLabel(ri);
+    editEl.style.display = 'none';
+    const viewEl = document.getElementById(`emp-amb-view-${ri}-${ai}`);
+    if(viewEl) viewEl.style.display = 'none';
+  } else {
+    showAmbienteView(ri, ai); // volta pro que já estava confirmado, sem salvar a edição
+  }
 }
 
 // ── Ambientes customizados (persistem entre pacotes, num item específico do projeto) ──
@@ -2432,7 +2529,7 @@ function addCustomAmbienteRow(ri){
   if(!nome) return;
   saveCustomAmbiente(nome);
   input.value = '';
-  document.getElementById('emp-amb-options-'+ri).innerHTML = renderAmbientePopoverOptions(ri);
+  document.getElementById('emp-amb-options-'+ri).innerHTML = renderAmbientePopoverOptions(ri, !!empreitadaRowShowArea[ri]);
   // marca automaticamente o ambiente recém-criado
   const options = getAmbienteOptions();
   const idx = options.findIndex(o=>o.toLowerCase()===nome.toLowerCase());
@@ -2443,6 +2540,7 @@ function addCustomAmbienteRow(ri){
 }
 
 let empreitadaRowMap = {};
+let empreitadaRowShowArea = {};
 
 function toggleAmbientePopover(ri, e){
   if(e) e.stopPropagation();
@@ -2478,9 +2576,10 @@ async function confirmEmpreitada(){
     if(ambCheckEls.length){
       ambCheckEls.forEach(a=>{
         const ai = a.dataset.ambIdx;
-        const m2 = document.getElementById(`emp-amb-m2-${ri}-${ai}`)?.value.trim() || '';
-        const valorM2 = document.getElementById(`emp-amb-valm2-${ri}-${ai}`)?.value.trim() || '';
-        const tipo = document.getElementById(`emp-amb-tipo-${ri}-${ai}`)?.value.trim() || '';
+        const conf = ambienteConfirmed[ri+'-'+ai];
+        const m2 = conf ? conf.m2 : (document.getElementById(`emp-amb-m2-${ri}-${ai}`)?.value.trim() || '');
+        const valorM2 = conf ? conf.valorM2 : (document.getElementById(`emp-amb-valm2-${ri}-${ai}`)?.value.trim() || '');
+        const tipo = conf ? conf.tipo : (document.getElementById(`emp-amb-tipo-${ri}-${ai}`)?.value.trim() || '');
         servicos.push({sub:sk, ambiente:a.value, m2, valorM2, tipo});
       });
     } else {
