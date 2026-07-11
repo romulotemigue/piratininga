@@ -192,7 +192,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 10JUL26 (versão 17)</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 10JUL26 (versão 18)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -1002,6 +1002,7 @@ function renderCatNav(){
         <div class="nav-item" onclick="handleNavItemClick('${k}',event)" id="nav-${k}" style="padding-left:2px;flex:1;display:flex;align-items:center;gap:6px;${imovelNavStyle}">
           ${etapaNum ? `<span style="width:16px;height:16px;border-radius:50%;background:${info.color};color:#111;font-size:9px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">${etapaNum}</span>` : `<span style="width:6px;height:6px;border-radius:50%;background:${info.color};display:inline-block;flex-shrink:0"></span>`}${info.icon||''} ${info.label}
         </div>
+        ${k==='obra-bruta' ? `<button id="btn-expand-all-${k}" onclick="toggleAllFaseGroups('${k}',event)" title="Expandir/recolher todas as fases" style="background:none;border:none;color:#555;cursor:pointer;font-size:12px;padding:0 4px;line-height:1" onmouseover="this.style.color='${info.color}'" onmouseout="this.style.color='#555'"><i class="ti ti-chevrons-down"></i></button>` : ''}
         <button class="nav-dots" onclick="toggleCatMenu('${k}',${isImovel},${isPinnedStage},event)" title="Opções"><i class="ti ti-dots-vertical"></i></button>
       </div>
       <div id="subcat-list-${k}" style="overflow:hidden;max-height:${isOpen?'none':'0'}">${subs}</div>
@@ -1153,6 +1154,25 @@ function toggleExpand(k, e){
     list.style.maxHeight = '0px';
     if(chev) chev.style.transform='rotate(0deg)';
   }
+}
+
+// Expande/recolhe todos os grupos (fases) de UMA etapa específica (usado no
+// botão interno da Execução de Obra) — não mexe nas outras etapas.
+function toggleAllFaseGroups(k, e){
+  if(e) e.stopPropagation();
+  if(!SUBCATS[k]) return;
+  const skKeys = Object.keys(SUBCATS[k]);
+  const groupNames = [...new Set(skKeys.map(sk=>SUBCATS[k][sk].grupo).filter(Boolean))];
+  if(!groupNames.length) return;
+  const expandedSub = getExpandedSub();
+  const allOpen = groupNames.every(g=>expandedSub[k+'__grp__'+g]);
+  const newState = !allOpen;
+  groupNames.forEach(g=>{ expandedSub[k+'__grp__'+g] = newState; });
+  localStorage.setItem('pirati_expanded_sub', JSON.stringify(expandedSub));
+  const btn = document.getElementById('btn-expand-all-'+k);
+  if(btn) btn.innerHTML = newState?'<i class="ti ti-chevrons-up"></i>':'<i class="ti ti-chevrons-down"></i>';
+  const list = document.getElementById('subcat-list-'+k);
+  if(list) list.innerHTML = buildSubcatRowsHtml(k);
 }
 
 function toggleAllExpand(){
@@ -4897,6 +4917,8 @@ function subGroupColor(idx){ return SUBCAT_GROUP_PALETTE[idx % SUBCAT_GROUP_PALE
 function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed){
   const subLabel = showSubLabel && g.subcategoria && SUBCATS[catKey||g.categoria]?.[g.subcategoria]?.label || '';
   const val = (g.valor||0)*(g.quantidade||1);
+  const isPacote = !!g.pacote_subs;
+  const pacoteBadge = isPacote ? `<span onclick="event.stopPropagation();openPacoteModal(${g.id})" title="Ver todos os serviços deste pacote" style="cursor:pointer;color:#e8b544;font-size:10px;font-weight:700;margin-left:6px;background:#1a1500;border:1px solid #8a6d1f;border-radius:4px;padding:1px 5px">📦 pacote</span>` : '';
   return `<tr draggable="true" data-id="${g.id}" data-status="${status}" data-catkey="${catKey||''}"
     onDragStart="onRowDragStart(event,${g.id})"
     onDragEnd="onRowDragEnd(event)"
@@ -4906,7 +4928,7 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed){
     <td style="padding:6px 2px 6px 8px;width:12px"><span class="drag-handle" title="Arrastar">⠿</span></td>
     <td style="width:32px;vertical-align:middle;padding:4px">${fmtDate(g.data)}</td>
     <td style="font-size:12px;padding:4px">
-      <div>${g.descricao||''}</div>
+      <div>${g.descricao||''}${pacoteBadge}</div>
       ${subLabel?`<div style="font-size:10px;color:#555;margin-top:2px">${subLabel}</div>`:''}
     </td>
     <td style="text-align:right;font-weight:500;font-size:11px;white-space:nowrap;padding:4px">${fmtShort(val)}</td>
@@ -4935,9 +4957,16 @@ function renderRowsFiltered(list, status, catKey, borderColor, groupBy){
   if(groupBy==='ambiente'){
     const groupMap = {};
     sorted.forEach(g=>{
-      const key = g.ambiente || '';
-      if(!groupMap[key]) groupMap[key] = { label: key || 'Sem ambiente', items: [] };
-      groupMap[key].items.push(g);
+      let ambientesDoItem = [];
+      if(g.pacote_subs){
+        const parsed = parsePacoteSubs(g.pacote_subs);
+        ambientesDoItem = [...new Set(parsed.map(p=>p.ambiente).filter(Boolean))];
+      }
+      if(!ambientesDoItem.length) ambientesDoItem = [g.ambiente || ''];
+      ambientesDoItem.forEach(amb=>{
+        if(!groupMap[amb]) groupMap[amb] = { label: amb || 'Sem ambiente', items: [] };
+        groupMap[amb].items.push(g);
+      });
     });
     const groupNames = Object.keys(groupMap).sort((a,b)=>{
       if(!a) return 1; if(!b) return -1;
