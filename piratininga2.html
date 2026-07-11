@@ -192,7 +192,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 10JUL26 (versão 15)</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 10JUL26 (versão 16)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -326,8 +326,9 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       </div>
       <div class="form-group" id="f-ambiente-group" style="display:none">
         <label>Ambiente (opcional)</label>
-        <input type="text" id="f-ambiente" list="f-ambiente-list" placeholder="Ex: Cozinha, Banheiro, Sala...">
-        <datalist id="f-ambiente-list"></datalist>
+        <select id="f-ambiente">
+          <option value="">— nenhum —</option>
+        </select>
       </div>
     </div>
 
@@ -717,25 +718,25 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
     </div>
     <div style="font-size:12px;color:#888;margin-bottom:1.25rem">Isso é um pacote de empreitada (vários serviços juntos) ou um serviço avulso?</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <button onclick="chooseObraTipo('empreitada','com-material')" style="background:#1a1500;border:2px solid #e8b544;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#251f00'" onmouseout="this.style.background='#1a1500'">
+      <button onclick="chooseObraTipo('empreitada','com-material')" style="background:#0d1a10;border:2px solid #4caf50;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#123018'" onmouseout="this.style.background='#0d1a10'">
+        <div style="font-size:24px;margin-bottom:8px">📦🧱</div>
+        <div style="font-size:13px;font-weight:700;color:#4caf50">Empreitada</div>
+        <div style="font-size:11px;color:#4caf50;margin-top:2px">com material (tudo incluso)</div>
+      </button>
+      <button onclick="chooseObraTipo('empreitada','sem-material')" style="background:#1a1500;border:2px solid #e8b544;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#251f00'" onmouseout="this.style.background='#1a1500'">
         <div style="font-size:24px;margin-bottom:8px">📦</div>
         <div style="font-size:13px;font-weight:700;color:#e8b544">Empreitada</div>
-        <div style="font-size:11px;color:#c9a227;margin-top:2px">com material</div>
+        <div style="font-size:11px;color:#e8b544;margin-top:2px">sem material (só mão de obra)</div>
       </button>
-      <button onclick="chooseObraTipo('empreitada','sem-material')" style="background:#1a1500;border:2px solid #8a6d1f;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#251f00'" onmouseout="this.style.background='#1a1500'">
-        <div style="font-size:24px;margin-bottom:8px">📦</div>
-        <div style="font-size:13px;font-weight:700;color:#e8b544">Empreitada</div>
-        <div style="font-size:11px;color:#8a6d1f;margin-top:2px">sem material</div>
+      <button onclick="chooseObraTipo('unico','com-material')" style="background:#0d1a10;border:2px solid #4caf50;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#123018'" onmouseout="this.style.background='#0d1a10'">
+        <div style="font-size:24px;margin-bottom:8px">🔧🧱</div>
+        <div style="font-size:13px;font-weight:700;color:#4caf50">Serviço único</div>
+        <div style="font-size:11px;color:#4caf50;margin-top:2px">com material (tudo incluso)</div>
       </button>
-      <button onclick="chooseObraTipo('unico','com-material')" style="background:#0d1520;border:2px solid #42a5f5;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#0f1c2b'" onmouseout="this.style.background='#0d1520'">
+      <button onclick="chooseObraTipo('unico','sem-material')" style="background:#1a1500;border:2px solid #e8b544;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#251f00'" onmouseout="this.style.background='#1a1500'">
         <div style="font-size:24px;margin-bottom:8px">🔧</div>
-        <div style="font-size:13px;font-weight:700;color:#42a5f5">Serviço único</div>
-        <div style="font-size:11px;color:#3a7ab8;margin-top:2px">com material</div>
-      </button>
-      <button onclick="chooseObraTipo('unico','sem-material')" style="background:#0d1520;border:2px solid #2c5d85;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#0f1c2b'" onmouseout="this.style.background='#0d1520'">
-        <div style="font-size:24px;margin-bottom:8px">🔧</div>
-        <div style="font-size:13px;font-weight:700;color:#42a5f5">Serviço único</div>
-        <div style="font-size:11px;color:#2c5d85;margin-top:2px">sem material</div>
+        <div style="font-size:13px;font-weight:700;color:#e8b544">Serviço único</div>
+        <div style="font-size:11px;color:#e8b544;margin-top:2px">sem material (só mão de obra)</div>
       </button>
     </div>
   </div>
@@ -2157,8 +2158,10 @@ function applyM2(){
 
 // ── TRIAGEM: pacote de empreitada x serviço único ──────────────────
 let pendingTipoContratacao = null; // usado quando vai pro formulário principal (serviço único)
+let obraTriagemPresetSub = null; // guarda qual item foi clicado, se veio de um item específico
 
-function openObraTriagemModal(){
+function openObraTriagemModal(presetSub){
+  obraTriagemPresetSub = presetSub || null;
   document.getElementById('obra-triagem-overlay').classList.add('open');
 }
 function closeObraTriagemModal(){
@@ -2168,9 +2171,9 @@ function chooseObraTipo(tipo, material){
   closeObraTriagemModal();
   if(tipo==='unico'){
     pendingTipoContratacao = material;
-    openModal('obra-bruta');
+    openModal('obra-bruta', obraTriagemPresetSub);
   } else {
-    openObraEmpreitadaModal(material);
+    openObraEmpreitadaModal(material, obraTriagemPresetSub);
   }
 }
 
@@ -2187,18 +2190,31 @@ function parsePacoteSubs(str){
 
 // ── CONSTRUTOR DE PACOTE DE EMPREITADA (grade horizontal, fases inteiras) ──
 let empreitadaMaterial = null;
-function openObraEmpreitadaModal(material){
+function openObraEmpreitadaModal(material, presetSub){
   empreitadaMaterial = material;
-  document.getElementById('empreitada-title').textContent = '📦 Novo pacote de empreitada — '+(material==='com-material'?'com material':'sem material');
+  const icon = material==='com-material' ? '📦🧱' : '📦';
+  document.getElementById('empreitada-title').textContent = icon+' Novo pacote de empreitada — '+(material==='com-material'?'com material':'sem material');
   document.getElementById('emp-desc').value = '';
   document.getElementById('emp-valor').value = '';
   document.getElementById('emp-data').value = new Date().toISOString().slice(0,10);
   document.getElementById('emp-status').value = 'necessario';
   renderEmpreitadaServiceGrid();
+  if(presetSub){
+    const checkEl = document.querySelector(`.emp-sub-check[value="${presetSub}"]`);
+    if(checkEl){ checkEl.checked = true; checkEl.dispatchEvent(new Event('change')); }
+  }
   document.getElementById('obra-empreitada-overlay').classList.add('open');
 }
 function closeObraEmpreitadaModal(){
   document.getElementById('obra-empreitada-overlay').classList.remove('open');
+}
+
+function getAmbienteOptions(){
+  const padrao = ['Cozinha','Banheiro Social','Suíte','Banheiro da Suíte','Quarto','Sala','Área de Serviço','Sacada','Escritório','Hall de Entrada','Área Externa'];
+  const usados = [...new Set(gastos.filter(g=>g.categoria==='obra-bruta' && g.ambiente).map(g=>g.ambiente))];
+  const combinados = [...padrao];
+  usados.forEach(u=>{ if(!combinados.some(c=>c.toLowerCase()===u.toLowerCase())) combinados.push(u); });
+  return combinados;
 }
 
 function renderEmpreitadaServiceGrid(){
@@ -2210,7 +2226,7 @@ function renderEmpreitadaServiceGrid(){
     fases[e.grupo].subs.push(e);
   });
   const faseNomes = Object.keys(fases).sort((a,b)=>fases[a].ordem-fases[b].ordem);
-  const ambientesUsados = [...new Set(gastos.filter(g=>g.categoria==='obra-bruta' && g.ambiente).map(g=>g.ambiente))];
+  const ambienteOptions = getAmbienteOptions();
 
   document.getElementById('emp-service-grid').innerHTML = faseNomes.map((faseName,fi)=>{
     const items = fases[faseName].subs.sort((a,b)=>(a.ordem??0)-(b.ordem??0));
@@ -2218,13 +2234,16 @@ function renderEmpreitadaServiceGrid(){
       <div style="display:flex;align-items:center;gap:6px;padding:3px 0">
         <input type="checkbox" class="emp-sub-check" value="${it.sk}" onchange="document.getElementById('emp-amb-${it.sk}').disabled=!this.checked" style="width:auto;flex-shrink:0">
         <span style="font-size:11px;color:#ccc;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${it.label}">${it.label}</span>
-        <input type="text" id="emp-amb-${it.sk}" list="emp-ambiente-list" placeholder="ambiente" disabled style="width:80px;flex-shrink:0;background:#111;border:1px solid #333;border-radius:4px;padding:3px 5px;color:#e8e7e2;font-size:10px;outline:none">
+        <select id="emp-amb-${it.sk}" disabled style="width:92px;flex-shrink:0;background:#111;border:1px solid #333;border-radius:4px;padding:3px 4px;color:#e8e7e2;font-size:10px;outline:none">
+          <option value="">ambiente</option>
+          ${ambienteOptions.map(a=>`<option value="${a}">${a}</option>`).join('')}
+        </select>
       </div>`).join('');
     return `<div style="background:#0e0e0e;border:1px solid #2a2a2a;border-radius:8px;padding:10px 12px">
       <div style="font-size:11px;font-weight:700;color:#e8b544;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #2a2a2a">${fi+1}. ${faseName}</div>
       ${rows}
     </div>`;
-  }).join('') + `<datalist id="emp-ambiente-list">${ambientesUsados.map(a=>`<option value="${a}"></option>`).join('')}</datalist>`;
+  }).join('');
 }
 
 async function confirmEmpreitada(){
@@ -2276,10 +2295,10 @@ function refreshObraExtraFields(prefix){
   const ambienteGroupEl = document.getElementById(prefix+'-ambiente-group');
   if(ambienteGroupEl) ambienteGroupEl.style.display = isObra ? '' : 'none';
   if(!isObra) return;
-  const listEl = document.getElementById(prefix+'-ambiente-list');
-  if(listEl){
-    const ambientesUsados = [...new Set(gastos.filter(g=>g.categoria==='obra-bruta' && g.ambiente).map(g=>g.ambiente))];
-    listEl.innerHTML = ambientesUsados.map(a=>`<option value="${a}"></option>`).join('');
+  const ambSelEl = document.getElementById(prefix+'-ambiente');
+  if(ambSelEl){
+    const opts = getAmbienteOptions();
+    ambSelEl.innerHTML = '<option value="">— nenhum —</option>' + opts.map(a=>`<option value="${a}">${a}</option>`).join('');
   }
   const pacoteListEl = document.getElementById(prefix+'-pacote-list');
   if(pacoteListEl){
@@ -4441,14 +4460,14 @@ function renderObraBrutaSteps(){
       const itemPago = itemGastosDireto.some(g=>g.status==='pago');
       const hasVal = itemTotal>0;
       const semMaterial = itemGastosDireto.some(g=>g.tipo_contratacao==='sem-material') || (pacoteGasto && pacoteGasto.tipo_contratacao==='sem-material');
-      const faltaMaterialTag = semMaterial ? ' <span title="Falta lançar o material" style="color:#e8b544">🧱</span>' : '';
+      const faltaMaterialTag = semMaterial ? ' <span title="Falta lançar o material" style="color:#e8b544">⚠</span>' : '';
       if(pacoteGasto){
         return `<div onclick="event.stopPropagation();openPacoteModal(${pacoteGasto.id})" style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:3px 0;cursor:pointer" title="Parte do pacote: ${pacoteGasto.descricao}">
           <span style="font-size:10px;color:#c9a227;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📦 ${subLabel}${faltaMaterialTag}</span>
           <span style="font-size:10px;font-weight:700;color:#e8b544;flex-shrink:0">${fmt(getValO(pacoteGasto))}</span>
         </div>`;
       }
-      return `<div onclick="event.stopPropagation();openModal('${cat}','${sk}')" style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:3px 0;cursor:pointer" title="Lançar em ${subLabel}">
+      return `<div onclick="event.stopPropagation();openObraTriagemModal('${sk}')" style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:3px 0;cursor:pointer" title="Lançar em ${subLabel}">
         <span style="font-size:10px;color:${hasVal?'#999':'#555'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${subLabel}${faltaMaterialTag}</span>
         <span style="font-size:10px;font-weight:600;color:${hasVal?(itemPago?'#4caf50':corFase):'#3a3a3a'};flex-shrink:0">${hasVal?fmt(itemTotal):'—'}</span>
       </div>`;
@@ -4544,7 +4563,7 @@ function openPacoteModal(gastoId){
     const label = SUBCATS['obra-bruta']?.[item.sub]?.label || item.sub;
     return `<tr><td colspan="6" style="padding:7px 12px;font-size:12px;color:#ccc">📦 ${label}${item.ambiente?` <span style="color:#666;font-size:10px">— ${item.ambiente}</span>`:''}</td></tr>`;
   }).join('');
-  const tipoTag = g.tipo_contratacao ? (g.tipo_contratacao==='com-material'?'<span style="background:#0d1520;color:#42a5f5;border-radius:4px;padding:2px 7px;font-size:10px">com material</span>':'<span style="background:#1a1500;color:#e8b544;border-radius:4px;padding:2px 7px;font-size:10px">🧱 sem material</span>') : '';
+  const tipoTag = g.tipo_contratacao ? (g.tipo_contratacao==='com-material'?'<span style="background:#0d1a10;color:#4caf50;border-radius:4px;padding:2px 7px;font-size:10px">🧱 com material</span>':'<span style="background:#1a1500;color:#e8b544;border-radius:4px;padding:2px 7px;font-size:10px">⚠ sem material</span>') : '';
   const infoRow = `<tr><td colspan="6" style="padding:12px;border-top:1px solid #2a2a2a">
     <div style="font-size:11px;color:#888;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b>Data:</b> ${fmtDate(g.data)} &nbsp;·&nbsp; <b>Status:</b> ${getColLabel(g.status)} ${tipoTag}</div>
     ${g.obs?`<div style="font-size:11px;color:#888;margin-top:6px"><b>Observação:</b> ${g.obs}</div>`:''}
