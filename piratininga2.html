@@ -741,6 +741,33 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
   </div>
 </div>
 
+<div class="modal-overlay" id="pacote-delete-overlay" onclick="if(event.target===this) closePacoteDeleteModal()">
+  <div class="modal" style="max-width:420px;width:92vw">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3 style="margin:0;font-size:16px" id="pacote-delete-title">Excluir item do pacote</h3>
+      <button onclick="closePacoteDeleteModal()" style="background:none;border:none;color:#888;font-size:18px;cursor:pointer">×</button>
+    </div>
+    <div id="pacote-delete-step1">
+      <p style="font-size:13px;color:#ccc;margin:0 0 14px">Esse lançamento faz parte de um pacote de empreitada. O que você quer excluir?</p>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button onclick="choosePacoteDeleteScope('item')" style="text-align:left;background:#111;border:1px solid #333;color:#e8e7e2;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:13px">
+          <b>Apenas este item</b><br><span id="pacote-delete-item-desc" style="font-size:11px;color:#888"></span>
+        </button>
+        <button onclick="choosePacoteDeleteScope('pacote')" style="text-align:left;background:#1a0d0d;border:1px solid #5c2b2b;color:#ef9a9a;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:13px">
+          <b>O pacote inteiro</b><br><span id="pacote-delete-pacote-desc" style="font-size:11px;color:#c88"></span>
+        </button>
+      </div>
+    </div>
+    <div id="pacote-delete-step2" style="display:none">
+      <p style="font-size:13px;color:#ccc;margin:0 0 10px">Tem certeza que quer excluir o pacote <b id="pacote-delete-confirm-name" style="color:#ef5350"></b> inteiro? Essa ação não pode ser desfeita.</p>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+        <button onclick="closePacoteDeleteModal()" style="background:#222;border:none;color:#ccc;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px">Cancelar</button>
+        <button onclick="confirmPacoteDelete()" style="background:#c62828;border:none;color:#fff;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px">Excluir pacote inteiro</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="obra-empreitada-overlay" onclick="if(event.target===this) closeObraEmpreitadaModal()">
   <div class="modal" style="max-width:1400px;width:96vw;max-height:92vh;display:flex;flex-direction:column">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
@@ -2332,17 +2359,19 @@ function renderEmpreitadaServiceGrid(){
       const ri = rowIdx++;
       empreitadaRowMap[ri] = it.sk;
       return `
-      <div style="display:flex;align-items:center;gap:6px;padding:3px 0;position:relative">
-        <input type="checkbox" class="emp-sub-check" data-row="${ri}" value="${it.sk}" onchange="document.getElementById('emp-amb-btn-${ri}').disabled=!this.checked" style="width:auto;flex-shrink:0">
-        <span style="font-size:11px;color:#ccc;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${it.label}">${it.label}</span>
-        <button type="button" onclick="toggleAmbientePopover(${ri},event)" id="emp-amb-btn-${ri}" disabled
-          style="width:92px;flex-shrink:0;background:#111;border:1px solid #333;border-radius:4px;padding:3px 5px;color:#666;font-size:10px;text-align:left;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-          ambiente
-        </button>
-        <div id="emp-amb-popover-${ri}" style="display:none;position:absolute;top:100%;right:0;z-index:30;background:#1a1a1a;border:1px solid #444;border-radius:6px;padding:8px;width:320px;max-height:280px;overflow-y:auto;box-shadow:0 6px 20px rgba(0,0,0,.6)">
+      <div style="padding:3px 0">
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="checkbox" class="emp-sub-check" data-row="${ri}" value="${it.sk}" onchange="document.getElementById('emp-amb-btn-${ri}').disabled=!this.checked" style="width:auto;flex-shrink:0">
+          <span style="font-size:11px;color:#ccc;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${it.label}">${it.label}</span>
+          <button type="button" onclick="toggleAmbientePopover(${ri},event)" id="emp-amb-btn-${ri}" disabled
+            style="width:92px;flex-shrink:0;background:#111;border:1px solid #333;border-radius:4px;padding:3px 5px;color:#666;font-size:10px;text-align:left;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+            ambiente
+          </button>
+        </div>
+        <div id="emp-amb-popover-${ri}" style="display:none;margin:5px 0 8px 22px;z-index:30;background:#1a1a1a;border:1px solid #444;border-radius:6px;padding:8px;max-height:260px;overflow-y:auto;box-shadow:0 6px 20px rgba(0,0,0,.6)">
           <div id="emp-amb-options-${ri}">${renderAmbientePopoverOptions(ri)}</div>
           <div style="display:flex;gap:4px;margin-top:6px;padding-top:6px;border-top:1px solid #333">
-            <input type="text" id="emp-amb-new-${ri}" placeholder="novo ambiente..." style="flex:1;background:#111;border:1px solid #333;border-radius:4px;padding:3px 6px;color:#ccc;font-size:10px" onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomAmbienteRow(${ri});}">
+            <input type="text" id="emp-amb-new-${ri}" placeholder="novo ambiente..." style="flex:1;min-width:0;background:#111;border:1px solid #333;border-radius:4px;padding:3px 6px;color:#ccc;font-size:10px" onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomAmbienteRow(${ri});}">
             <button type="button" onclick="addCustomAmbienteRow(${ri})" title="Adicionar ambiente" style="background:#2a2000;border:1px solid #8a6d1f;color:#e8b544;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;flex-shrink:0">+</button>
           </div>
         </div>
@@ -2361,14 +2390,14 @@ function renderAmbientePopoverOptions(ri){
   const ambienteOptions = getAmbienteOptions();
   return ambienteOptions.map((a,ai)=>`
     <div style="padding:4px 0;border-bottom:1px solid #262626">
-      <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#ccc;cursor:pointer;white-space:nowrap">
+      <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#ccc;cursor:pointer">
         <input type="checkbox" class="emp-amb-check-row-${ri}" data-amb-idx="${ai}" value="${a}" onchange="updateAmbienteBtnLabel(${ri});document.getElementById('emp-amb-detail-${ri}-${ai}').style.display=this.checked?'flex':'none'" style="width:auto;flex-shrink:0">
-        ${a}
+        <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a}</span>
       </label>
-      <div id="emp-amb-detail-${ri}-${ai}" style="display:none;gap:4px;margin:4px 0 0 22px">
+      <div id="emp-amb-detail-${ri}-${ai}" style="display:none;gap:4px;margin:4px 0 0 22px;flex-wrap:wrap">
         <input type="number" step="0.01" min="0" placeholder="m²" title="Metragem (m²)" id="emp-amb-m2-${ri}-${ai}" style="width:56px;background:#111;border:1px solid #333;border-radius:4px;padding:3px 4px;color:#ccc;font-size:10px">
         <input type="text" placeholder="R$/m²" title="Valor por m²" id="emp-amb-valm2-${ri}-${ai}" style="width:60px;background:#111;border:1px solid #333;border-radius:4px;padding:3px 4px;color:#ccc;font-size:10px">
-        <input type="text" placeholder="tipo/revest." title="Tipo ou material do revestimento" id="emp-amb-tipo-${ri}-${ai}" style="flex:1;min-width:0;background:#111;border:1px solid #333;border-radius:4px;padding:3px 4px;color:#ccc;font-size:10px">
+        <input type="text" placeholder="tipo/revest." title="Tipo ou material do revestimento" id="emp-amb-tipo-${ri}-${ai}" style="flex:1;min-width:90px;background:#111;border:1px solid #333;border-radius:4px;padding:3px 4px;color:#ccc;font-size:10px">
       </div>
     </div>`).join('');
 }
@@ -2704,6 +2733,73 @@ async function removeGasto(id){
     toast('Gasto removido.');
     await loadGastos();
   } catch(e){ toast('Erro ao remover.','err'); }
+}
+
+// ── EXCLUSÃO DE ITEM DE PACOTE (item só, ou pacote inteiro) ───────
+let pacoteDeleteState = {gastoId:null, sub:null, ambiente:null};
+
+function openPacoteDeleteModal(gastoId, sub, ambiente){
+  const g = gastos.find(x=>x.id===gastoId);
+  if(!g) return;
+  pacoteDeleteState = {gastoId, sub, ambiente};
+  const label = SUBCATS['obra-bruta']?.[sub]?.label || sub;
+  document.getElementById('pacote-delete-item-desc').textContent = label + (ambiente ? ' — '+ambiente : '');
+  document.getElementById('pacote-delete-pacote-desc').textContent = `Remove o pacote "${g.descricao}" (${fmt((g.valor||0)*(g.quantidade||1))}) inteiro, de todos os ambientes e serviços.`;
+  document.getElementById('pacote-delete-step1').style.display = '';
+  document.getElementById('pacote-delete-step2').style.display = 'none';
+  document.getElementById('pacote-delete-title').textContent = 'Excluir item do pacote';
+  document.getElementById('pacote-delete-overlay').classList.add('open');
+}
+function closePacoteDeleteModal(){
+  document.getElementById('pacote-delete-overlay').classList.remove('open');
+  pacoteDeleteState = {gastoId:null, sub:null, ambiente:null};
+}
+function choosePacoteDeleteScope(scope){
+  if(scope==='item'){
+    deleteJustPacoteItem();
+    return;
+  }
+  const g = gastos.find(x=>x.id===pacoteDeleteState.gastoId);
+  document.getElementById('pacote-delete-confirm-name').textContent = g ? g.descricao : '';
+  document.getElementById('pacote-delete-step1').style.display = 'none';
+  document.getElementById('pacote-delete-step2').style.display = '';
+}
+async function deleteJustPacoteItem(){
+  const {gastoId, sub, ambiente} = pacoteDeleteState;
+  const g = gastos.find(x=>x.id===gastoId);
+  if(!g){ closePacoteDeleteModal(); return; }
+  let servicos = parsePacoteSubs(g.pacote_subs);
+  servicos = servicos.filter(s=> !(s.sub===sub && (s.ambiente||'')===(ambiente||'')));
+  try{
+    if(!servicos.length){
+      // não sobrou nenhum serviço no pacote — remove o lançamento inteiro
+      await sbDelete(gastoId);
+      toast('Item removido — era o último do pacote, então o lançamento foi excluído.');
+    } else {
+      const primeiro = servicos[0];
+      const res = await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${gastoId}`,{
+        method:'PATCH', headers:{...HEADERS,'Prefer':'return=representation'},
+        body:JSON.stringify({ subcategoria: primeiro.sub, ambiente: primeiro.ambiente, pacote_subs: JSON.stringify(servicos) })
+      });
+      if(!res.ok) throw new Error(await res.text());
+      toast('Item removido do pacote.');
+    }
+    await loadGastos();
+  } catch(e){
+    toast('Erro ao remover: '+e.message,'err');
+  }
+  closePacoteDeleteModal();
+}
+async function confirmPacoteDelete(){
+  const {gastoId} = pacoteDeleteState;
+  try{
+    await sbDelete(gastoId);
+    toast('Pacote excluído.');
+    await loadGastos();
+  } catch(e){
+    toast('Erro ao excluir: '+e.message,'err');
+  }
+  closePacoteDeleteModal();
 }
 
 // ── NAVIGATE ─────────────────────────────────────────────────────
@@ -5126,7 +5222,7 @@ function tableCardHeader(label, color, icon, status, catKey){
 const SUBCAT_GROUP_PALETTE = ['#42a5f5','#e8b544','#ab47bc','#4caf50','#ef5350','#26c6da','#ff7043','#8d6e63','#7cb342','#5c6bc0','#ec407a','#26a69a'];
 function subGroupColor(idx){ return SUBCAT_GROUP_PALETTE[idx % SUBCAT_GROUP_PALETTE.length]; }
 
-function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKeyOverride){
+function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKeyOverride, ambienteOverride){
   const effSub = subKeyOverride || g.subcategoria;
   const baseCat = catKey && catKey.includes('__') ? catKey.split('__')[0] : (catKey||g.categoria);
   const subLabelText = effSub && SUBCATS[baseCat]?.[effSub]?.label || '';
@@ -5140,6 +5236,9 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
         ? `<div onclick="event.stopPropagation();navigate('${baseCat}__${effSub}')" title="Ver essa sub-etapa" style="font-size:10px;color:#7aa7d9;margin-top:2px;cursor:pointer;text-decoration:underline;text-decoration-color:transparent;transition:text-decoration-color .15s" onmouseover="this.style.textDecorationColor='#7aa7d9'" onmouseout="this.style.textDecorationColor='transparent'">${subLabelText}</div>`
         : `<div style="font-size:10px;color:#555;margin-top:2px">${subLabelText}</div>`)
     : '';
+  const ambEsc = (ambienteOverride||'').replace(/'/g,"\\'");
+  const subEsc = (effSub||'').replace(/'/g,"\\'");
+  const delOnclick = isPacote ? `openPacoteDeleteModal(${g.id},'${subEsc}','${ambEsc}')` : `removeGasto(${g.id})`;
   return `<tr draggable="true" data-id="${g.id}" data-status="${status}" data-catkey="${catKey||''}"
     onDragStart="onRowDragStart(event,${g.id})"
     onDragEnd="onRowDragEnd(event)"
@@ -5158,7 +5257,7 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
       <span style="display:inline-block;width:18px;text-align:center">${g.link?`<a href="${g.link}" target="_blank" style="color:#2a78d6;font-size:13px"><i class="ti ti-external-link"></i></a>`:''}</span>
       <span style="display:inline-block;width:18px;text-align:center">${g.obs?`<span title="${g.obs}" style="color:#555;font-size:12px;cursor:default"><i class="ti ti-message-circle"></i></span>`:''}</span>
       <button class="edit-btn" style="opacity:1;padding:2px 4px" onclick="openEdit(${g.id})"><i class="ti ti-pencil"></i></button>
-      <button class="del-btn" style="opacity:1;padding:2px 4px" onclick="removeGasto(${g.id})"><i class="ti ti-trash"></i></button>
+      <button class="del-btn" style="opacity:1;padding:2px 4px" onclick="${delOnclick}"><i class="ti ti-trash"></i></button>
     </td>
   </tr>`;
 }
@@ -5208,11 +5307,11 @@ function renderRowsFiltered(list, status, catKey, borderColor, groupBy, relevant
             <span style="width:6px;height:6px;border-radius:50%;background:${color};display:inline-block"></span>${grp.label}
           </span>
         </td></tr>`;
-        const rows = grp.items.map(({g,sub})=>renderOneRow(g,status,catKey,rowBorder,false,false,sub)).join('');
+        const rows = grp.items.map(({g,sub})=>renderOneRow(g,status,catKey,rowBorder,false,false,sub,gk)).join('');
         return header + rows;
       }).join('');
     }
-    return sorted.map(g=>renderOneRow(g,status,catKey,rowBorder,true,false,g.subcategoria)).join('');
+    return sorted.map(g=>renderOneRow(g,status,catKey,rowBorder,true,false,g.subcategoria,g.ambiente)).join('');
   }
 
   // Agrupa por subcategoria (ambiente), seguindo a mesma ordem em Pago/Necessário/Dispensável
