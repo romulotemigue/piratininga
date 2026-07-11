@@ -778,6 +778,21 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
   </div>
 </div>
 
+<div class="modal-overlay" id="emp-ambiente-modal-overlay" style="z-index:200" onclick="if(event.target===this) closeAmbienteModal()">
+  <div class="modal" style="max-width:900px;width:94vw;max-height:88vh;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <h3 style="margin:0;font-size:15px">Locais/ambientes — <span id="emp-ambiente-modal-title" style="color:#e8b544"></span></h3>
+      <button onclick="closeAmbienteModal()" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer">×</button>
+    </div>
+    <div id="emp-ambiente-modal-body" style="overflow-y:auto;flex:1"></div>
+    <div style="display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid #333">
+      <input type="text" id="emp-amb-new-modal" placeholder="novo local/ambiente..." style="flex:1;background:#111;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#ccc;font-size:13px" onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomAmbienteRowModal();}">
+      <button type="button" onclick="addCustomAmbienteRowModal()" style="background:#2a2000;border:1px solid #8a6d1f;color:#e8b544;border-radius:6px;padding:8px 16px;font-size:13px;cursor:pointer;flex-shrink:0">+ Adicionar</button>
+      <button type="button" onclick="closeAmbienteModal()" style="background:#e8b544;border:none;color:#111;font-weight:600;border-radius:6px;padding:8px 20px;font-size:13px;cursor:pointer;flex-shrink:0">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="obra-empreitada-overlay" onclick="if(event.target===this) closeObraEmpreitadaModal()">
   <div class="modal" style="max-width:1400px;width:96vw;max-height:92vh;display:flex;flex-direction:column">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
@@ -2316,24 +2331,9 @@ function openObraEmpreitadaModalForEdit(g){
     checkEl.checked = true;
     checkEl.dispatchEvent(new Event('change'));
     const ri = checkEl.dataset.row;
-    const options = getAmbienteOptions();
+    const data = getAmbienteDataForRow(ri);
     porSub[sk].filter(s=>s.ambiente).forEach(s=>{
-      const ai = options.findIndex(o=>o.toLowerCase()===s.ambiente.toLowerCase());
-      if(ai<0) return;
-      const ambCheck = document.querySelector(`.emp-amb-check-row-${ri}[data-amb-idx="${ai}"]`);
-      if(ambCheck){
-        ambCheck.checked = true;
-        const fieldsEl = document.getElementById(`emp-amb-fields-${ri}-${ai}`);
-        if(fieldsEl){
-          fieldsEl.style.display = 'flex';
-          const m2El = document.getElementById(`emp-amb-m2-${ri}-${ai}`);
-          const valEl = document.getElementById(`emp-amb-valm2-${ri}-${ai}`);
-          const tipoEl = document.getElementById(`emp-amb-tipo-${ri}-${ai}`);
-          if(m2El) m2El.value = s.m2||'';
-          if(valEl) valEl.value = s.valorM2||'';
-          if(tipoEl) tipoEl.value = s.tipo||'';
-        }
-      }
+      data[s.ambiente] = {m2:s.m2||'', valorM2:s.valorM2||'', tipo:s.tipo||''};
     });
     updateAmbienteBtnLabel(ri);
   });
@@ -2369,6 +2369,7 @@ function renderEmpreitadaServiceGrid(){
   // gerem o mesmo slug (o que quebrava o popover/checkbox de ambiente de um deles).
   let rowIdx = 0;
   empreitadaRowMap = {}; // rowIdx -> sk (usado no confirmEmpreitada)
+  ambienteData = {}; // reseta os ambientes/detalhes do pacote anterior
   empreitadaRowShowArea = {}; // rowIdx -> bool (se a fase usa campos de m²)
 
   document.getElementById('emp-service-grid').innerHTML = faseNomes.map((faseName,fi)=>{
@@ -2378,22 +2379,16 @@ function renderEmpreitadaServiceGrid(){
       const ri = rowIdx++;
       empreitadaRowMap[ri] = it.sk;
       empreitadaRowShowArea[ri] = showArea;
+      const labelEsc = it.label.replace(/'/g,"\\'");
       return `
       <div style="padding:3px 0">
         <div style="display:flex;align-items:center;gap:6px">
           <input type="checkbox" class="emp-sub-check" data-row="${ri}" value="${it.sk}" onchange="document.getElementById('emp-amb-btn-${ri}').disabled=!this.checked" style="width:auto;flex-shrink:0">
           <span style="font-size:11px;color:#ccc;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${it.label}">${it.label}</span>
-          <button type="button" onclick="toggleAmbientePopover(${ri},event)" id="emp-amb-btn-${ri}" disabled
-            style="width:110px;flex-shrink:0;background:#111;border:1px solid #333;border-radius:4px;padding:3px 5px;color:#666;font-size:10px;text-align:left;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+          <button type="button" onclick="openAmbienteModal(${ri},'${labelEsc}')" id="emp-amb-btn-${ri}" disabled
+            style="width:130px;flex-shrink:0;background:#111;border:1px solid #333;border-radius:4px;padding:3px 5px;color:#666;font-size:10px;text-align:left;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
             adicionar local
           </button>
-        </div>
-        <div id="emp-amb-popover-${ri}" style="display:none;margin:5px 0 8px 22px;z-index:30;background:#1a1a1a;border:1px solid #444;border-radius:6px;padding:8px;max-height:320px;overflow-y:auto;box-shadow:0 6px 20px rgba(0,0,0,.6)">
-          <div id="emp-amb-options-${ri}">${renderAmbientePopoverOptions(ri, showArea)}</div>
-          <div style="display:flex;gap:4px;margin-top:6px;padding-top:6px;border-top:1px solid #333">
-            <input type="text" id="emp-amb-new-${ri}" placeholder="novo ambiente..." style="flex:1;min-width:0;background:#111;border:1px solid #333;border-radius:4px;padding:3px 6px;color:#ccc;font-size:10px" onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomAmbienteRow(${ri});}">
-            <button type="button" onclick="addCustomAmbienteRow(${ri})" title="Adicionar ambiente" style="background:#2a2000;border:1px solid #8a6d1f;color:#e8b544;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;flex-shrink:0">+</button>
-          </div>
         </div>
       </div>`;
     }).join('');
@@ -2404,47 +2399,94 @@ function renderEmpreitadaServiceGrid(){
   }).join('');
 }
 
-// Renderiza as opções de ambiente (checkbox + nome + detalhes na mesma linha,
-// se a fase usar m²). Sem estado de "confirmar/cancelar" — os campos ficam
-// sempre visíveis e editáveis assim que o ambiente é marcado.
-function renderAmbientePopoverOptions(ri, showArea){
-  const ambienteOptions = getAmbienteOptions();
-  return ambienteOptions.map((a,ai)=>`
-    <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #262626;flex-wrap:wrap">
-      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#ccc;cursor:pointer;width:130px;flex-shrink:0">
-        <input type="checkbox" class="emp-amb-check-row-${ri}" data-amb-idx="${ai}" value="${a}" onchange="onAmbienteCheckToggle(${ri},${ai},this.checked)" style="width:auto;flex-shrink:0">
-        <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a}</span>
+// Estado dos ambientes marcados por linha (ri) — vive em JS, não no DOM, porque
+// a janela de ambientes é reaberta/fechada por linha e o conteúdo é recriado
+// a cada vez. Formato: ambienteData[ri] = { 'Nome do ambiente': {m2,valorM2,tipo} }
+// (a simples presença da chave = ambiente marcado).
+let ambienteData = {};
+let currentAmbienteModalRi = null;
+
+function getAmbienteDataForRow(ri){
+  if(!ambienteData[ri]) ambienteData[ri] = {};
+  return ambienteData[ri];
+}
+
+function escJs(s){ return String(s).replace(/'/g,"\\'"); }
+
+function openAmbienteModal(ri, label){
+  currentAmbienteModalRi = ri;
+  document.getElementById('emp-ambiente-modal-title').textContent = label;
+  renderAmbienteModalBody(ri);
+  document.getElementById('emp-ambiente-modal-overlay').classList.add('open');
+}
+function closeAmbienteModal(){
+  document.getElementById('emp-ambiente-modal-overlay').classList.remove('open');
+  currentAmbienteModalRi = null;
+}
+
+function renderAmbienteModalBody(ri){
+  const showArea = !!empreitadaRowShowArea[ri];
+  const options = getAmbienteOptions();
+  const data = getAmbienteDataForRow(ri);
+  document.getElementById('emp-ambiente-modal-body').innerHTML = options.map(a=>{
+    const checked = !!data[a];
+    const vals = data[a] || {};
+    return `<div style="display:flex;align-items:center;gap:16px;padding:12px 6px;border-bottom:1px solid #262626">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#ccc;cursor:pointer;width:180px;flex-shrink:0">
+        <input type="checkbox" ${checked?'checked':''} onchange="toggleAmbienteChecked(${ri},'${escJs(a)}',this.checked)" style="width:16px;height:16px;flex-shrink:0">
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a}</span>
       </label>
-      ${showArea ? `
-      <div id="emp-amb-fields-${ri}-${ai}" style="display:none;align-items:center;gap:8px;flex:1;flex-wrap:wrap">
-        <div style="display:flex;align-items:center;gap:2px;background:#111;border:1px solid #3a3a3a;border-radius:6px;padding:2px">
-          <button type="button" onclick="stepAmbienteM2(${ri},${ai},-1)" style="background:#232323;border:none;color:#ccc;width:26px;height:26px;border-radius:4px;cursor:pointer;font-size:15px;line-height:1">−</button>
-          <input type="text" inputmode="numeric" placeholder="0" title="Metragem (m²)" id="emp-amb-m2-${ri}-${ai}" style="width:38px;text-align:center;background:none;border:none;color:#e8e7e2;font-size:13px;outline:none" onkeydown="if(!/[0-9]|Backspace|Delete|Arrow|Tab/.test(event.key))event.preventDefault()">
-          <button type="button" onclick="stepAmbienteM2(${ri},${ai},1)" style="background:#232323;border:none;color:#ccc;width:26px;height:26px;border-radius:4px;cursor:pointer;font-size:15px;line-height:1">+</button>
-          <span style="color:#777;font-size:11px;padding:0 6px 0 2px">m²</span>
+      ${showArea && checked ? `
+      <div style="display:flex;align-items:center;gap:12px;flex:1;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:4px;background:#111;border:1px solid #3a3a3a;border-radius:6px;padding:3px">
+          <button type="button" onclick="stepAmbienteM2(${ri},'${escJs(a)}',-1)" style="background:#232323;border:none;color:#ccc;width:30px;height:30px;border-radius:5px;cursor:pointer;font-size:16px">−</button>
+          <input type="text" inputmode="numeric" value="${vals.m2||''}" placeholder="0" oninput="setAmbienteField(${ri},'${escJs(a)}','m2',this.value.replace(/[^0-9]/g,''))" style="width:50px;text-align:center;background:none;border:none;color:#e8e7e2;font-size:14px;outline:none">
+          <button type="button" onclick="stepAmbienteM2(${ri},'${escJs(a)}',1)" style="background:#232323;border:none;color:#ccc;width:30px;height:30px;border-radius:5px;cursor:pointer;font-size:16px">+</button>
+          <span style="color:#777;font-size:12px;padding:0 8px 0 4px">m²</span>
         </div>
-        <div style="display:flex;align-items:center;gap:5px;background:#111;border:1px solid #3a3a3a;border-radius:6px;padding:6px 8px">
-          <span style="color:#777;font-size:11px;flex-shrink:0">R$</span>
-          <input type="text" placeholder="0,00" title="Valor por m²" id="emp-amb-valm2-${ri}-${ai}" style="width:56px;background:none;border:none;color:#e8e7e2;font-size:13px;outline:none">
-          <span style="color:#777;font-size:11px;flex-shrink:0">/m²</span>
+        <div style="display:flex;align-items:center;gap:6px;background:#111;border:1px solid #3a3a3a;border-radius:6px;padding:7px 10px">
+          <span style="color:#777;font-size:12px;flex-shrink:0">R$</span>
+          <input type="text" value="${vals.valorM2||''}" placeholder="0,00" oninput="setAmbienteField(${ri},'${escJs(a)}','valorM2',this.value)" style="width:66px;background:none;border:none;color:#e8e7e2;font-size:14px;outline:none">
+          <span style="color:#777;font-size:12px;flex-shrink:0">/m²</span>
         </div>
-        <input type="text" placeholder="tipo / material do revestimento" title="Tipo ou material do revestimento" id="emp-amb-tipo-${ri}-${ai}" style="flex:1;min-width:160px;background:#111;border:1px solid #3a3a3a;border-radius:6px;padding:6px 8px;color:#e8e7e2;font-size:12px">
-      </div>` : ''}
-    </div>`).join('');
+        <input type="text" value="${vals.tipo||''}" placeholder="tipo / material do revestimento" oninput="setAmbienteField(${ri},'${escJs(a)}','tipo',this.value)" style="flex:1;min-width:220px;background:#111;border:1px solid #3a3a3a;border-radius:6px;padding:8px 10px;color:#e8e7e2;font-size:13px">
+      </div>` : `<div style="flex:1"></div>`}
+    </div>`;
+  }).join('');
 }
 
-function stepAmbienteM2(ri, ai, delta){
-  const el = document.getElementById(`emp-amb-m2-${ri}-${ai}`);
-  if(!el) return;
-  let v = parseInt(el.value||'0',10) || 0;
-  v = Math.max(0, v+delta);
-  el.value = v;
-}
-
-function onAmbienteCheckToggle(ri, ai, checked){
+function toggleAmbienteChecked(ri, ambName, checked){
+  const data = getAmbienteDataForRow(ri);
+  if(checked){ if(!data[ambName]) data[ambName] = {m2:'',valorM2:'',tipo:''}; }
+  else { delete data[ambName]; }
   updateAmbienteBtnLabel(ri);
-  const fieldsEl = document.getElementById(`emp-amb-fields-${ri}-${ai}`);
-  if(fieldsEl) fieldsEl.style.display = checked ? 'flex' : 'none';
+  renderAmbienteModalBody(ri);
+}
+function setAmbienteField(ri, ambName, field, value){
+  const data = getAmbienteDataForRow(ri);
+  if(!data[ambName]) data[ambName] = {m2:'',valorM2:'',tipo:''};
+  data[ambName][field] = value;
+}
+function stepAmbienteM2(ri, ambName, delta){
+  const data = getAmbienteDataForRow(ri);
+  if(!data[ambName]) return;
+  let v = parseInt(data[ambName].m2||'0',10) || 0;
+  v = Math.max(0, v+delta);
+  data[ambName].m2 = String(v);
+  renderAmbienteModalBody(ri);
+}
+function addCustomAmbienteRowModal(){
+  const input = document.getElementById('emp-amb-new-modal');
+  const nome = (input.value||'').trim();
+  if(!nome) return;
+  saveCustomAmbiente(nome);
+  input.value = '';
+  const ri = currentAmbienteModalRi;
+  if(ri==null) return;
+  const data = getAmbienteDataForRow(ri);
+  if(!data[nome]) data[nome] = {m2:'',valorM2:'',tipo:''};
+  updateAmbienteBtnLabel(ri);
+  renderAmbienteModalBody(ri);
 }
 
 // ── Ambientes customizados (persistem entre pacotes, num item específico do projeto) ──
@@ -2454,42 +2496,17 @@ function saveCustomAmbiente(nome){
   if(!list.some(c=>c.toLowerCase()===nome.toLowerCase())) list.push(nome);
   localStorage.setItem('pirati_custom_ambientes', JSON.stringify(list));
 }
-function addCustomAmbienteRow(ri){
-  const input = document.getElementById('emp-amb-new-'+ri);
-  const nome = (input.value||'').trim();
-  if(!nome) return;
-  saveCustomAmbiente(nome);
-  input.value = '';
-  document.getElementById('emp-amb-options-'+ri).innerHTML = renderAmbientePopoverOptions(ri, !!empreitadaRowShowArea[ri]);
-  // marca automaticamente o ambiente recém-criado
-  const options = getAmbienteOptions();
-  const idx = options.findIndex(o=>o.toLowerCase()===nome.toLowerCase());
-  if(idx>=0){
-    const chk = document.querySelector(`.emp-amb-check-row-${ri}[data-amb-idx="${idx}"]`);
-    if(chk){ chk.checked = true; chk.dispatchEvent(new Event('change')); }
-  }
-}
 
 let empreitadaRowMap = {};
 let empreitadaRowShowArea = {};
 
-function toggleAmbientePopover(ri, e){
-  if(e) e.stopPropagation();
-  document.querySelectorAll('[id^="emp-amb-popover-"]').forEach(el=>{ if(el.id !== 'emp-amb-popover-'+ri) el.style.display='none'; });
-  const pop = document.getElementById('emp-amb-popover-'+ri);
-  if(pop) pop.style.display = (pop.style.display==='none'||!pop.style.display) ? 'block' : 'none';
-}
-document.addEventListener('click', function(e){
-  if(!e.target.closest('[id^="emp-amb-popover-"]') && !e.target.closest('[id^="emp-amb-btn-"]')){
-    document.querySelectorAll('[id^="emp-amb-popover-"]').forEach(el=>el.style.display='none');
-  }
-});
 function updateAmbienteBtnLabel(ri){
-  const checked = [...document.querySelectorAll('.emp-amb-check-row-'+ri+':checked')].map(el=>el.value);
+  const data = ambienteData[ri] || {};
+  const names = Object.keys(data);
   const btn = document.getElementById('emp-amb-btn-'+ri);
   if(btn){
-    btn.textContent = checked.length ? `${checked.length} local${checked.length>1?'is':''}: ${checked.join(', ')}` : 'adicionar local';
-    btn.style.color = checked.length ? '#e8e7e2' : '#666';
+    btn.textContent = names.length ? `${names.length} local${names.length>1?'is':''}: ${names.join(', ')}` : 'adicionar local';
+    btn.style.color = names.length ? '#e8e7e2' : '#666';
   }
 }
 
@@ -2506,14 +2523,12 @@ async function confirmEmpreitada(){
   checks.forEach(el=>{
     const ri = el.dataset.row;
     const sk = empreitadaRowMap[ri];
-    const ambCheckEls = [...document.querySelectorAll('.emp-amb-check-row-'+ri+':checked')];
-    if(ambCheckEls.length){
-      ambCheckEls.forEach(a=>{
-        const ai = a.dataset.ambIdx;
-        const m2 = document.getElementById(`emp-amb-m2-${ri}-${ai}`)?.value.trim() || '';
-        const valorM2 = document.getElementById(`emp-amb-valm2-${ri}-${ai}`)?.value.trim() || '';
-        const tipo = document.getElementById(`emp-amb-tipo-${ri}-${ai}`)?.value.trim() || '';
-        servicos.push({sub:sk, ambiente:a.value, m2, valorM2, tipo});
+    const data = ambienteData[ri] || {};
+    const names = Object.keys(data);
+    if(names.length){
+      names.forEach(nome=>{
+        const d = data[nome];
+        servicos.push({sub:sk, ambiente:nome, m2:d.m2||'', valorM2:d.valorM2||'', tipo:d.tipo||''});
       });
     } else {
       servicos.push({sub:sk, ambiente:''});
