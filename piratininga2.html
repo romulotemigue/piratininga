@@ -5609,7 +5609,7 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
   const subLabel = (showSubLabel || subKeyOverride) ? subLabelText : '';
   const val = (g.valor||0)*(g.quantidade||1);
   const isPacote = !!g.pacote_subs;
-  const pacoteBadge = isPacote ? `<span onclick="event.stopPropagation();openPacoteModal(${g.id})" title="Ver todos os serviços deste pacote" style="cursor:pointer;color:#e8b544;font-size:10px;font-weight:700;margin-left:6px;background:#1a1500;border:1px solid #8a6d1f;border-radius:4px;padding:1px 5px">📦 pacote</span>` : '';
+  const pacoteBadge = isPacote ? `<span onclick="event.stopPropagation();openPacoteModal(${g.id})" title="Ver todos os serviços deste pacote" style="cursor:pointer;color:#e8b544;font-size:10px;font-weight:700;margin-left:6px;background:#1a1500;border:1px solid #8a6d1f;border-radius:4px;padding:1px 5px;white-space:nowrap;display:inline-block">📦 pacote</span>` : '';
   const subLabelHtml = subLabel
     ? (canNavSub
         ? `<div onclick="event.stopPropagation();navigate('${baseCat}__${effSub}')" title="Ver essa sub-etapa" style="font-size:10px;color:#7aa7d9;margin-top:2px;cursor:pointer;text-decoration:underline;text-decoration-color:transparent;transition:text-decoration-color .15s" onmouseover="this.style.textDecorationColor='#7aa7d9'" onmouseout="this.style.textDecorationColor='transparent'">${subLabelText}</div>`
