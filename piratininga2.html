@@ -191,7 +191,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 12JUL26 (versão 20)</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 12JUL26 (versão 21)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -779,6 +779,27 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
   </div>
 </div>
 
+<div class="modal-overlay" id="materiais-modal-overlay" style="z-index:210" onclick="if(event.target===this) closeMateriaisModal()">
+  <div class="modal" style="max-width:560px;width:92vw;max-height:85vh;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <h3 style="margin:0;font-size:15px">🧱 Materiais — <span id="materiais-modal-title" style="color:#e8b544"></span></h3>
+      <button onclick="closeMateriaisModal()" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer">×</button>
+    </div>
+    <div id="materiais-modal-list" style="overflow-y:auto;flex:1;margin-bottom:10px"></div>
+    <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+      <input type="text" id="mat-nome" placeholder="Material (ex: Argamassa AC-II)" style="flex:2;min-width:160px;background:#111;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#ccc;font-size:13px">
+      <input type="text" id="mat-valor" placeholder="Valor (R$)" inputmode="numeric" oninput="maskMoney(this)" style="width:100px;background:#111;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#ccc;font-size:13px">
+      <input type="text" id="mat-qtd" placeholder="Qtd" value="1" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')" style="width:56px;background:#111;border:1px solid #333;border-radius:6px;padding:8px 10px;color:#ccc;font-size:13px">
+      <button type="button" onclick="addMaterialRow()" style="background:#2a2000;border:1px solid #8a6d1f;color:#e8b544;border-radius:6px;padding:8px 14px;font-size:13px;cursor:pointer;white-space:nowrap">+ Adicionar</button>
+    </div>
+    <div id="materiais-modal-total" style="font-size:13px;color:#ccc;margin-bottom:10px;padding-top:10px;border-top:1px solid #333"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button onclick="closeMateriaisModal()" style="background:#222;border:none;color:#ccc;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px">Cancelar</button>
+      <button onclick="confirmMateriaisModal()" style="background:#e8b544;border:none;color:#111;font-weight:600;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:13px">Confirmar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="emp-ambiente-modal-overlay" style="z-index:200" onclick="if(event.target===this) cancelAmbienteModal()">
   <div class="modal" style="max-width:900px;width:94vw;max-height:88vh;display:flex;flex-direction:column">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
@@ -836,6 +857,9 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       </div>
     </div>
     <div id="emp-prazo-preview" style="display:none;font-size:11px;color:#888;margin:-8px 0 14px"></div>
+    <div style="margin:-6px 0 14px">
+      <button type="button" id="emp-materiais-btn" onclick="openMateriaisModal('pending')" style="background:#161616;border:1px solid #3a3a3a;color:#bbb;border-radius:6px;padding:7px 14px;font-size:12px;cursor:pointer">🧱 Adicionar material</button>
+    </div>
     <div style="font-size:11px;color:#888;margin-bottom:8px">Marque os serviços cobertos por esse pacote e, se quiser, escreva o ambiente de cada um:</div>
     <div id="emp-service-grid" style="overflow-y:auto;flex:1;display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:12px;align-content:start;padding-bottom:8px"></div>
     <button class="btn-confirm" id="emp-btn-confirm" onclick="confirmEmpreitada()" style="margin-top:14px">Confirmar pacote</button>
@@ -2422,13 +2446,110 @@ function prazoBadgeHtml(meta){
   const info = calcPrazoInfo(meta);
   if(!info) return '';
   const fimStr = fmtDateTxt(info.fim.toISOString().slice(0,10));
-  if(info.diffDias > 1) return `<span title="Previsão de término: ${fimStr}" style="font-size:10px;color:#4caf50;background:#0d1a10;border:1px solid #2e5a34;border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px">⏳ ${info.diffDias} dias restantes</span>`;
-  if(info.diffDias === 1) return `<span title="Previsão de término: ${fimStr}" style="font-size:10px;color:#e8b544;background:#1a1500;border:1px solid #8a6d1f;border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px">⏳ termina amanhã</span>`;
-  if(info.diffDias === 0) return `<span title="Previsão de término: ${fimStr}" style="font-size:10px;color:#e8b544;background:#1a1500;border:1px solid #8a6d1f;border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px">⏳ termina hoje</span>`;
-  return `<span title="Previsão era: ${fimStr}" style="font-size:10px;color:#ef5350;background:#1a0d0d;border:1px solid #5c2b2b;border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px">⚠ atrasado ${Math.abs(info.diffDias)}d</span>`;
+  if(info.diffDias > 1) return `<span title="${info.diffDias} dias restantes — previsão de término: ${fimStr}" style="font-size:10px;color:#4caf50;background:#0d1a10;border:1px solid #2e5a34;border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px">⏳ ${info.diffDias}d</span>`;
+  if(info.diffDias === 1) return `<span title="Termina amanhã — previsão de término: ${fimStr}" style="font-size:10px;color:#e8b544;background:#1a1500;border:1px solid #8a6d1f;border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px">⏳ amanhã</span>`;
+  if(info.diffDias === 0) return `<span title="Termina hoje — previsão de término: ${fimStr}" style="font-size:10px;color:#e8b544;background:#1a1500;border:1px solid #8a6d1f;border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px">⏳ hoje</span>`;
+  return `<span title="Atrasado ${Math.abs(info.diffDias)} dias — previsão era: ${fimStr}" style="font-size:10px;color:#ef5350;background:#1a0d0d;border:1px solid #5c2b2b;border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px">⚠ -${Math.abs(info.diffDias)}d</span>`;
 }
 
-// ── CONSTRUTOR DE PACOTE DE EMPREITADA (grade horizontal, fases inteiras) ──
+// ── MATERIAIS COMPRADOS PARA UM SERVIÇO/PACOTE (coluna própria: materiais) ──
+function getMateriais(g){
+  if(!g || !g.materiais) return [];
+  try{ const p = JSON.parse(g.materiais); return Array.isArray(p) ? p : []; }catch(e){ return []; }
+}
+function materiaisTotal(lista){ return lista.reduce((s,m)=>s+(parseMoney(m.valor)||0)*(parseInt(m.qtd,10)||1), 0); }
+function materiaisBadgeHtml(g){
+  const lista = getMateriais(g);
+  const total = materiaisTotal(lista);
+  const label = lista.length ? `🧱 ${lista.length} · ${fmtShort(total)}` : '🧱 + material';
+  return `<span onclick="event.stopPropagation();openMateriaisModal('gasto',${g.id})" title="${lista.length? 'Ver/editar materiais comprados para este serviço' : 'Adicionar material comprado pra este serviço'}" style="cursor:pointer;color:#bbb;font-size:10px;font-weight:600;background:#161616;border:1px solid #3a3a3a;border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px">${label}</span>`;
+}
+
+// Estado da janela de materiais — funciona tanto pra um gasto já salvo (edita
+// e salva na hora, via PATCH) quanto pra um pacote ainda sendo criado (guarda
+// numa lista pendente que só vai pro banco quando o lançamento for confirmado).
+let materiaisModalTarget = null; // {mode:'gasto', gastoId} ou {mode:'pending'}
+let materiaisWorkingList = [];
+let pendingMateriais = []; // usado durante a criação de um pacote/serviço novo
+
+function openMateriaisModal(mode, gastoId){
+  materiaisModalTarget = {mode, gastoId};
+  if(mode==='gasto'){
+    const g = gastos.find(x=>x.id===gastoId);
+    materiaisWorkingList = getMateriais(g).map(m=>({...m}));
+    document.getElementById('materiais-modal-title').textContent = g?.descricao || '';
+  } else {
+    materiaisWorkingList = pendingMateriais.map(m=>({...m}));
+    document.getElementById('materiais-modal-title').textContent = document.getElementById('emp-desc').value || 'novo lançamento';
+  }
+  document.getElementById('mat-nome').value = '';
+  document.getElementById('mat-valor').value = '';
+  document.getElementById('mat-qtd').value = '1';
+  renderMateriaisModalBody();
+  document.getElementById('materiais-modal-overlay').classList.add('open');
+}
+function closeMateriaisModal(){
+  document.getElementById('materiais-modal-overlay').classList.remove('open');
+  materiaisModalTarget = null;
+}
+function renderMateriaisModalBody(){
+  const listEl = document.getElementById('materiais-modal-list');
+  if(!materiaisWorkingList.length){
+    listEl.innerHTML = `<div style="color:#666;font-size:12px;text-align:center;padding:16px 0">Nenhum material adicionado ainda.</div>`;
+  } else {
+    listEl.innerHTML = materiaisWorkingList.map((m,i)=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid #262626">
+        <span style="flex:1;font-size:13px;color:#ccc">${m.nome}</span>
+        <span style="font-size:12px;color:#888;width:36px;text-align:center">x${m.qtd||1}</span>
+        <span style="font-size:13px;color:#e8b544;width:80px;text-align:right">${fmt((parseMoney(m.valor)||0)*(parseInt(m.qtd,10)||1))}</span>
+        <button onclick="removeMaterialRow(${i})" style="background:none;border:none;color:#888;cursor:pointer;font-size:14px" title="Remover"><i class="ti ti-trash"></i></button>
+      </div>`).join('');
+  }
+  document.getElementById('materiais-modal-total').textContent = 'Total em materiais: ' + fmt(materiaisTotal(materiaisWorkingList));
+}
+function addMaterialRow(){
+  const nome = document.getElementById('mat-nome').value.trim();
+  const valor = document.getElementById('mat-valor').value.trim();
+  const qtd = document.getElementById('mat-qtd').value.trim() || '1';
+  if(!nome){ alert('Preencha o nome do material.'); return; }
+  materiaisWorkingList.push({nome, valor, qtd});
+  document.getElementById('mat-nome').value = '';
+  document.getElementById('mat-valor').value = '';
+  document.getElementById('mat-qtd').value = '1';
+  renderMateriaisModalBody();
+  document.getElementById('mat-nome').focus();
+}
+function removeMaterialRow(idx){
+  materiaisWorkingList.splice(idx,1);
+  renderMateriaisModalBody();
+}
+async function confirmMateriaisModal(){
+  if(!materiaisModalTarget) return;
+  if(materiaisModalTarget.mode==='gasto'){
+    const gastoId = materiaisModalTarget.gastoId;
+    try{
+      const body = { materiais: materiaisWorkingList.length ? JSON.stringify(materiaisWorkingList) : null };
+      const res = await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${gastoId}`,{
+        method:'PATCH', headers:{...HEADERS,'Prefer':'return=representation'}, body:JSON.stringify(body)
+      });
+      if(!res.ok) throw new Error(await res.text());
+      toast('Materiais atualizados.');
+      await loadGastos();
+    }catch(e){ toast('Erro ao salvar materiais: '+e.message,'err'); }
+  } else {
+    pendingMateriais = materiaisWorkingList.map(m=>({...m}));
+    updateMateriaisBtnLabel();
+  }
+  closeMateriaisModal();
+}
+function updateMateriaisBtnLabel(){
+  const btn = document.getElementById('emp-materiais-btn');
+  if(!btn) return;
+  const total = materiaisTotal(pendingMateriais);
+  btn.textContent = pendingMateriais.length ? `🧱 ${pendingMateriais.length} material(is) · ${fmtShort(total)}` : '🧱 Adicionar material';
+}
+
+
 let empreitadaMaterial = null;
 let empreitadaEditingId = null; // null = criando pacote novo; senão, é o id do gasto sendo editado
 let empreitadaIsUnico = false; // true quando veio do fluxo "Serviço único" (mesma grade, só copy diferente)
@@ -2448,6 +2569,8 @@ function openObraEmpreitadaModal(material, presetSub, isUnico){
   document.getElementById('emp-data-inicio').value = '';
   document.getElementById('emp-prazo-dias').value = '';
   document.getElementById('emp-prazo-preview').style.display = 'none';
+  pendingMateriais = [];
+  updateMateriaisBtnLabel();
   document.getElementById('emp-btn-confirm').textContent = isUnico ? 'Confirmar lançamento' : 'Confirmar pacote';
   const valorLabelEl = document.getElementById('emp-valor-label');
   if(valorLabelEl) valorLabelEl.textContent = isUnico ? 'Valor do serviço (R$)' : 'Valor total do pacote (R$)';
@@ -2498,6 +2621,8 @@ function openObraEmpreitadaModalForEdit(g){
   document.getElementById('emp-data-inicio').value = meta.dataInicio || '';
   document.getElementById('emp-prazo-dias').value = meta.prazoDias || '';
   updateEmpPrazoPreview();
+  pendingMateriais = getMateriais(g).map(m=>({...m}));
+  updateMateriaisBtnLabel();
   renderEmpreitadaServiceGrid();
   const servicos = parsePacoteSubs(g.pacote_subs);
   // Agrupa por sub pra marcar os checkboxes certos, com todos os detalhes de cada ambiente
@@ -2948,7 +3073,8 @@ async function confirmEmpreitada(){
     pacote_subs: JSON.stringify(servicos),
     tipo_contratacao: (empreitadaIsUnico ? 'unico-' : '') + empreitadaMaterial,
     data_inicio: dataInicio || null,
-    prazo_dias: prazoDias ? parseInt(prazoDias,10) : null
+    prazo_dias: prazoDias ? parseInt(prazoDias,10) : null,
+    materiais: pendingMateriais.length ? JSON.stringify(pendingMateriais) : null
   };
   try{
     if(isEditing){
@@ -5436,9 +5562,15 @@ function openPacoteModal(gastoId){
   const meta = getPacoteMeta(g);
   const prazoBadge = prazoBadgeHtml(meta);
   const prazoLine = meta.dataInicio ? `<div style="font-size:11px;color:#888;margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b>Início:</b> ${fmtDateTxt(meta.dataInicio)} ${meta.prazoDias?` &nbsp;·&nbsp; <b>Prazo:</b> ${meta.prazoDias} dias`:''} ${prazoBadge}</div>` : '';
+  const materiaisLista = getMateriais(g);
+  const materiaisLine = `<div style="font-size:11px;color:#888;margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <b>Materiais:</b> ${materiaisLista.length ? `${materiaisLista.length} item(ns) · ${fmt(materiaisTotal(materiaisLista))}` : 'nenhum ainda'}
+    <button onclick="openMateriaisModal('gasto',${g.id})" style="background:#161616;border:1px solid #3a3a3a;color:#bbb;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">🧱 ${materiaisLista.length?'ver/editar':'+ adicionar'}</button>
+  </div>`;
   const infoRow = `<tr><td colspan="6" style="padding:12px;border-top:1px solid #2a2a2a">
     <div style="font-size:11px;color:#888;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b>Data:</b> ${fmtDate(g.data)} &nbsp;·&nbsp; <b>Status:</b> ${getColLabel(g.status)} ${tipoTag}</div>
     ${prazoLine}
+    ${materiaisLine}
     ${g.obs?`<div style="font-size:11px;color:#888;margin-top:6px"><b>Observação:</b> ${g.obs}</div>`:''}
     ${g.link?`<div style="font-size:11px;margin-top:6px"><a href="${g.link}" target="_blank" style="color:#2a78d6">🔗 Ver link/contrato</a></div>`:''}
     <div style="margin-top:10px;display:flex;gap:6px">
@@ -5757,11 +5889,12 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
   const badgeBorder = badgeIsUnico ? '#2d5a8a' : '#8a6d1f';
   const pacoteBadge = isPacote ? `<span onclick="event.stopPropagation();openPacoteModal(${g.id})" title="Ver todos os serviços deste ${badgeLabel} (${badgeMaterial==='com-material'?'com material':'sem material'})" style="cursor:pointer;color:${badgeColor};font-size:10px;font-weight:700;background:${badgeBg};border:1px solid ${badgeBorder};border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;line-height:1.4;width:88px;flex-shrink:0;box-sizing:border-box">${badgeIcon} ${badgeLabel}</span>` : '';
   const prazoBadgeRow = isPacote ? prazoBadgeHtml(getPacoteMeta(g)) : '';
-  // 3 linhas fixas: 1) nome, 2) selos (pacote/serviço + dias restantes, com largura
-  // padronizada pra alinhar mesmo quando o ícone muda de tamanho com/sem material),
-  // 3) sub-etapa em azul embaixo de tudo.
+  const materiaisBadgeRow = isPacote ? materiaisBadgeHtml(g) : '';
+  // 3 linhas fixas: 1) nome, 2) selos (pacote/serviço + dias restantes + materiais,
+  // com largura padronizada pra alinhar mesmo quando o ícone muda de tamanho
+  // com/sem material), 3) sub-etapa em azul embaixo de tudo.
   const badgeLineHtml = isPacote
-    ? `<div style="display:flex;align-items:center;gap:6px;margin-top:2px;flex-wrap:wrap">${pacoteBadge}${prazoBadgeRow}</div>`
+    ? `<div style="display:flex;align-items:center;gap:6px;margin-top:2px;flex-wrap:wrap">${pacoteBadge}${prazoBadgeRow}${materiaisBadgeRow}</div>`
     : '';
   const subLabelLineHtml = subLabel
     ? `<div style="margin-top:2px">${canNavSub
