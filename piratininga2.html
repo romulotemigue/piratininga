@@ -1437,7 +1437,7 @@ function fmtDate(d){ if(!d) return '—'; const [y,m,day]=d.split('-'); const ms
 // Versão em TEXTO PURO (sem HTML) — usar sempre que a data for embutida dentro
 // de um atributo (title=, placeholder=, etc) ou dentro de texto corrido, pra
 // não quebrar a marcação como aconteceu usando fmtDate() (que devolve HTML).
-function fmtDateTxt(d){ if(!d) return '—'; const [y,m,day]=d.split('-'); return `${day}/${m}/${y}`; }
+function fmtDateTxt(d){ if(!d) return '—'; const [y,m,day]=String(d).slice(0,10).split('-'); return `${day}/${m}/${y}`; }
 
 function toast(msg, type='ok'){
   const t = document.getElementById('toast');
@@ -2407,7 +2407,8 @@ function updateEmpPrazoPreview(){
 
 function calcPrazoInfo(meta){
   if(!meta || !meta.dataInicio || !meta.prazoDias) return null;
-  const inicio = new Date(meta.dataInicio+'T00:00:00');
+  const dataSoDia = String(meta.dataInicio).slice(0,10);
+  const inicio = new Date(dataSoDia+'T00:00:00');
   if(isNaN(inicio.getTime())) return null;
   const dias = parseInt(meta.prazoDias,10);
   if(!dias) return null;
