@@ -2316,12 +2316,8 @@ function closeObraTriagemModal(){
 }
 function chooseObraTipo(tipo, material){
   closeObraTriagemModal();
-  if(tipo==='unico'){
-    pendingTipoContratacao = material;
-    openModal('obra-bruta', obraTriagemPresetSub);
-  } else {
-    openObraEmpreitadaModal(material, obraTriagemPresetSub);
-  }
+  pendingTipoContratacao = material;
+  openObraEmpreitadaModal(material, obraTriagemPresetSub, tipo==='unico');
 }
 
 // Aceita tanto o formato novo (JSON com ambiente por serviço) quanto o formato
@@ -2338,16 +2334,19 @@ function parsePacoteSubs(str){
 // ── CONSTRUTOR DE PACOTE DE EMPREITADA (grade horizontal, fases inteiras) ──
 let empreitadaMaterial = null;
 let empreitadaEditingId = null; // null = criando pacote novo; senão, é o id do gasto sendo editado
-function openObraEmpreitadaModal(material, presetSub){
+let empreitadaIsUnico = false; // true quando veio do fluxo "Serviço único" (mesma grade, só copy diferente)
+function openObraEmpreitadaModal(material, presetSub, isUnico){
   empreitadaEditingId = null;
   empreitadaMaterial = material;
-  const icon = material==='com-material' ? '📦🧱' : '📦';
-  document.getElementById('empreitada-title').textContent = icon+' Novo pacote de empreitada — '+(material==='com-material'?'com material':'sem material');
+  empreitadaIsUnico = !!isUnico;
+  const icon = material==='com-material' ? (isUnico?'🔧🧱':'📦🧱') : (isUnico?'🔧':'📦');
+  const tipoLabel = isUnico ? 'serviço' : 'pacote de empreitada';
+  document.getElementById('empreitada-title').textContent = icon+' Novo '+tipoLabel+' — '+(material==='com-material'?'com material':'sem material');
   document.getElementById('emp-desc').value = '';
   document.getElementById('emp-valor').value = '';
   document.getElementById('emp-data').value = new Date().toISOString().slice(0,10);
   document.getElementById('emp-status').value = 'necessario';
-  document.getElementById('emp-btn-confirm').textContent = 'Confirmar pacote';
+  document.getElementById('emp-btn-confirm').textContent = isUnico ? 'Confirmar lançamento' : 'Confirmar pacote';
   renderEmpreitadaServiceGrid();
   if(presetSub){
     const checkEl = document.querySelector(`.emp-sub-check[value="${presetSub}"]`);
@@ -2358,6 +2357,7 @@ function openObraEmpreitadaModal(material, presetSub){
 function closeObraEmpreitadaModal(){
   document.getElementById('obra-empreitada-overlay').classList.remove('open');
   empreitadaEditingId = null;
+  empreitadaIsUnico = false;
 }
 
 // Abre o mesmo construtor de pacote, mas pré-preenchido com os dados de um
@@ -2804,13 +2804,13 @@ async function confirmEmpreitada(){
       await sbInsert({...row, obs:'', orcamento:0, quantidade:1, link:''});
     }
     closeObraEmpreitadaModal();
-    toast(isEditing ? 'Pacote atualizado com sucesso!' : 'Pacote salvo com sucesso!');
+    toast(isEditing ? 'Pacote atualizado com sucesso!' : (empreitadaIsUnico ? 'Lançamento salvo com sucesso!' : 'Pacote salvo com sucesso!'));
     empreitadaEditingId = null;
     await loadGastos();
   } catch(e){
     toast('Erro ao salvar: '+e.message,'err');
   } finally{
-    btn.disabled=false; btn.textContent = isEditing ? 'Salvar alterações' : 'Confirmar pacote';
+    btn.disabled=false; btn.textContent = isEditing ? 'Salvar alterações' : (empreitadaIsUnico ? 'Confirmar lançamento' : 'Confirmar pacote');
   }
 }
 
