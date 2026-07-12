@@ -5755,17 +5755,18 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
   const badgeColor = badgeIsUnico ? '#42a5f5' : '#e8b544';
   const badgeBg = badgeIsUnico ? '#0d1520' : '#1a1500';
   const badgeBorder = badgeIsUnico ? '#2d5a8a' : '#8a6d1f';
-  const pacoteBadge = isPacote ? `<span onclick="event.stopPropagation();openPacoteModal(${g.id})" title="Ver todos os serviços deste ${badgeLabel} (${badgeMaterial==='com-material'?'com material':'sem material'})" style="cursor:pointer;color:${badgeColor};font-size:10px;font-weight:700;background:${badgeBg};border:1px solid ${badgeBorder};border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;line-height:1.4">${badgeIcon} ${badgeLabel}</span>` : '';
+  const pacoteBadge = isPacote ? `<span onclick="event.stopPropagation();openPacoteModal(${g.id})" title="Ver todos os serviços deste ${badgeLabel} (${badgeMaterial==='com-material'?'com material':'sem material'})" style="cursor:pointer;color:${badgeColor};font-size:10px;font-weight:700;background:${badgeBg};border:1px solid ${badgeBorder};border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;line-height:1.4;width:88px;flex-shrink:0;box-sizing:border-box">${badgeIcon} ${badgeLabel}</span>` : '';
   const prazoBadgeRow = isPacote ? prazoBadgeHtml(getPacoteMeta(g)) : '';
-  const showBadgeInline = isPacote && !subLabel;
-  const showBadgeInSubline = isPacote && !!subLabel;
-  const subLabelHtml = subLabel
-    ? `<div style="display:flex;align-items:center;gap:6px;margin-top:2px">
-        ${canNavSub
-          ? `<span onclick="event.stopPropagation();navigate('${baseCat}__${effSub}')" title="Ver essa sub-etapa" style="font-size:10px;color:#7aa7d9;cursor:pointer;text-decoration:underline;text-decoration-color:transparent;transition:text-decoration-color .15s" onmouseover="this.style.textDecorationColor='#7aa7d9'" onmouseout="this.style.textDecorationColor='transparent'">${subLabelText}</span>`
-          : `<span style="font-size:10px;color:#555">${subLabelText}</span>`}
-        ${showBadgeInSubline?pacoteBadge:''}${showBadgeInSubline?prazoBadgeRow:''}
-      </div>`
+  // 3 linhas fixas: 1) nome, 2) selos (pacote/serviço + dias restantes, com largura
+  // padronizada pra alinhar mesmo quando o ícone muda de tamanho com/sem material),
+  // 3) sub-etapa em azul embaixo de tudo.
+  const badgeLineHtml = isPacote
+    ? `<div style="display:flex;align-items:center;gap:6px;margin-top:2px;flex-wrap:wrap">${pacoteBadge}${prazoBadgeRow}</div>`
+    : '';
+  const subLabelLineHtml = subLabel
+    ? `<div style="margin-top:2px">${canNavSub
+        ? `<span onclick="event.stopPropagation();navigate('${baseCat}__${effSub}')" title="Ver essa sub-etapa" style="font-size:10px;color:#7aa7d9;cursor:pointer;text-decoration:underline;text-decoration-color:transparent;transition:text-decoration-color .15s" onmouseover="this.style.textDecorationColor='#7aa7d9'" onmouseout="this.style.textDecorationColor='transparent'">${subLabelText}</span>`
+        : `<span style="font-size:10px;color:#555">${subLabelText}</span>`}</div>`
     : '';
   const ambEsc = (ambienteOverride||'').replace(/'/g,"\\'");
   const subEsc = (effSub||'').replace(/'/g,"\\'");
@@ -5779,8 +5780,9 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
     <td style="padding:6px 2px 6px 8px;width:12px"><span class="drag-handle" title="Arrastar">⠿</span></td>
     <td style="width:32px;vertical-align:middle;padding:4px">${fmtDate(g.data)}</td>
     <td style="font-size:12px;padding:4px">
-      <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;line-height:1.5">${g.descricao||''}${showBadgeInline?pacoteBadge:''}${showBadgeInline?prazoBadgeRow:''}</div>
-      ${subLabelHtml}
+      <div style="line-height:1.5">${g.descricao||''}</div>
+      ${badgeLineHtml}
+      ${subLabelLineHtml}
     </td>
     <td style="text-align:right;font-weight:500;font-size:11px;white-space:nowrap;padding:4px">${fmtShort(val)}</td>
     <td style="padding:4px 2px"><div class="qty-wrap"><button class="qty-btn" onclick="changeQty(${g.id},-1)">−</button><input class="qty-input" type="number" min="1" value="${g.quantidade||1}" onchange="setQty(${g.id},this)" onclick="event.stopPropagation()"><button class="qty-btn" onclick="changeQty(${g.id},1)">+</button></div></td>
