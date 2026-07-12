@@ -191,7 +191,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 12JUL26 (versão 23)</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 12JUL26 (versão 24)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -5463,8 +5463,10 @@ function renderObraBrutaSteps(){
       const itemTotal = itemGastosDireto.reduce((s,g)=>s+getValO(g),0);
       const itemPago = itemGastosDireto.some(g=>g.status==='pago');
       const hasVal = itemTotal>0;
-      const semMaterial = itemGastosDireto.some(g=>g.tipo_contratacao==='sem-material') || (pacoteGasto && pacoteGasto.tipo_contratacao==='sem-material');
-      const faltaMaterialTag = semMaterial ? ' <span title="Falta lançar o material" style="color:#e8b544">⚠</span>' : '';
+      const materiaisDoPacote = pacoteGasto ? getMateriais(pacoteGasto) : [];
+      const semMaterialContratado = itemGastosDireto.some(g=>g.tipo_contratacao==='sem-material') || (pacoteGasto && pacoteGasto.tipo_contratacao==='sem-material');
+      const jaTemMaterialLancado = materiaisDoPacote.length>0 || itemGastosDireto.some(g=>getMateriais(g).length>0);
+      const faltaMaterialTag = (semMaterialContratado && !jaTemMaterialLancado) ? ' <span title="Falta lançar o material" style="color:#e8b544">⚠</span>' : (jaTemMaterialLancado ? ' <span title="Material já lançado" style="color:#888">🧱</span>' : '');
       if(pacoteGasto){
         return `<div onclick="event.stopPropagation();openPacoteModal(${pacoteGasto.id})" style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:3px 0;cursor:pointer" title="Parte do pacote: ${pacoteGasto.descricao}">
           <span style="font-size:10px;color:#c9a227;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📦 ${subLabel}${faltaMaterialTag}</span>
