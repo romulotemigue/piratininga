@@ -5627,10 +5627,15 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
   const badgeBg = badgeIsUnico ? '#0d1520' : '#1a1500';
   const badgeBorder = badgeIsUnico ? '#2d5a8a' : '#8a6d1f';
   const pacoteBadge = isPacote ? `<span onclick="event.stopPropagation();openPacoteModal(${g.id})" title="Ver todos os serviços deste ${badgeLabel} (${badgeMaterial==='com-material'?'com material':'sem material'})" style="cursor:pointer;color:${badgeColor};font-size:10px;font-weight:700;background:${badgeBg};border:1px solid ${badgeBorder};border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;line-height:1.4">${badgeIcon} ${badgeLabel}</span>` : '';
+  const showBadgeInline = isPacote && !subLabel;
+  const showBadgeInSubline = isPacote && !!subLabel;
   const subLabelHtml = subLabel
-    ? (canNavSub
-        ? `<div onclick="event.stopPropagation();navigate('${baseCat}__${effSub}')" title="Ver essa sub-etapa" style="font-size:10px;color:#7aa7d9;margin-top:2px;cursor:pointer;text-decoration:underline;text-decoration-color:transparent;transition:text-decoration-color .15s" onmouseover="this.style.textDecorationColor='#7aa7d9'" onmouseout="this.style.textDecorationColor='transparent'">${subLabelText}</div>`
-        : `<div style="font-size:10px;color:#555;margin-top:2px">${subLabelText}</div>`)
+    ? `<div style="display:flex;align-items:center;gap:6px;margin-top:2px">
+        ${canNavSub
+          ? `<span onclick="event.stopPropagation();navigate('${baseCat}__${effSub}')" title="Ver essa sub-etapa" style="font-size:10px;color:#7aa7d9;cursor:pointer;text-decoration:underline;text-decoration-color:transparent;transition:text-decoration-color .15s" onmouseover="this.style.textDecorationColor='#7aa7d9'" onmouseout="this.style.textDecorationColor='transparent'">${subLabelText}</span>`
+          : `<span style="font-size:10px;color:#555">${subLabelText}</span>`}
+        ${showBadgeInSubline?pacoteBadge:''}
+      </div>`
     : '';
   const ambEsc = (ambienteOverride||'').replace(/'/g,"\\'");
   const subEsc = (effSub||'').replace(/'/g,"\\'");
@@ -5644,7 +5649,7 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
     <td style="padding:6px 2px 6px 8px;width:12px"><span class="drag-handle" title="Arrastar">⠿</span></td>
     <td style="width:32px;vertical-align:middle;padding:4px">${fmtDate(g.data)}</td>
     <td style="font-size:12px;padding:4px">
-      <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;line-height:1.5">${g.descricao||''}${pacoteBadge}</div>
+      <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;line-height:1.5">${g.descricao||''}${showBadgeInline?pacoteBadge:''}</div>
       ${subLabelHtml}
     </td>
     <td style="text-align:right;font-weight:500;font-size:11px;white-space:nowrap;padding:4px">${fmtShort(val)}</td>
