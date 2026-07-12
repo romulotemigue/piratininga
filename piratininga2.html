@@ -1985,6 +1985,7 @@ async function loadGastos(){
     gastos = await sbFetch();
     await migrateSubcats(gastos);
     await migrateGanhoTipos(gastos);
+    await migratePrazoLegado(gastos);
     // restoreOrphanCategoriesWithData(); // desativado a pedido — estava mudando os totais
     removeAutoRestoredRevisarCategories();
     removeCompraImvelDuplicateCategory();
@@ -1999,6 +2000,40 @@ async function loadGastos(){
     console.error(e);
     document.getElementById('content').innerHTML = '<div class="loading" style="color:#ef5350">Erro ao conectar ao banco de dados.<br><small>'+e.message+'</small></div>';
   }
+}
+
+// Migração única: lançamentos que guardaram data de início/prazo dentro do
+// pacote_subs (versão de transição, antes das colunas data_inicio/prazo_dias
+// existirem) são movidos pras colunas de verdade, e o pacote_subs volta a ficar
+// limpo (só a lista de serviços/ambientes).
+async function migratePrazoLegado(lista){
+  const afetados = lista.filter(g=>{
+    if(g.data_inicio || g.prazo_dias) return false; // já está na coluna certa
+    if(!g.pacote_subs) return false;
+    try{
+      const parsed = JSON.parse(g.pacote_subs);
+      return parsed && !Array.isArray(parsed) && (parsed.dataInicio || parsed.prazoDias) && Array.isArray(parsed.items);
+    }catch(e){ return false; }
+  });
+  if(!afetados.length) return;
+  for(const g of afetados){
+    try{
+      const parsed = JSON.parse(g.pacote_subs);
+      const res = await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${g.id}`,{
+        method:'PATCH', headers:{...HEADERS,'Prefer':'return=representation'},
+        body: JSON.stringify({
+          pacote_subs: JSON.stringify(parsed.items),
+          data_inicio: parsed.dataInicio || null,
+          prazo_dias: parsed.prazoDias ? parseInt(parsed.prazoDias,10) : null
+        })
+      });
+      if(res.ok){
+        const updated = await res.json();
+        if(updated?.[0]) Object.assign(g, updated[0]);
+      }
+    }catch(e){ console.warn('[piratininga] falha ao migrar prazo legado do gasto', g.id, e); }
+  }
+  console.log('[piratininga] migração de prazo legado concluída:', afetados.length, 'lançamento(s)');
 }
 
 // A categoria órfã "compra-imvel" (erro de digitação antigo) tinha R$330.000 em
@@ -2331,24 +2366,28 @@ function chooseObraTipo(tipo, material){
   openObraEmpreitadaModal(material, obraTriagemPresetSub, tipo==='unico');
 }
 
-// Aceita 3 formatos: o novo com metadados de prazo ({items:[...], dataInicio, prazoDias}),
-// o formato anterior (array puro com ambiente por serviço), e o formato bem antigo
-// (lista separada por vírgula, sem ambiente individual)
+// Simplificado de volta: sempre array puro de serviços/ambientes. Data de início
+// e prazo agora moram nas colunas de verdade (data_inicio, prazo_dias).
 function parsePacoteSubs(str){
   if(!str) return [];
   try{
     const parsed = JSON.parse(str);
     if(Array.isArray(parsed)) return parsed;
-    if(parsed && Array.isArray(parsed.items)) return parsed.items;
+    if(parsed && Array.isArray(parsed.items)) return parsed.items; // rows antigos, formato de transição
   }catch(e){}
   return str.split(',').filter(Boolean).map(sub=>({sub, ambiente:''}));
 }
-// Extrai a data de início / prazo estimado (dias) de um pacote, se tiver sido informado
-function getPacoteMeta(str){
+// Extrai a data de início / prazo estimado (dias) de um gasto — das colunas de
+// verdade (data_inicio, prazo_dias). Ainda lê o formato antigo (embutido no
+// pacote_subs) só pra não perder informação de lançamentos salvos antes da
+// migração — mas nunca mais grava nesse formato.
+function getPacoteMeta(g){
+  if(g && (g.data_inicio || g.prazo_dias)) return {dataInicio: g.data_inicio||'', prazoDias: g.prazo_dias||''};
+  const str = g && g.pacote_subs;
   if(!str) return {dataInicio:'', prazoDias:''};
   try{
     const parsed = JSON.parse(str);
-    if(parsed && !Array.isArray(parsed)) return {dataInicio: parsed.dataInicio||'', prazoDias: parsed.prazoDias||''};
+    if(parsed && !Array.isArray(parsed) && (parsed.dataInicio||parsed.prazoDias)) return {dataInicio: parsed.dataInicio||'', prazoDias: parsed.prazoDias||''};
   }catch(e){}
   return {dataInicio:'', prazoDias:''};
 }
@@ -2450,7 +2489,7 @@ function openObraEmpreitadaModalForEdit(g){
   document.getElementById('emp-btn-confirm').textContent = 'Salvar alterações';
   document.getElementById('emp-valor-label').textContent = empreitadaIsUnico ? 'Valor do serviço (R$)' : 'Valor total do pacote (R$)';
   document.getElementById('emp-desc-label').textContent = empreitadaIsUnico ? 'Descrição / Fornecedor' : 'Descrição / Empreiteiro';
-  const meta = getPacoteMeta(g.pacote_subs);
+  const meta = getPacoteMeta(g);
   document.getElementById('emp-data-inicio').value = meta.dataInicio || '';
   document.getElementById('emp-prazo-dias').value = meta.prazoDias || '';
   updateEmpPrazoPreview();
@@ -2898,14 +2937,13 @@ async function confirmEmpreitada(){
   btn.disabled = true; btn.textContent = 'Salvando...';
   const dataInicio = document.getElementById('emp-data-inicio').value;
   const prazoDias = document.getElementById('emp-prazo-dias').value;
-  const pacoteSubsValue = (dataInicio || prazoDias)
-    ? JSON.stringify({items: servicos, dataInicio, prazoDias})
-    : JSON.stringify(servicos);
   const row = {
     descricao: desc, categoria:'obra-bruta', subcategoria: primeiro.sub, data, valor: val, status,
     ambiente: primeiro.ambiente,
-    pacote_subs: pacoteSubsValue,
-    tipo_contratacao: (empreitadaIsUnico ? 'unico-' : '') + empreitadaMaterial
+    pacote_subs: JSON.stringify(servicos),
+    tipo_contratacao: (empreitadaIsUnico ? 'unico-' : '') + empreitadaMaterial,
+    data_inicio: dataInicio || null,
+    prazo_dias: prazoDias ? parseInt(prazoDias,10) : null
   };
   try{
     if(isEditing){
@@ -5390,7 +5428,7 @@ function openPacoteModal(gastoId){
   const tipoTag = tipoRaw ? (isUnico
     ? `<span style="background:#0d1520;color:#42a5f5;border-radius:4px;padding:2px 7px;font-size:10px">${headerIcon} serviço único ${material==='com-material'?'com material':'sem material'}</span>`
     : `<span style="background:#1a1500;color:#e8b544;border-radius:4px;padding:2px 7px;font-size:10px">${headerIcon} empreitada ${material==='com-material'?'com material':'sem material'}</span>`) : '';
-  const meta = getPacoteMeta(g.pacote_subs);
+  const meta = getPacoteMeta(g);
   const prazoBadge = prazoBadgeHtml(meta);
   const prazoLine = meta.dataInicio ? `<div style="font-size:11px;color:#888;margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b>Início:</b> ${fmtDate(meta.dataInicio)} ${meta.prazoDias?` &nbsp;·&nbsp; <b>Prazo:</b> ${meta.prazoDias} dias`:''} ${prazoBadge}</div>` : '';
   const infoRow = `<tr><td colspan="6" style="padding:12px;border-top:1px solid #2a2a2a">
@@ -5713,7 +5751,7 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
   const badgeBg = badgeIsUnico ? '#0d1520' : '#1a1500';
   const badgeBorder = badgeIsUnico ? '#2d5a8a' : '#8a6d1f';
   const pacoteBadge = isPacote ? `<span onclick="event.stopPropagation();openPacoteModal(${g.id})" title="Ver todos os serviços deste ${badgeLabel} (${badgeMaterial==='com-material'?'com material':'sem material'})" style="cursor:pointer;color:${badgeColor};font-size:10px;font-weight:700;background:${badgeBg};border:1px solid ${badgeBorder};border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;line-height:1.4">${badgeIcon} ${badgeLabel}</span>` : '';
-  const prazoBadgeRow = isPacote ? prazoBadgeHtml(getPacoteMeta(g.pacote_subs)) : '';
+  const prazoBadgeRow = isPacote ? prazoBadgeHtml(getPacoteMeta(g)) : '';
   const showBadgeInline = isPacote && !subLabel;
   const showBadgeInSubline = isPacote && !!subLabel;
   const subLabelHtml = subLabel
