@@ -718,25 +718,25 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
     </div>
     <div style="font-size:12px;color:#888;margin-bottom:1.25rem">Isso é um pacote de empreitada (vários serviços juntos) ou um serviço avulso?</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <button onclick="chooseObraTipo('empreitada','com-material')" style="background:#0d1a10;border:2px solid #4caf50;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#123018'" onmouseout="this.style.background='#0d1a10'">
+      <button onclick="chooseObraTipo('empreitada','com-material')" style="background:#1a1500;border:2px solid #e8b544;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#251f00'" onmouseout="this.style.background='#1a1500'">
         <div style="font-size:24px;margin-bottom:8px">📦🧱</div>
-        <div style="font-size:13px;font-weight:700;color:#4caf50">Empreitada</div>
-        <div style="font-size:11px;color:#4caf50;margin-top:2px">com material (tudo incluso)</div>
+        <div style="font-size:13px;font-weight:700;color:#e8b544">Empreitada</div>
+        <div style="font-size:11px;color:#e8b544;margin-top:2px">com material (tudo incluso)</div>
       </button>
       <button onclick="chooseObraTipo('empreitada','sem-material')" style="background:#1a1500;border:2px solid #e8b544;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#251f00'" onmouseout="this.style.background='#1a1500'">
         <div style="font-size:24px;margin-bottom:8px">📦</div>
         <div style="font-size:13px;font-weight:700;color:#e8b544">Empreitada</div>
         <div style="font-size:11px;color:#e8b544;margin-top:2px">sem material (só mão de obra)</div>
       </button>
-      <button onclick="chooseObraTipo('unico','com-material')" style="background:#0d1a10;border:2px solid #4caf50;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#123018'" onmouseout="this.style.background='#0d1a10'">
+      <button onclick="chooseObraTipo('unico','com-material')" style="background:#0d1520;border:2px solid #42a5f5;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#122535'" onmouseout="this.style.background='#0d1520'">
         <div style="font-size:24px;margin-bottom:8px">🔧🧱</div>
-        <div style="font-size:13px;font-weight:700;color:#4caf50">Serviço único</div>
-        <div style="font-size:11px;color:#4caf50;margin-top:2px">com material (tudo incluso)</div>
+        <div style="font-size:13px;font-weight:700;color:#42a5f5">Serviço único</div>
+        <div style="font-size:11px;color:#42a5f5;margin-top:2px">com material (tudo incluso)</div>
       </button>
-      <button onclick="chooseObraTipo('unico','sem-material')" style="background:#1a1500;border:2px solid #e8b544;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#251f00'" onmouseout="this.style.background='#1a1500'">
+      <button onclick="chooseObraTipo('unico','sem-material')" style="background:#0d1520;border:2px solid #42a5f5;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#122535'" onmouseout="this.style.background='#0d1520'">
         <div style="font-size:24px;margin-bottom:8px">🔧</div>
-        <div style="font-size:13px;font-weight:700;color:#e8b544">Serviço único</div>
-        <div style="font-size:11px;color:#e8b544;margin-top:2px">sem material (só mão de obra)</div>
+        <div style="font-size:13px;font-weight:700;color:#42a5f5">Serviço único</div>
+        <div style="font-size:11px;color:#42a5f5;margin-top:2px">sem material (só mão de obra)</div>
       </button>
     </div>
   </div>
@@ -803,11 +803,11 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
     </div>
     <div class="modal-row" style="margin-bottom:14px">
       <div class="form-group" style="margin-bottom:0">
-        <label>Descrição / Empreiteiro</label>
+        <label id="emp-desc-label">Descrição / Empreiteiro</label>
         <input type="text" id="emp-desc" placeholder="Ex: João Empreiteiro - piso e demolição">
       </div>
       <div class="form-group" style="margin-bottom:0">
-        <label>Valor total do pacote (R$)</label>
+        <label id="emp-valor-label">Valor total do pacote (R$)</label>
         <input type="text" id="emp-valor" placeholder="0,00" oninput="maskMoney(this)" inputmode="numeric">
       </div>
     </div>
@@ -2349,6 +2349,10 @@ function openObraEmpreitadaModal(material, presetSub, isUnico){
   document.getElementById('emp-data').value = new Date().toISOString().slice(0,10);
   document.getElementById('emp-status').value = 'necessario';
   document.getElementById('emp-btn-confirm').textContent = isUnico ? 'Confirmar lançamento' : 'Confirmar pacote';
+  const valorLabelEl = document.getElementById('emp-valor-label');
+  if(valorLabelEl) valorLabelEl.textContent = isUnico ? 'Valor do serviço (R$)' : 'Valor total do pacote (R$)';
+  const descLabelEl = document.getElementById('emp-desc-label');
+  if(descLabelEl) descLabelEl.textContent = isUnico ? 'Descrição / Fornecedor' : 'Descrição / Empreiteiro';
   // Se veio de uma sub específica (ex: clicou "lançar" dentro de Piso Vinílico), mostra
   // só a fase dela de cara — menos poluído. Se veio do botão geral de Execução de Obra
   // (sem presetSub), mostra tudo de uma vez, como sempre.
@@ -2385,6 +2389,8 @@ function openObraEmpreitadaModalForEdit(g){
   document.getElementById('emp-data').value = g.data||new Date().toISOString().slice(0,10);
   document.getElementById('emp-status').value = g.status||'necessario';
   document.getElementById('emp-btn-confirm').textContent = 'Salvar alterações';
+  document.getElementById('emp-valor-label').textContent = 'Valor total do pacote (R$)';
+  document.getElementById('emp-desc-label').textContent = 'Descrição / Empreiteiro';
   renderEmpreitadaServiceGrid();
   const servicos = parsePacoteSubs(g.pacote_subs);
   // Agrupa por sub pra marcar os checkboxes certos, com todos os detalhes de cada ambiente
@@ -2475,6 +2481,10 @@ function showAllFasesEmpreitada(){
   empreitadaShowAllFases = true;
   renderEmpreitadaServiceGrid(true); // preserva o que já foi marcado/preenchido na fase em foco
 }
+function hideAllFasesEmpreitada(){
+  empreitadaShowAllFases = false;
+  renderEmpreitadaServiceGrid(true); // preserva o que já foi marcado/preenchido
+}
 
 function renderEmpreitadaServiceGrid(preserveState){
   const cat = 'obra-bruta';
@@ -2495,11 +2505,20 @@ function renderEmpreitadaServiceGrid(preserveState){
 
   const faseNomesVisiveis = (!empreitadaShowAllFases && empreitadaFocusFase) ? [empreitadaFocusFase] : faseNomes;
 
-  const bannerHtml = (!empreitadaShowAllFases && empreitadaFocusFase) ? `
+  let bannerHtml = '';
+  if(!empreitadaShowAllFases && empreitadaFocusFase){
+    bannerHtml = `
     <div style="grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;margin-bottom:2px;background:#111;border:1px solid #333;border-radius:8px">
       <span style="font-size:12px;color:#888">Mostrando só a fase <b style="color:#e8b544">${empreitadaFocusFase}</b> — a que você já estava vendo.</span>
       <button type="button" onclick="showAllFasesEmpreitada()" style="background:#2a2000;border:1px solid #8a6d1f;color:#e8b544;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;flex-shrink:0;white-space:nowrap">Ver todas as etapas de Execução de Obra →</button>
-    </div>` : '';
+    </div>`;
+  } else if(empreitadaShowAllFases && empreitadaFocusFase){
+    bannerHtml = `
+    <div style="grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;margin-bottom:2px;background:#111;border:1px solid #333;border-radius:8px">
+      <span style="font-size:12px;color:#888">Mostrando todas as fases.</span>
+      <button type="button" onclick="hideAllFasesEmpreitada()" style="background:#1a1a1a;border:1px solid #444;color:#ccc;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;flex-shrink:0;white-space:nowrap">← Voltar só pra ${empreitadaFocusFase}</button>
+    </div>`;
+  }
 
   document.getElementById('emp-service-grid').innerHTML = bannerHtml + faseNomesVisiveis.map((faseName)=>{
     const fi = faseNomes.indexOf(faseName);
