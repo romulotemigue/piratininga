@@ -1202,7 +1202,7 @@ function buildSubcatRowsHtml(k){
         </span>
         <span style="font-size:9px;color:#444;background:#1a1a1a;border-radius:8px;padding:1px 6px;flex-shrink:0">${items.length}</span>
         ${miniToggleHtml(faseAtiva, `toggleFaseAtivo('${k}',${JSON.stringify(skListJson).replace(/"/g,'&quot;')},event)`)}
-        <button class="subcat-dots-btn" style="background:none;border:none;color:#444;cursor:pointer;padding:4px 6px;font-size:13px;flex-shrink:0" onclick="toggleFaseMenu('${k}','${gNameEsc}',event)"><i class="ti ti-dots-vertical"></i></button>
+        <button class="subcat-dots-btn" style="background:none;border:none;color:#444;cursor:pointer;padding:4px 6px;font-size:13px;flex-shrink:0;opacity:1" onclick="toggleFaseMenu('${k}','${gNameEsc}',event)"><i class="ti ti-dots-vertical"></i></button>
       </div>`;
     const itemRows = items.map(e=>renderFlatSubcatRow(k, e.sk, subColor, true)).join('');
     return groupRow + `<div id="subgrp-${safeId}" style="overflow:hidden;max-height:${isOpen?'none':'0'}">${itemRows}</div>`;
@@ -1271,7 +1271,7 @@ function toggleFaseMenu(k, gName, e){
   if(wasOpenForThis) return;
   menu.dataset.forKey = idKey;
   const gNameEsc = gName.replace(/'/g,"\\'");
-  menu.innerHTML = `<div class="cat-menu-item" onclick="openModalAddSubCatInGroup('${k}','${gNameEsc}')"><i class="ti ti-plus"></i> Adicionar sub</div>
+  menu.innerHTML = `<div class="cat-menu-item" onclick="openModalAddSubCatInGroup('${k}','${gNameEsc}')"><i class="ti ti-plus"></i> Cartão</div>
     <div class="cat-menu-item" onclick="renameFaseGroup('${k}','${gNameEsc}')"><i class="ti ti-pencil"></i> Renomear</div>`;
   const btn = e.currentTarget;
   const rect = btn.getBoundingClientRect();
