@@ -191,7 +191,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 12JUL26 (versão 22)</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 12JUL26 (versão 23)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -956,7 +956,7 @@ let statusModalCurrentStatus = null;
 let statusModalCurrentScope = null;
 
 function renderStatusDetailGrouped(list){
-  const getValSd = g=>(g.valor||0)*(g.quantidade||1);
+  const getValSd = g=>gastoValor(g);
   const groups = {};
   list.forEach(g=>{
     const displayKey = CAT_MERGE_ALIASES[g.categoria] || g.categoria;
@@ -996,7 +996,7 @@ function renderStatusDetailGrouped(list){
 function refreshStatusDetailModal(){
   const status = statusModalCurrentStatus, scope = statusModalCurrentScope;
   const list = getStatusDetailList(status, scope);
-  const getValSd = g=>(g.valor||0)*(g.quantidade||1);
+  const getValSd = g=>gastoValor(g);
   const titles = {pago:'Já Pago', necessario:'Necessários', apagar:'Dispensáveis'};
   const colors = {pago:'#4caf50', necessario:'#42a5f5', apagar:'#e8b544'};
   document.getElementById('status-detail-title').textContent = (titles[status] || status) + (scope==='reforma' ? ' (só reforma)' : '');
@@ -2088,7 +2088,7 @@ function checkPossibleDuplicates(){
       if(g.categoria==='ganho') return;
       const normDesc = (g.descricao||'').toLowerCase().trim().replace(/\s+/g,' ');
       if(!normDesc) return;
-      const totalVal = (g.valor||0)*(g.quantidade||1);
+      const totalVal = gastoValor(g);
       const key = normDesc+'|'+g.categoria+'|'+(g.subcategoria||'')+'|'+totalVal;
       (groups[key] = groups[key]||[]).push(g);
     });
@@ -2104,7 +2104,7 @@ function checkPossibleDuplicates(){
     // que seja o mesmo lançamento duplicado numa categoria antiga com erro de digitação.
     if(CATS['compra-imvel']){
       const orfaItems = gastos.filter(g=>g.categoria==='compra-imvel');
-      const orfaTotal = orfaItems.reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
+      const orfaTotal = orfaItems.reduce((s,g)=>s+gastoValor(g),0);
       console.warn('[piratininga][compra-imvel-check] Lançamentos na categoria órfã "compra-imvel":',
         orfaItems.map(g=>({id:g.id, descricao:g.descricao, valor:g.valor, status:g.status, data:g.data})),
         '— total:', orfaTotal, '— se esse valor bater com o "Valor do Imóvel" da Compra do Imóvel de verdade, é provável duplicata.');
@@ -2458,10 +2458,18 @@ function getMateriais(g){
   try{ const p = JSON.parse(g.materiais); return Array.isArray(p) ? p : []; }catch(e){ return []; }
 }
 function materiaisTotal(lista){ return lista.reduce((s,m)=>s+(parseMoney(m.valor)||0)*(parseInt(m.qtd,10)||1), 0); }
+// Valor "de verdade" de um lançamento — valor×quantidade, mais o total gasto em
+// materiais (se houver). Usada em TODO lugar que soma valores, pra materiais
+// entrarem nos totais em qualquer tela do app, não só na Execução de Obra.
+function gastoValor(g){
+  const base = (g.valor||0)*(g.quantidade||1);
+  const mat = g.materiais ? materiaisTotal(getMateriais(g)) : 0;
+  return base + mat;
+}
 function materiaisBadgeHtml(g){
   const lista = getMateriais(g);
   const total = materiaisTotal(lista);
-  const label = lista.length ? `🧱 ${fmtShort(total)}` : '🧱 +mat.';
+  const label = lista.length ? '🧱 material' : '🧱 +mat.';
   return `<span onclick="event.stopPropagation();openMateriaisModal('gasto',${g.id})" title="${lista.length? `Ver/editar materiais (${lista.length} item(ns), ${fmt(total)})` : 'Adicionar material comprado pra este serviço'}" style="cursor:pointer;color:#bbb;font-size:10px;font-weight:600;background:#161616;border:1px solid #3a3a3a;border-radius:4px;padding:2px 5px;white-space:nowrap;display:inline-flex;align-items:center;gap:2px;flex-shrink:0">${label}</span>`;
 }
 
@@ -2485,6 +2493,7 @@ function openMateriaisModal(mode, gastoId){
   document.getElementById('mat-nome').value = '';
   document.getElementById('mat-valor').value = '';
   document.getElementById('mat-qtd').value = '1';
+  materialEditingIdx = null;
   renderMateriaisModalBody();
   document.getElementById('materiais-modal-overlay').classList.add('open');
 }
@@ -2502,17 +2511,37 @@ function renderMateriaisModalBody(){
         <span style="flex:1;font-size:13px;color:#ccc">${m.nome}</span>
         <span style="font-size:12px;color:#888;width:36px;text-align:center">x${m.qtd||1}</span>
         <span style="font-size:13px;color:#e8b544;width:80px;text-align:right">${fmt((parseMoney(m.valor)||0)*(parseInt(m.qtd,10)||1))}</span>
+        <button onclick="editMaterialRow(${i})" style="background:none;border:none;color:#888;cursor:pointer;font-size:13px" title="Editar"><i class="ti ti-pencil"></i></button>
         <button onclick="removeMaterialRow(${i})" style="background:none;border:none;color:#888;cursor:pointer;font-size:14px" title="Remover"><i class="ti ti-trash"></i></button>
       </div>`).join('');
   }
   document.getElementById('materiais-modal-total').textContent = 'Total em materiais: ' + fmt(materiaisTotal(materiaisWorkingList));
+}
+let materialEditingIdx = null;
+function editMaterialRow(idx){
+  const m = materiaisWorkingList[idx];
+  if(!m) return;
+  document.getElementById('mat-nome').value = m.nome || '';
+  document.getElementById('mat-valor').value = m.valor || '';
+  document.getElementById('mat-qtd').value = m.qtd || '1';
+  materialEditingIdx = idx;
+  const btn = document.querySelector('#materiais-modal-overlay button[onclick="addMaterialRow()"]');
+  if(btn) btn.textContent = '✓ Salvar edição';
+  document.getElementById('mat-nome').focus();
 }
 function addMaterialRow(){
   const nome = document.getElementById('mat-nome').value.trim();
   const valor = document.getElementById('mat-valor').value.trim();
   const qtd = document.getElementById('mat-qtd').value.trim() || '1';
   if(!nome){ alert('Preencha o nome do material.'); return; }
-  materiaisWorkingList.push({nome, valor, qtd});
+  if(materialEditingIdx!=null){
+    materiaisWorkingList[materialEditingIdx] = {nome, valor, qtd};
+    materialEditingIdx = null;
+    const btn = document.querySelector('#materiais-modal-overlay button[onclick="addMaterialRow()"]');
+    if(btn) btn.textContent = '+ Adicionar';
+  } else {
+    materiaisWorkingList.push({nome, valor, qtd});
+  }
   document.getElementById('mat-nome').value = '';
   document.getElementById('mat-valor').value = '';
   document.getElementById('mat-qtd').value = '1';
@@ -2521,6 +2550,14 @@ function addMaterialRow(){
 }
 function removeMaterialRow(idx){
   materiaisWorkingList.splice(idx,1);
+  if(materialEditingIdx===idx){
+    materialEditingIdx = null;
+    document.getElementById('mat-nome').value = '';
+    document.getElementById('mat-valor').value = '';
+    document.getElementById('mat-qtd').value = '1';
+    const btn = document.querySelector('#materiais-modal-overlay button[onclick="addMaterialRow()"]');
+    if(btn) btn.textContent = '+ Adicionar';
+  }
   renderMateriaisModalBody();
 }
 async function confirmMateriaisModal(){
@@ -3352,7 +3389,7 @@ function openPacoteDeleteModal(gastoId, sub, ambiente){
   const ambientesDoServico = servicos.filter(s=>s.sub===sub).map(s=>s.ambiente).filter(Boolean);
   document.getElementById('pacote-delete-item-desc').textContent = label + (ambientesDoServico.length ? ` — ${ambientesDoServico.join(', ')}` : '');
   document.getElementById('pacote-delete-item-name').textContent = label;
-  document.getElementById('pacote-delete-pacote-desc').textContent = `Remove o pacote "${g.descricao}" (${fmt((g.valor||0)*(g.quantidade||1))}) inteiro, de todos os ambientes e serviços.`;
+  document.getElementById('pacote-delete-pacote-desc').textContent = `Remove o pacote "${g.descricao}" (${fmt(gastoValor(g))}) inteiro, de todos os ambientes e serviços.`;
   document.getElementById('pacote-delete-step1').style.display = '';
   document.getElementById('pacote-delete-step1b').style.display = 'none';
   document.getElementById('pacote-delete-step2').style.display = 'none';
@@ -4237,7 +4274,7 @@ function imovelDragEnd(e){
 function renderImovelCat(catKey, subKey){
   const info = IMOVEL_CATS[catKey];
   const lista = gastos.filter(g=>g.categoria===catKey);
-  const getVal = g=>(g.valor||0)*(g.quantidade||1);
+  const getVal = g=>gastoValor(g);
 
   const summaryItems = getImovelCardDefs(catKey);
 
@@ -4536,7 +4573,7 @@ function hsl2hexChart(h,s,l){
 function buildReformaPieChart(){
   const canvas = document.getElementById('reformaPieChart');
   if(!canvas) return;
-  const getVal = g=>(g.valor||0)*(g.quantidade||1);
+  const getVal = g=>gastoValor(g);
   const items = gastos.filter(g=>g.status==='necessario' && isReformaGasto(g));
   const byCat = {};
   items.forEach(g=>{ byCat[g.categoria] = (byCat[g.categoria]||0) + getVal(g); });
@@ -4676,13 +4713,13 @@ function renderGeral(){
         '— exemplos de lançamentos:', orfas.map(c=>gastos.filter(g=>g.categoria===c).slice(0,2).map(g=>({id:g.id,descricao:g.descricao,valor:g.valor,status:g.status}))));
     }
   }catch(e){ console.warn('Erro no diagnóstico de categorias órfãs:', e); }
-  const getVal = g => (g.valor||0) * (g.quantidade||1);
+  const getVal = g => gastoValor(g);
 
   const ganhos  = gastos.filter(g=>g.categoria==='ganho');
   const totalGanhos = ganhos.reduce((s,g)=>s+(g.valor||0),0);
   // Só disponível conta como base real — direcionado/a receber não passa pela conta
-  const dispGanhos = ganhos.filter(g=>g.subcategoria==='disponivel'||!g.subcategoria).reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
-  const aReceberGanhos = ganhos.filter(g=>g.subcategoria==='areceber').reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
+  const dispGanhos = ganhos.filter(g=>g.subcategoria==='disponivel'||!g.subcategoria).reduce((s,g)=>s+gastoValor(g),0);
+  const aReceberGanhos = ganhos.filter(g=>g.subcategoria==='areceber').reduce((s,g)=>s+gastoValor(g),0);
   const ativos = gastos.filter(g=>g.status==='pago'&&isReforma(g));
   const total  = ativos.reduce((s,g)=>s+getVal(g),0);
   const pago   = gastos.filter(g=>g.status==='pago'&&isReforma(g)).reduce((s,g)=>s+getVal(g),0);
@@ -4904,7 +4941,7 @@ function renderGeral(){
 
   function buildCharts(canvasBarId, canvasPieId, barLegendId, pieLegendId, filterStatuses){
     const items = gastos.filter(g=>filterStatuses.includes(g.status)&&isReforma(g));
-    const values = Object.keys(CATS).map(k=>items.filter(g=>g.categoria===k).reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0));
+    const values = Object.keys(CATS).map(k=>items.filter(g=>g.categoria===k).reduce((s,g)=>s+gastoValor(g),0));
     const colors = Object.values(CATS).map(c=>c.color);
     const labels = Object.values(CATS).map(c=>c.label.split('/')[0].trim());
     const hasData = values.some(v=>v>0);
@@ -4943,7 +4980,7 @@ const GANHO_TIPOS = {
 };
 
 function renderDiagnostico(){
-  const getVal = g=>(g.valor||0)*(g.quantidade||1);
+  const getVal = g=>gastoValor(g);
 
   // 1) Lançamentos "órfãos": categoria não existe mais em nenhuma etapa/categoria visível
   const orfaGroups = {};
@@ -4984,7 +5021,7 @@ function renderDiagnostico(){
     if(g.categoria==='ganho') return;
     const normDesc = (g.descricao||'').toLowerCase().trim().replace(/\s+/g,' ');
     if(!normDesc) return;
-    const totalVal = (g.valor||0)*(g.quantidade||1);
+    const totalVal = gastoValor(g);
     const key = normDesc+'|'+g.categoria+'|'+(g.subcategoria||'')+'|'+totalVal;
     (dupGroups[key] = dupGroups[key] || []).push(g);
   });
@@ -5072,13 +5109,13 @@ function renderDiagnostico(){
 
 function renderGanhos(){
   const lista = gastos.filter(g=>g.categoria==='ganho');
-  const total = lista.reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
-  const dispTotal = lista.filter(g=>g.subcategoria==='disponivel'||!g.subcategoria).reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
-  const aReceberTotal = lista.filter(g=>g.subcategoria==='areceber').reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
+  const total = lista.reduce((s,g)=>s+gastoValor(g),0);
+  const dispTotal = lista.filter(g=>g.subcategoria==='disponivel'||!g.subcategoria).reduce((s,g)=>s+gastoValor(g),0);
+  const aReceberTotal = lista.filter(g=>g.subcategoria==='areceber').reduce((s,g)=>s+gastoValor(g),0);
 
   function blocoHtml(tipo, meta){
     const items = lista.filter(g=>(g.subcategoria===tipo)||(tipo==='disponivel'&&!g.subcategoria));
-    const subtotal = items.reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
+    const subtotal = items.reduce((s,g)=>s+gastoValor(g),0);
     const rows = items.length ? items.map(g=>`
       <tr style="border-bottom:1px solid ${meta.border}">
         <td style="width:32px;vertical-align:middle;padding:6px 4px">${fmtDate(g.data)}</td>
@@ -5086,7 +5123,7 @@ function renderGanhos(){
           <div>${g.descricao||''}</div>
           ${g.obs?`<div style="font-size:10px;color:#555;margin-top:2px">${g.obs}</div>`:''}
         </td>
-        <td style="text-align:right;font-weight:600;font-size:13px;color:${meta.color};padding:6px 4px;white-space:nowrap">${fmt((g.valor||0)*(g.quantidade||1))}</td>
+        <td style="text-align:right;font-weight:600;font-size:13px;color:${meta.color};padding:6px 4px;white-space:nowrap">${fmt(gastoValor(g))}</td>
         <td style="padding:6px 2px"><div class="qty-wrap"><button class="qty-btn" onclick="changeQty(${g.id},-1)">−</button><input class="qty-input" type="number" min="1" value="${g.quantidade||1}" onchange="setQty(${g.id},this)" onclick="event.stopPropagation()"><button class="qty-btn" onclick="changeQty(${g.id},1)">+</button></div></td>
         <td style="white-space:nowrap;padding:6px 8px 6px 2px">
           <span style="display:inline-block;width:18px;text-align:center">${g.link?`<a href="${g.link}" target="_blank" style="color:#2a78d6;font-size:13px"><i class="ti ti-external-link"></i></a>`:''}</span>
@@ -5116,9 +5153,9 @@ function renderGanhos(){
     </div>`;
   }
 
-  const jaGasto = gastos.filter(g=>g.status==='pago'&&isReformaGasto(g)).reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
-  const necessarios = gastos.filter(g=>g.status==='necessario'&&isReformaGasto(g)).reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
-  const dispensavel = gastos.filter(g=>g.status==='apagar'&&isReformaGasto(g)).reduce((s,g)=>s+(g.valor||0)*(g.quantidade||1),0);
+  const jaGasto = gastos.filter(g=>g.status==='pago'&&isReformaGasto(g)).reduce((s,g)=>s+gastoValor(g),0);
+  const necessarios = gastos.filter(g=>g.status==='necessario'&&isReformaGasto(g)).reduce((s,g)=>s+gastoValor(g),0);
+  const dispensavel = gastos.filter(g=>g.status==='apagar'&&isReformaGasto(g)).reduce((s,g)=>s+gastoValor(g),0);
   const naContaAgora = dispTotal - jaGasto;
   const saldoProjetado = naContaAgora + aReceberTotal - necessarios;
 
@@ -5162,7 +5199,7 @@ function renderGanhoRows(list){
       <td style="color:#555;white-space:nowrap;font-size:12px">${g.data||'—'}</td>
       <td>${g.descricao||''}</td>
       <td style="text-align:right;font-weight:500;color:#4caf50">${fmt(g.valor||0)}</td>
-      <td style="text-align:right;font-weight:500">${fmt((g.valor||0)*(g.quantidade||1))}</td>
+      <td style="text-align:right;font-weight:500">${fmt(gastoValor(g))}</td>
       <td><div class="qty-wrap"><button class="qty-btn" onclick="changeQty(${g.id},-1)">−</button><span class="qty-val">${g.quantidade||1}</span><button class="qty-btn" onclick="changeQty(${g.id},1)">+</button></div></td>
       <td style="color:#555;font-size:12px">${g.obs||''}</td>
       <td style="white-space:nowrap;text-align:center">${g.link?`<a href="${g.link}" target="_blank" title="${g.link}" style="color:#2a78d6;font-size:15px"><i class="ti ti-external-link"></i></a>`:''}</td>
@@ -5218,7 +5255,7 @@ async function addGastoSubCat(){
 
 // ── SUBCATEGORIA PAGE ────────────────────────────────────────────
 function renderContextBars(activeCatKey, activeSubKey){
-  const getVal = g => (g.valor||0)*(g.quantidade||1);
+  const getVal = g => gastoValor(g);
   const allItems = gastos.filter(g=>g.categoria!=='ganho');
   const totalGanhos = gastos.filter(g=>g.categoria==='ganho').reduce((s,g)=>s+(g.valor||0),0);
 
@@ -5281,7 +5318,7 @@ function renderFaseGroup(catKey, gName){
     if(g.pacote_subs) return parsePacoteSubs(g.pacote_subs).some(p=>skList.includes(p.sub));
     return false;
   });
-  const getValG = g => (g.valor||0) * (g.quantidade||1);
+  const getValG = g => gastoValor(g);
   const total = lista.filter(g=>g.status!=='cancel').reduce((s,g)=>s+getValG(g),0);
   const pago  = lista.filter(g=>g.status==='pago').reduce((s,g)=>s+getValG(g),0);
   const necessario = lista.filter(g=>g.status==='necessario').reduce((s,g)=>s+getValG(g),0);
@@ -5333,7 +5370,7 @@ function renderSubCat(page){
     if(g.pacote_subs) return parsePacoteSubs(g.pacote_subs).some(p=>p.sub===subKey);
     return false;
   });
-  const getValSub = g => (g.valor||0) * (g.quantidade||1);
+  const getValSub = g => gastoValor(g);
   const total = lista.filter(g=>g.status!=='cancel').reduce((s,g)=>s+getValSub(g),0);
   const pago  = lista.filter(g=>g.status==='pago').reduce((s,g)=>s+getValSub(g),0);
   const necessario= lista.filter(g=>g.status==='necessario').reduce((s,g)=>s+getValSub(g),0);
@@ -5389,7 +5426,7 @@ function renderObraBrutaSteps(){
   if(!info){ navigate('geral'); return; }
   const catAliasKeys = catKeysFor(cat);
   const lista = gastos.filter(g=>catAliasKeys.includes(g.categoria));
-  const getValO = g=>(g.valor||0)*(g.quantidade||1);
+  const getValO = g=>gastoValor(g);
   const total = lista.reduce((s,g)=>s+getValO(g),0);
   const pago = lista.filter(g=>g.status==='pago').reduce((s,g)=>s+getValO(g),0);
   const necessario = lista.filter(g=>g.status==='necessario').reduce((s,g)=>s+getValO(g),0);
@@ -5521,7 +5558,7 @@ function openPacoteModal(gastoId){
   const g = gastos.find(x=>x.id===gastoId);
   if(!g) return;
   const subs = parsePacoteSubs(g.pacote_subs);
-  const val = (g.valor||0)*(g.quantidade||1);
+  const val = gastoValor(g);
   const tipoRaw = g.tipo_contratacao || '';
   const isUnico = tipoRaw.startsWith('unico-');
   const material = tipoRaw.replace('unico-','');
@@ -5588,7 +5625,7 @@ function openObraFaseModal(idx){
   const {lista, fases, faseNomes, info} = obraFaseModalData;
   const faseName = faseNomes[idx];
   const skList = fases[faseName].subs;
-  const getValO = g=>(g.valor||0)*(g.quantidade||1);
+  const getValO = g=>gastoValor(g);
   const items = lista.filter(g=>skList.includes(g.subcategoria));
   const total = items.reduce((s,g)=>s+getValO(g),0);
   document.getElementById('status-detail-title').textContent = (idx+1)+'. '+faseName;
@@ -5615,7 +5652,7 @@ function renderCat(cat){
   const catAliasKeys = catKeysFor(cat);
   const lista  = gastos.filter(g=>catAliasKeys.includes(g.categoria));
   const ativos = lista.filter(g=>g.status!=='cancel');
-  const getValCat = g => (g.valor||0) * (g.quantidade||1);
+  const getValCat = g => gastoValor(g);
   const total  = ativos.reduce((s,g)=>s+getValCat(g),0);
   const pago   = lista.filter(g=>g.status==='pago').reduce((s,g)=>s+getValCat(g),0);
   const necessario = lista.filter(g=>g.status==='necessario').reduce((s,g)=>s+getValCat(g),0);
@@ -5877,7 +5914,7 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
   const subLabelText = effSub && SUBCATS[baseCat]?.[effSub]?.label || '';
   const canNavSub = !!(effSub && SUBCATS[baseCat]?.[effSub]);
   const subLabel = (showSubLabel || subKeyOverride) ? subLabelText : '';
-  const val = (g.valor||0)*(g.quantidade||1);
+  const val = gastoValor(g);
   const isPacote = !!g.pacote_subs;
   const tipoRaw = g.tipo_contratacao || '';
   const badgeIsUnico = tipoRaw.startsWith('unico-');
@@ -6014,7 +6051,7 @@ function renderRowsGeral(list, borderColor){
   if(!list.length) return `<tr><td colspan="6" style="padding:1.5rem;text-align:center;color:#444;font-size:12px">Nenhum item</td></tr>`;
   return list.map(g=>{
     const catLabel = CATS[g.categoria]?.label||g.categoria;
-    const val = (g.valor||0)*(g.quantidade||1);
+    const val = gastoValor(g);
     return `<tr draggable="true" data-id="${g.id}" data-status="${g.status}" data-catkey=""
       onDragStart="onRowDragStart(event,${g.id})" onDragEnd="onRowDragEnd(event)"
       style="cursor:default;border-bottom:1px solid ${borderColor}">
@@ -6043,7 +6080,7 @@ function renderRows(list, hideCat=false){
       <td style="color:#555;white-space:nowrap;font-size:12px">${g.data||'—'}</td>
       <td>${g.descricao||''}</td>
       ${hideCat?'':'<td style="color:#555;font-size:12px">'+(CATS[g.categoria]?.label||g.categoria)+'</td>'}
-      <td style="text-align:right;font-weight:500">${fmt((g.valor||0)*(g.quantidade||1))}</td>
+      <td style="text-align:right;font-weight:500">${fmt(gastoValor(g))}</td>
       <td><div class="qty-wrap"><button class="qty-btn" onclick="changeQty(${g.id},-1)">−</button><span class="qty-val">${g.quantidade||1}</span><button class="qty-btn" onclick="changeQty(${g.id},1)">+</button></div></td>
       <td><span class="badge ${g.status}">${g.status==='pago'?'Pago':g.status==='necessario'?'Necessário':g.status==='apagar'?'Dispensável':'—'}</span></td>
       <td style="color:#555;font-size:12px">${g.obs||''}</td>
@@ -6393,7 +6430,7 @@ function setBulkMode(mode){
       <label style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid #1f1f1f;cursor:pointer;font-size:13px">
         <input type="checkbox" class="bulk-item-check" data-id="${g.id}" style="accent-color:#e8b544">
         <span style="flex:1">${g.descricao||'—'}</span>
-        <span style="color:#555;font-size:12px">${fmt((g.valor||0)*(g.quantidade||1))}</span>
+        <span style="color:#555;font-size:12px">${fmt(gastoValor(g))}</span>
       </label>`).join('');
     document.getElementById('bulk-check-all').checked = false;
     document.getElementById('bulk-selected-count').textContent = '0 selecionados';
