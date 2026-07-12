@@ -191,7 +191,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 12JUL26 (versão 21)</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 12JUL26 (versão 22)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -2446,10 +2446,10 @@ function prazoBadgeHtml(meta){
   const info = calcPrazoInfo(meta);
   if(!info) return '';
   const fimStr = fmtDateTxt(info.fim.toISOString().slice(0,10));
-  if(info.diffDias > 1) return `<span title="${info.diffDias} dias restantes — previsão de término: ${fimStr}" style="font-size:10px;color:#4caf50;background:#0d1a10;border:1px solid #2e5a34;border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px">⏳ ${info.diffDias}d</span>`;
-  if(info.diffDias === 1) return `<span title="Termina amanhã — previsão de término: ${fimStr}" style="font-size:10px;color:#e8b544;background:#1a1500;border:1px solid #8a6d1f;border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px">⏳ amanhã</span>`;
-  if(info.diffDias === 0) return `<span title="Termina hoje — previsão de término: ${fimStr}" style="font-size:10px;color:#e8b544;background:#1a1500;border:1px solid #8a6d1f;border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px">⏳ hoje</span>`;
-  return `<span title="Atrasado ${Math.abs(info.diffDias)} dias — previsão era: ${fimStr}" style="font-size:10px;color:#ef5350;background:#1a0d0d;border:1px solid #5c2b2b;border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px">⚠ -${Math.abs(info.diffDias)}d</span>`;
+  if(info.diffDias > 1) return `<span title="${info.diffDias} dias restantes — previsão de término: ${fimStr}" style="font-size:10px;color:#4caf50;background:#0d1a10;border:1px solid #2e5a34;border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px;flex-shrink:0">⏳ ${info.diffDias}d</span>`;
+  if(info.diffDias === 1) return `<span title="Termina amanhã — previsão de término: ${fimStr}" style="font-size:10px;color:#e8b544;background:#1a1500;border:1px solid #8a6d1f;border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px;flex-shrink:0">⏳ amanhã</span>`;
+  if(info.diffDias === 0) return `<span title="Termina hoje — previsão de término: ${fimStr}" style="font-size:10px;color:#e8b544;background:#1a1500;border:1px solid #8a6d1f;border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px;flex-shrink:0">⏳ hoje</span>`;
+  return `<span title="Atrasado ${Math.abs(info.diffDias)} dias — previsão era: ${fimStr}" style="font-size:10px;color:#ef5350;background:#1a0d0d;border:1px solid #5c2b2b;border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px;flex-shrink:0">⚠ -${Math.abs(info.diffDias)}d</span>`;
 }
 
 // ── MATERIAIS COMPRADOS PARA UM SERVIÇO/PACOTE (coluna própria: materiais) ──
@@ -2461,8 +2461,8 @@ function materiaisTotal(lista){ return lista.reduce((s,m)=>s+(parseMoney(m.valor
 function materiaisBadgeHtml(g){
   const lista = getMateriais(g);
   const total = materiaisTotal(lista);
-  const label = lista.length ? `🧱 ${lista.length} · ${fmtShort(total)}` : '🧱 + material';
-  return `<span onclick="event.stopPropagation();openMateriaisModal('gasto',${g.id})" title="${lista.length? 'Ver/editar materiais comprados para este serviço' : 'Adicionar material comprado pra este serviço'}" style="cursor:pointer;color:#bbb;font-size:10px;font-weight:600;background:#161616;border:1px solid #3a3a3a;border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px">${label}</span>`;
+  const label = lista.length ? `🧱 ${fmtShort(total)}` : '🧱 +mat.';
+  return `<span onclick="event.stopPropagation();openMateriaisModal('gasto',${g.id})" title="${lista.length? `Ver/editar materiais (${lista.length} item(ns), ${fmt(total)})` : 'Adicionar material comprado pra este serviço'}" style="cursor:pointer;color:#bbb;font-size:10px;font-weight:600;background:#161616;border:1px solid #3a3a3a;border-radius:4px;padding:2px 5px;white-space:nowrap;display:inline-flex;align-items:center;gap:2px;flex-shrink:0">${label}</span>`;
 }
 
 // Estado da janela de materiais — funciona tanto pra um gasto já salvo (edita
@@ -5894,7 +5894,7 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
   // com largura padronizada pra alinhar mesmo quando o ícone muda de tamanho
   // com/sem material), 3) sub-etapa em azul embaixo de tudo.
   const badgeLineHtml = isPacote
-    ? `<div style="display:flex;align-items:center;gap:6px;margin-top:2px;flex-wrap:wrap">${pacoteBadge}${prazoBadgeRow}${materiaisBadgeRow}</div>`
+    ? `<div style="display:flex;align-items:center;gap:4px;margin-top:2px;flex-wrap:nowrap;overflow-x:auto">${pacoteBadge}${prazoBadgeRow}${materiaisBadgeRow}</div>`
     : '';
   const subLabelLineHtml = subLabel
     ? `<div style="margin-top:2px">${canNavSub
