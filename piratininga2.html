@@ -2335,6 +2335,8 @@ function parsePacoteSubs(str){
 let empreitadaMaterial = null;
 let empreitadaEditingId = null; // null = criando pacote novo; senão, é o id do gasto sendo editado
 let empreitadaIsUnico = false; // true quando veio do fluxo "Serviço único" (mesma grade, só copy diferente)
+let empreitadaFocusFase = null; // se setado, mostra só essa fase inicialmente (menos poluído)
+let empreitadaShowAllFases = true;
 function openObraEmpreitadaModal(material, presetSub, isUnico){
   empreitadaEditingId = null;
   empreitadaMaterial = material;
@@ -2347,6 +2349,12 @@ function openObraEmpreitadaModal(material, presetSub, isUnico){
   document.getElementById('emp-data').value = new Date().toISOString().slice(0,10);
   document.getElementById('emp-status').value = 'necessario';
   document.getElementById('emp-btn-confirm').textContent = isUnico ? 'Confirmar lançamento' : 'Confirmar pacote';
+  // Se veio de uma sub específica (ex: clicou "lançar" dentro de Piso Vinílico), mostra
+  // só a fase dela de cara — menos poluído. Se veio do botão geral de Execução de Obra
+  // (sem presetSub), mostra tudo de uma vez, como sempre.
+  const presetEntry = presetSub && SUBCATS['obra-bruta']?.[presetSub];
+  empreitadaFocusFase = presetEntry ? presetEntry.grupo : null;
+  empreitadaShowAllFases = !presetEntry;
   renderEmpreitadaServiceGrid();
   if(presetSub){
     const checkEl = document.querySelector(`.emp-sub-check[value="${presetSub}"]`);
@@ -2358,6 +2366,8 @@ function closeObraEmpreitadaModal(){
   document.getElementById('obra-empreitada-overlay').classList.remove('open');
   empreitadaEditingId = null;
   empreitadaIsUnico = false;
+  empreitadaFocusFase = null;
+  empreitadaShowAllFases = true;
 }
 
 // Abre o mesmo construtor de pacote, mas pré-preenchido com os dados de um
@@ -2366,6 +2376,8 @@ function closeObraEmpreitadaModal(){
 function openObraEmpreitadaModalForEdit(g){
   empreitadaEditingId = g.id;
   empreitadaMaterial = g.tipo_contratacao || 'com-material';
+  empreitadaFocusFase = null;
+  empreitadaShowAllFases = true; // editando um pacote existente, mostra tudo (pode abranger várias fases)
   const icon = empreitadaMaterial==='com-material' ? '📦🧱' : '📦';
   document.getElementById('empreitada-title').textContent = icon+' Editar pacote de empreitada — '+(empreitadaMaterial==='com-material'?'com material':'sem material');
   document.getElementById('emp-desc').value = g.descricao||'';
@@ -2459,6 +2471,11 @@ function changeUnidadeForRi(ri, valor){
   renderAmbienteModalBody(ri);
 }
 
+function showAllFasesEmpreitada(){
+  empreitadaShowAllFases = true;
+  renderEmpreitadaServiceGrid(true); // preserva o que já foi marcado/preenchido na fase em foco
+}
+
 function renderEmpreitadaServiceGrid(preserveState){
   const cat = 'obra-bruta';
   const subEntries = Object.keys(SUBCATS[cat]||{}).map(sk=>({sk, ...SUBCATS[cat][sk]})).filter(e=>e.grupo && isSubAtivo(cat, e.sk));
@@ -2476,7 +2493,16 @@ function renderEmpreitadaServiceGrid(preserveState){
     empreitadaCheckedServices = {};
   }
 
-  document.getElementById('emp-service-grid').innerHTML = faseNomes.map((faseName,fi)=>{
+  const faseNomesVisiveis = (!empreitadaShowAllFases && empreitadaFocusFase) ? [empreitadaFocusFase] : faseNomes;
+
+  const bannerHtml = (!empreitadaShowAllFases && empreitadaFocusFase) ? `
+    <div style="grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;margin-bottom:2px;background:#111;border:1px solid #333;border-radius:8px">
+      <span style="font-size:12px;color:#888">Mostrando só a fase <b style="color:#e8b544">${empreitadaFocusFase}</b> — a que você já estava vendo.</span>
+      <button type="button" onclick="showAllFasesEmpreitada()" style="background:#2a2000;border:1px solid #8a6d1f;color:#e8b544;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;flex-shrink:0;white-space:nowrap">Ver todas as etapas de Execução de Obra →</button>
+    </div>` : '';
+
+  document.getElementById('emp-service-grid').innerHTML = bannerHtml + faseNomesVisiveis.map((faseName)=>{
+    const fi = faseNomes.indexOf(faseName);
     const items = fases[faseName].subs.sort((a,b)=>(a.ordem??0)-(b.ordem??0));
     const showArea = FASES_COM_METRAGEM.includes(faseName);
     const faseNameEsc = faseName.replace(/'/g,"\\'");
