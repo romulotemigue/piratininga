@@ -324,10 +324,11 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         </select>
       </div>
       <div class="form-group" id="f-ambiente-group" style="display:none">
-        <label>Ambiente (opcional)</label>
-        <select id="f-ambiente">
-          <option value="">— nenhum —</option>
-        </select>
+        <label>Ambientes (opcional) — pode escolher mais de um e informar m²/valor</label>
+        <button type="button" id="emp-amb-btn-f-form" onclick="openAmbienteModal('f-form','este lançamento')"
+          style="width:100%;text-align:left;background:#111;border:1px solid #333;border-radius:6px;padding:9px 12px;color:#666;font-size:13px;cursor:pointer">
+          adicionar local
+        </button>
       </div>
     </div>
 
@@ -2598,11 +2599,7 @@ function refreshObraExtraFields(prefix){
   const ambienteGroupEl = document.getElementById(prefix+'-ambiente-group');
   if(ambienteGroupEl) ambienteGroupEl.style.display = isObra ? '' : 'none';
   if(!isObra) return;
-  const ambSelEl = document.getElementById(prefix+'-ambiente');
-  if(ambSelEl){
-    const opts = getAmbienteOptions();
-    ambSelEl.innerHTML = '<option value="">— nenhum —</option>' + opts.map(a=>`<option value="${a}">${a}</option>`).join('');
-  }
+  if(prefix==='f') updateAmbienteBtnLabel('f-form');
   const pacoteListEl = document.getElementById(prefix+'-pacote-list');
   if(pacoteListEl){
     const currentSub = subcatEl?.value;
@@ -2626,6 +2623,8 @@ function refreshObraExtraFields(prefix){
 }
 
 function openModal(cat, subcat){
+  ambienteData['f-form'] = {};
+  empreitadaRowShowArea['f-form'] = true;
   populateCatSelect('f-cat');
   if(cat) document.getElementById('f-cat').value = cat;
   const allInfo = {...CATS, ...IMOVEL_CATS};
@@ -2754,8 +2753,18 @@ async function addGasto(){
     const link = document.getElementById('f-link').value.trim();
     const payload = {descricao:desc,categoria:cat,data,valor:val,status:st,obs,orcamento,subcategoria:subcat,link,quantidade:1};
     if(cat==='obra-bruta'){
-      const ambiente = document.getElementById('f-ambiente')?.value.trim() || '';
-      if(ambiente) payload.ambiente = ambiente;
+      const ambData = ambienteData['f-form'] || {};
+      const ambNomes = Object.keys(ambData);
+      if(ambNomes.length){
+        payload.ambiente = ambNomes[0];
+        // mais de um local, ou algum com detalhes (m²/valor/tipo) preenchidos —
+        // guarda como pacote_subs (mesmo esquema da empreitada) pra manter os detalhes
+        const temDetalhe = ambNomes.some(n=>ambData[n].m2||ambData[n].valorM2||ambData[n].tipo);
+        if(ambNomes.length>1 || temDetalhe){
+          payload.pacote_subs = JSON.stringify(ambNomes.map(n=>({sub:subcat, ambiente:n, m2:ambData[n].m2||'', valorM2:ambData[n].valorM2||'', tipo:ambData[n].tipo||''})));
+          if(pendingTipoContratacao) payload.tipo_contratacao = pendingTipoContratacao;
+        }
+      }
       const isPacote = document.getElementById('f-pacote-check')?.checked;
       if(isPacote){
         const checked = [...document.querySelectorAll('.f-pacote-sub-check:checked')].map(el=>el.value);
@@ -2780,7 +2789,7 @@ async function addGasto(){
     document.getElementById('f-obs').value='';
     document.getElementById('f-link').value='';
     document.getElementById('f-anexos-list').innerHTML='';
-    const ambienteEl = document.getElementById('f-ambiente'); if(ambienteEl) ambienteEl.value='';
+    ambienteData['f-form'] = {}; updateAmbienteBtnLabel('f-form');
     const pacoteCheckEl = document.getElementById('f-pacote-check'); if(pacoteCheckEl) pacoteCheckEl.checked=false;
     document.querySelectorAll('.f-pacote-sub-check').forEach(el=>el.checked=false);
     const pacoteSectionEl = document.getElementById('f-pacote-section'); if(pacoteSectionEl) pacoteSectionEl.style.display='none';
