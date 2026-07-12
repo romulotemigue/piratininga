@@ -1202,6 +1202,7 @@ function buildSubcatRowsHtml(k){
         </span>
         <span style="font-size:9px;color:#444;background:#1a1a1a;border-radius:8px;padding:1px 6px;flex-shrink:0">${items.length}</span>
         ${miniToggleHtml(faseAtiva, `toggleFaseAtivo('${k}',${JSON.stringify(skListJson).replace(/"/g,'&quot;')},event)`)}
+        <button class="subcat-dots-btn" style="background:none;border:none;color:#444;cursor:pointer;padding:4px 6px;font-size:13px;flex-shrink:0" onclick="toggleFaseMenu('${k}','${gNameEsc}',event)"><i class="ti ti-dots-vertical"></i></button>
       </div>`;
     const itemRows = items.map(e=>renderFlatSubcatRow(k, e.sk, subColor, true)).join('');
     return groupRow + `<div id="subgrp-${safeId}" style="overflow:hidden;max-height:${isOpen?'none':'0'}">${itemRows}</div>`;
@@ -1260,6 +1261,47 @@ function toggleAllExpand(){
   renderCatNav();
 }
 
+
+function toggleFaseMenu(k, gName, e){
+  e.stopPropagation();
+  const menu = document.getElementById('global-subcat-menu');
+  const idKey = 'fase__'+k+'__'+gName;
+  const wasOpenForThis = menu.classList.contains('open') && menu.dataset.forKey===idKey;
+  document.querySelectorAll('.cat-menu,.subcat-menu').forEach(m=>m.classList.remove('open'));
+  if(wasOpenForThis) return;
+  menu.dataset.forKey = idKey;
+  const gNameEsc = gName.replace(/'/g,"\\'");
+  menu.innerHTML = `<div class="cat-menu-item" onclick="openModalAddSubCatInGroup('${k}','${gNameEsc}')"><i class="ti ti-plus"></i> Adicionar sub</div>
+    <div class="cat-menu-item" onclick="renameFaseGroup('${k}','${gNameEsc}')"><i class="ti ti-pencil"></i> Renomear</div>`;
+  const btn = e.currentTarget;
+  const rect = btn.getBoundingClientRect();
+  menu.style.top = rect.bottom + 'px';
+  menu.style.left = (rect.right - 150) + 'px';
+  menu.classList.add('open');
+}
+
+// Abre o modal padrão de nova subcategoria, mas já marcado pra cair dentro
+// da fase (grupo) em que a pessoa clicou nos 3 pontinhos.
+let addingSubCatGrupo = null;
+function openModalAddSubCatInGroup(k, gName){
+  openModalAddSubCat(k);
+  addingSubCatGrupo = gName;
+  const title = document.getElementById('modal-add-subcat-title');
+  if(title) title.textContent = `Novo item em "${gName}"`;
+}
+
+function renameFaseGroup(k, gName){
+  document.querySelectorAll('.cat-menu,.subcat-menu').forEach(m=>m.classList.remove('open'));
+  const novoNome = prompt('Renomear fase:', gName);
+  if(!novoNome || !novoNome.trim() || novoNome.trim()===gName) return;
+  const nome = novoNome.trim();
+  Object.keys(SUBCATS[k]||{}).forEach(sk=>{
+    if(SUBCATS[k][sk].grupo === gName) SUBCATS[k][sk].grupo = nome;
+  });
+  saveSubCats();
+  renderCatNav();
+  if(currentPage===k || (currentPage.includes('__') && currentPage.split('__')[0]===k)) render();
+}
 
 function toggleCatMenu(k, isImovel, isPinnedStage, e){
   e.stopPropagation();
@@ -1611,6 +1653,7 @@ function selectGrupoCartao(tipo){
 
 function openModalAddSubCat(catKey){
   addingSubCatFor = catKey;
+  addingSubCatGrupo = null;
   document.getElementById('nsc-nome').value = '';
   const isImovel = !!IMOVEL_CATS[catKey];
   const grupoGroup = document.getElementById('nsc-grupo-group');
@@ -1622,7 +1665,7 @@ function openModalAddSubCat(catKey){
   setTimeout(()=>document.getElementById('nsc-nome').focus(),100);
   document.querySelectorAll('.cat-menu').forEach(m=>m.classList.remove('open'));
 }
-function closeModalAddSubCat(){ document.getElementById('modal-add-subcat-overlay').classList.remove('open'); addingSubCatFor=null; }
+function closeModalAddSubCat(){ document.getElementById('modal-add-subcat-overlay').classList.remove('open'); addingSubCatFor=null; addingSubCatGrupo=null; }
 document.getElementById('modal-add-subcat-overlay').addEventListener('click',function(e){ if(e.target===this) closeModalAddSubCat(); });
 
 function addSubCat(){
@@ -1632,7 +1675,15 @@ function addSubCat(){
   if(!SUBCATS[addingSubCatFor]) SUBCATS[addingSubCatFor] = {};
   const isImovel = !!IMOVEL_CATS[addingSubCatFor];
   const tipo = isImovel ? (document.getElementById('nsc-grupo').value||'doc') : null;
-  SUBCATS[addingSubCatFor][key] = tipo ? {label:nome, tipo} : {label:nome};
+  if(addingSubCatGrupo){
+    // adicionando dentro de uma fase específica (ex: Execução de Obra) — herda o
+    // grupo e entra no fim da ordem daquela fase
+    const irmaos = Object.values(SUBCATS[addingSubCatFor]).filter(s=>s.grupo===addingSubCatGrupo);
+    const maxOrdem = irmaos.reduce((m,s)=>Math.max(m, s.ordem??0), 0);
+    SUBCATS[addingSubCatFor][key] = {label:nome, grupo:addingSubCatGrupo, ordem:maxOrdem+1};
+  } else {
+    SUBCATS[addingSubCatFor][key] = tipo ? {label:nome, tipo} : {label:nome};
+  }
   if(isImovel){
     const colors = {doc:'#888', recibo:'#4caf50', gasto:'#ef5350', aporte:'#26c6da'};
     const icons = {doc:'📋', recibo:'💵', gasto:'💸', aporte:'🟢'};
