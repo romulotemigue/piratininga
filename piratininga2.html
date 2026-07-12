@@ -1434,6 +1434,10 @@ function fmtInput(v){
 function fmt(v){ const n=Number(v); return 'R$ '+(n%1===0?n.toLocaleString('pt-BR'):n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})); }
 function fmtShort(v){ const n=Number(v); if(n>=1000){ const k=n/1000; const rounded=Math.round(k*100)/100; return 'R$'+(rounded%1===0?rounded:rounded.toFixed(2).replace(/\.?0+$/,''))+'k'; } return fmt(n); }
 function fmtDate(d){ if(!d) return '—'; const [y,m,day]=d.split('-'); const ms=['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ']; return `<div style="text-align:center;line-height:1.4"><div style="font-size:13px;font-weight:600;color:#888">${day}</div><div style="font-size:9px;color:#555;letter-spacing:.05em">${ms[parseInt(m)-1]||m}</div><div style="font-size:9px;color:#444">${y}</div></div>`; }
+// Versão em TEXTO PURO (sem HTML) — usar sempre que a data for embutida dentro
+// de um atributo (title=, placeholder=, etc) ou dentro de texto corrido, pra
+// não quebrar a marcação como aconteceu usando fmtDate() (que devolve HTML).
+function fmtDateTxt(d){ if(!d) return '—'; const [y,m,day]=d.split('-'); return `${day}/${m}/${y}`; }
 
 function toast(msg, type='ok'){
   const t = document.getElementById('toast');
@@ -2398,7 +2402,7 @@ function updateEmpPrazoPreview(){
   const info = calcPrazoInfo(meta);
   if(!info){ el.style.display='none'; return; }
   el.style.display = '';
-  el.textContent = `Previsão de término: ${fmtDate(info.fim.toISOString().slice(0,10))}`;
+  el.textContent = `Previsão de término: ${fmtDateTxt(info.fim.toISOString().slice(0,10))}`;
 }
 
 function calcPrazoInfo(meta){
@@ -2416,7 +2420,7 @@ function calcPrazoInfo(meta){
 function prazoBadgeHtml(meta){
   const info = calcPrazoInfo(meta);
   if(!info) return '';
-  const fimStr = fmtDate(info.fim.toISOString().slice(0,10));
+  const fimStr = fmtDateTxt(info.fim.toISOString().slice(0,10));
   if(info.diffDias > 1) return `<span title="Previsão de término: ${fimStr}" style="font-size:10px;color:#4caf50;background:#0d1a10;border:1px solid #2e5a34;border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px">⏳ ${info.diffDias} dias restantes</span>`;
   if(info.diffDias === 1) return `<span title="Previsão de término: ${fimStr}" style="font-size:10px;color:#e8b544;background:#1a1500;border:1px solid #8a6d1f;border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px">⏳ termina amanhã</span>`;
   if(info.diffDias === 0) return `<span title="Previsão de término: ${fimStr}" style="font-size:10px;color:#e8b544;background:#1a1500;border:1px solid #8a6d1f;border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px">⏳ termina hoje</span>`;
@@ -5430,7 +5434,7 @@ function openPacoteModal(gastoId){
     : `<span style="background:#1a1500;color:#e8b544;border-radius:4px;padding:2px 7px;font-size:10px">${headerIcon} empreitada ${material==='com-material'?'com material':'sem material'}</span>`) : '';
   const meta = getPacoteMeta(g);
   const prazoBadge = prazoBadgeHtml(meta);
-  const prazoLine = meta.dataInicio ? `<div style="font-size:11px;color:#888;margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b>Início:</b> ${fmtDate(meta.dataInicio)} ${meta.prazoDias?` &nbsp;·&nbsp; <b>Prazo:</b> ${meta.prazoDias} dias`:''} ${prazoBadge}</div>` : '';
+  const prazoLine = meta.dataInicio ? `<div style="font-size:11px;color:#888;margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b>Início:</b> ${fmtDateTxt(meta.dataInicio)} ${meta.prazoDias?` &nbsp;·&nbsp; <b>Prazo:</b> ${meta.prazoDias} dias`:''} ${prazoBadge}</div>` : '';
   const infoRow = `<tr><td colspan="6" style="padding:12px;border-top:1px solid #2a2a2a">
     <div style="font-size:11px;color:#888;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b>Data:</b> ${fmtDate(g.data)} &nbsp;·&nbsp; <b>Status:</b> ${getColLabel(g.status)} ${tipoTag}</div>
     ${prazoLine}
