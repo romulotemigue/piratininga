@@ -2399,15 +2399,67 @@ function getAmbienteOptions(){
   const combinados = [...padrao];
   usados.forEach(u=>{ if(!combinados.some(c=>c.toLowerCase()===u.toLowerCase())) combinados.push(u); });
   getCustomAmbientes().forEach(u=>{ if(!combinados.some(c=>c.toLowerCase()===u.toLowerCase())) combinados.push(u); });
+  const ordem = getAmbienteOrder();
+  if(ordem.length){
+    const ordenados = ordem.filter(o=>combinados.some(c=>c.toLowerCase()===o.toLowerCase()));
+    const restantes = combinados.filter(c=>!ordem.some(o=>o.toLowerCase()===c.toLowerCase()));
+    return [...ordenados, ...restantes];
+  }
   return combinados;
 }
+function getAmbienteOrder(){ try{ return JSON.parse(localStorage.getItem('pirati_ambiente_order')||'[]'); }catch(e){ return []; } }
+function saveAmbienteOrder(arr){ localStorage.setItem('pirati_ambiente_order', JSON.stringify(arr)); }
 
 // Fases cujos serviços tipicamente são medidos por metro quadrado — só nessas
 // mostramos os campos de metragem/valor por m²/tipo de revestimento. As demais
 // (elétrica, hidráulica, esquadrias, marcenaria, etc.) só precisam do ambiente.
 const FASES_COM_METRAGEM = ['Demolição','Impermeabilização','Contrapiso e Regularização','Revestimentos de Parede','Pisos e Rodapés','Pintura (Preparação)','Pintura Final e Limpeza Pós-Obra'];
 
-function renderEmpreitadaServiceGrid(){
+// Unidade de medida por serviço (sk) — escolhida pela pessoa via dropdown na
+// janela de ambientes, e lembrada pra próxima vez. Padrão: m² (metro quadrado).
+// Também aceita 'ml' (metro linear) ou uma unidade personalizada (ex: 'un', 'kg').
+function getSubUnidades(){ try{ return JSON.parse(localStorage.getItem('pirati_sub_unidades')||'{}'); }catch(e){ return {}; } }
+function saveSubUnidade(skOuChave, unidade){
+  const map = getSubUnidades();
+  map[skOuChave] = unidade;
+  localStorage.setItem('pirati_sub_unidades', JSON.stringify(map));
+}
+function getUnidadeChaveParaRi(ri){
+  // resolve pra chave estável (sk real), mesmo quando ri é 'f-form' (form simples)
+  let entry = SUBCATS['obra-bruta']?.[ri];
+  if(entry) return ri;
+  if(ri==='f-form'){
+    const subcatSel = document.getElementById('f-subcat')?.value;
+    if(SUBCATS['obra-bruta']?.[subcatSel]) return subcatSel;
+  }
+  return ri;
+}
+function getUnidadeParaRi(ri){
+  const chave = getUnidadeChaveParaRi(ri);
+  const map = getSubUnidades();
+  if(map[chave]) return map[chave];
+  const entry = SUBCATS['obra-bruta']?.[chave];
+  if(entry && entry.grupo==='Pisos e Rodapés' && entry.label==='Rodapés') return 'ml'; // padrão sensato, editável
+  return 'm2';
+}
+function unidadeLabel(unidade){
+  if(unidade==='m2') return 'm²';
+  if(unidade==='ml') return 'm';
+  return unidade; // unidade personalizada, ex: "un", "kg", "vb"
+}
+function changeUnidadeForRi(ri, valor){
+  const chave = getUnidadeChaveParaRi(ri);
+  if(valor==='outro'){
+    const custom = prompt('Digite a unidade (ex: un, kg, vb, ml²):', '');
+    if(!custom || !custom.trim()) { renderAmbienteModalBody(ri); return; }
+    saveSubUnidade(chave, custom.trim());
+  } else {
+    saveSubUnidade(chave, valor);
+  }
+  renderAmbienteModalBody(ri);
+}
+
+function renderEmpreitadaServiceGrid(preserveState){
   const cat = 'obra-bruta';
   const subEntries = Object.keys(SUBCATS[cat]||{}).map(sk=>({sk, ...SUBCATS[cat][sk]})).filter(e=>e.grupo && isSubAtivo(cat, e.sk));
   const fases = {};
@@ -2417,32 +2469,34 @@ function renderEmpreitadaServiceGrid(){
   });
   const faseNomes = Object.keys(fases).sort((a,b)=>fases[a].ordem-fases[b].ordem);
 
-  // Cada linha recebe um índice ÚNICO (rowIdx), independente do sk/slug do serviço.
-  // Isso evita qualquer colisão de id/classe caso dois serviços de fases diferentes
-  // gerem o mesmo slug (o que quebrava o popover/checkbox de ambiente de um deles).
-  let rowIdx = 0;
-  empreitadaRowMap = {}; // rowIdx -> sk (usado no confirmEmpreitada)
-  ambienteData = {}; // reseta os ambientes/detalhes do pacote anterior
-  ambienteModoUnico = {};
-  ambienteModoUnicoData = {};
-  empreitadaRowShowArea = {}; // rowIdx -> bool (se a fase usa campos de m²)
+  if(!preserveState){
+    ambienteData = {}; // reseta os ambientes/detalhes do pacote anterior
+    ambienteModoUnico = {};
+    ambienteModoUnicoData = {};
+    empreitadaCheckedServices = {};
+  }
 
   document.getElementById('emp-service-grid').innerHTML = faseNomes.map((faseName,fi)=>{
     const items = fases[faseName].subs.sort((a,b)=>(a.ordem??0)-(b.ordem??0));
     const showArea = FASES_COM_METRAGEM.includes(faseName);
+    const faseNameEsc = faseName.replace(/'/g,"\\'");
     const rows = items.map(it=>{
-      const ri = rowIdx++;
-      empreitadaRowMap[ri] = it.sk;
-      empreitadaRowShowArea[ri] = showArea;
+      const sk = it.sk; // usamos o próprio sk (estável) como chave, em vez de um índice
+      // posicional — assim reordenar os serviços não bagunça o que já foi marcado.
+      empreitadaRowShowArea[sk] = showArea;
       const labelEsc = it.label.replace(/'/g,"\\'");
+      const isChecked = !!empreitadaCheckedServices[sk];
+      const names = Object.keys(ambienteData[sk]||{});
+      const btnLabel = names.length ? `${names.length} local${names.length>1?'is':''}: ${names.join(', ')}` : 'adicionar local';
       return `
-      <div style="padding:3px 0">
+      <div draggable="true" ondragstart="empServiceDragStart('${sk}','${faseNameEsc}',event)" ondragover="event.preventDefault()" ondrop="empServiceDrop('${sk}','${faseNameEsc}',event)" style="padding:3px 0">
         <div style="display:flex;align-items:center;gap:6px">
-          <input type="checkbox" class="emp-sub-check" data-row="${ri}" value="${it.sk}" onchange="document.getElementById('emp-amb-btn-${ri}').disabled=!this.checked" style="width:auto;flex-shrink:0">
+          <span style="color:#2a2a2a;cursor:grab;font-size:11px;flex-shrink:0" title="Arrastar pra reordenar">⠿</span>
+          <input type="checkbox" class="emp-sub-check" data-row="${sk}" value="${sk}" ${isChecked?'checked':''} onchange="empreitadaCheckedServices['${sk}']=this.checked;document.getElementById('emp-amb-btn-${sk}').disabled=!this.checked" style="width:auto;flex-shrink:0">
           <span style="font-size:11px;color:#ccc;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${it.label}">${it.label}</span>
-          <button type="button" onclick="openAmbienteModal('${ri}','${labelEsc}')" id="emp-amb-btn-${ri}" disabled
-            style="width:130px;flex-shrink:0;background:#111;border:1px solid #333;border-radius:4px;padding:3px 5px;color:#666;font-size:10px;text-align:left;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-            adicionar local
+          <button type="button" onclick="openAmbienteModal('${sk}','${labelEsc}')" id="emp-amb-btn-${sk}" ${isChecked?'':'disabled'}
+            style="width:130px;flex-shrink:0;background:#111;border:1px solid #333;border-radius:4px;padding:3px 5px;color:${names.length?'#e8e7e2':'#666'};font-size:10px;text-align:left;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+            ${btnLabel}
           </button>
         </div>
       </div>`;
@@ -2452,6 +2506,31 @@ function renderEmpreitadaServiceGrid(){
       ${rows}
     </div>`;
   }).join('');
+}
+
+// Reordena os serviços DENTRO da mesma fase, por arrastar-e-soltar. Como a
+// chave de cada linha agora é o próprio sk (estável), a nova ordem persiste
+// sem bagunçar o que já estava marcado/preenchido.
+let empDragSk = null, empDragFase = null;
+function empServiceDragStart(sk, faseName, e){
+  empDragSk = sk; empDragFase = faseName;
+  e.dataTransfer.effectAllowed = 'move';
+}
+function empServiceDrop(targetSk, faseName, e){
+  e.preventDefault();
+  if(!empDragSk || empDragFase!==faseName || empDragSk===targetSk){ empDragSk=null; empDragFase=null; return; }
+  const cat = 'obra-bruta';
+  const ordered = Object.keys(SUBCATS[cat]||{})
+    .filter(k=>SUBCATS[cat][k].grupo===faseName && isSubAtivo(cat,k))
+    .sort((a,b)=>(SUBCATS[cat][a].ordem??0)-(SUBCATS[cat][b].ordem??0));
+  const fromIdx = ordered.indexOf(empDragSk);
+  const toIdx = ordered.indexOf(targetSk);
+  if(fromIdx<0 || toIdx<0){ empDragSk=null; empDragFase=null; return; }
+  ordered.splice(toIdx, 0, ordered.splice(fromIdx,1)[0]);
+  ordered.forEach((k,i)=>{ SUBCATS[cat][k].ordem = i; });
+  saveSubCats();
+  empDragSk = null; empDragFase = null;
+  renderEmpreitadaServiceGrid(true); // preserva o que já foi marcado/preenchido
 }
 
 // Estado dos ambientes marcados por linha (ri) — vive em JS, não no DOM, porque
@@ -2506,6 +2585,21 @@ function renderAmbienteModalBody(ri){
   const options = getAmbienteOptions();
   const data = getAmbienteDataForRow(ri);
   const sharedVals = getModoUnicoDataForRow(ri);
+  const unidade = getUnidadeParaRi(ri);
+  const unidLabel = unidadeLabel(unidade);
+  const unidLabelTotal = unidLabel + ' (total)';
+  const unidSelectValue = (unidade==='m2'||unidade==='ml') ? unidade : 'outro';
+
+  const unidPickerHtml = showArea ? `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 6px;margin-bottom:6px;background:#111;border:1px solid #333;border-radius:6px">
+      <span style="font-size:12px;color:#888;flex-shrink:0">Unidade de medida deste serviço:</span>
+      <select onchange="changeUnidadeForRi('${ri}',this.value)" style="background:#0c0c0c;border:1px solid #3a3a3a;border-radius:6px;padding:6px 8px;color:#e8e7e2;font-size:12px">
+        <option value="m2" ${unidSelectValue==='m2'?'selected':''}>m² — metro quadrado</option>
+        <option value="ml" ${unidSelectValue==='ml'?'selected':''}>m — metro linear</option>
+        <option value="outro" ${unidSelectValue==='outro'?'selected':''}>${unidSelectValue==='outro'?'Outro: '+unidLabel:'Outro (personalizado)...'}</option>
+      </select>
+    </div>
+  ` : '';
 
   const toggleHtml = showArea ? `
     <div style="display:flex;align-items:center;gap:10px;padding:8px 6px;margin-bottom:6px;background:#161300;border:1px solid #4a3c10;border-radius:6px">
@@ -2520,12 +2614,12 @@ function renderAmbienteModalBody(ri){
         <button type="button" onclick="stepModoUnicoM2('${ri}',-1)" style="background:#232323;border:none;color:#ccc;width:30px;height:30px;border-radius:5px;cursor:pointer;font-size:16px">−</button>
         <input type="text" inputmode="numeric" id="amb-unico-m2-${ri}" value="${sharedVals.m2||''}" placeholder="0" oninput="setModoUnicoField('${ri}','m2',this.value.replace(/[^0-9]/g,''))" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('amb-unico-val-${ri}').focus();document.getElementById('amb-unico-val-${ri}').select();}" style="width:56px;text-align:center;background:none;border:none;color:#e8e7e2;font-size:14px;outline:none">
         <button type="button" onclick="stepModoUnicoM2('${ri}',1)" style="background:#232323;border:none;color:#ccc;width:30px;height:30px;border-radius:5px;cursor:pointer;font-size:16px">+</button>
-        <span style="color:#777;font-size:12px;padding:0 8px 0 4px">m² (total)</span>
+        <span style="color:#777;font-size:12px;padding:0 8px 0 4px">${unidLabelTotal}</span>
       </div>
       <div style="display:flex;align-items:center;gap:6px;background:#0c0c0c;border:1px solid #3a3a3a;border-radius:6px;padding:7px 10px">
         <span style="color:#777;font-size:12px;flex-shrink:0">R$</span>
         <input type="text" id="amb-unico-val-${ri}" value="${sharedVals.valorM2||''}" placeholder="0,00" oninput="setModoUnicoField('${ri}','valorM2',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('amb-unico-tipo-${ri}').focus();document.getElementById('amb-unico-tipo-${ri}').select();}" style="width:66px;background:none;border:none;color:#e8e7e2;font-size:14px;outline:none">
-        <span style="color:#777;font-size:12px;flex-shrink:0">/m²</span>
+        <span style="color:#777;font-size:12px;flex-shrink:0">/${unidLabel}</span>
       </div>
       <input type="text" id="amb-unico-tipo-${ri}" value="${sharedVals.tipo||''}" placeholder="tipo / material do revestimento" oninput="setModoUnicoField('${ri}','tipo',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" style="flex:1;min-width:220px;background:#0c0c0c;border:1px solid #3a3a3a;border-radius:6px;padding:8px 10px;color:#e8e7e2;font-size:13px">
     </div>` : ''}
@@ -2534,8 +2628,9 @@ function renderAmbienteModalBody(ri){
   const rowsHtml = options.map((a,ai)=>{
     const checked = !!data[a];
     const vals = data[a] || {};
-    return `<div style="display:flex;align-items:center;gap:16px;padding:12px 6px;border-bottom:1px solid #262626">
-      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#ccc;cursor:pointer;width:180px;flex-shrink:0">
+    return `<div draggable="true" ondragstart="ambRowDragStart(${ai},event)" ondragover="event.preventDefault()" ondrop="ambRowDrop('${ri}',${ai},event)" style="display:flex;align-items:center;gap:10px;padding:12px 6px;border-bottom:1px solid #262626">
+      <span style="color:#2a2a2a;cursor:grab;font-size:12px;flex-shrink:0" title="Arrastar pra reordenar">⠿</span>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#ccc;cursor:pointer;width:170px;flex-shrink:0">
         <input type="checkbox" ${checked?'checked':''} onchange="toggleAmbienteChecked('${ri}','${escJs(a)}',this.checked)" style="width:16px;height:16px;flex-shrink:0">
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a}</span>
       </label>
@@ -2545,19 +2640,19 @@ function renderAmbienteModalBody(ri){
           <button type="button" onclick="stepAmbienteM2('${ri}','${escJs(a)}',-1)" style="background:#232323;border:none;color:#ccc;width:30px;height:30px;border-radius:5px;cursor:pointer;font-size:16px">−</button>
           <input type="text" inputmode="numeric" id="amb-m2-${ri}-${ai}" value="${vals.m2||''}" placeholder="0" oninput="setAmbienteField('${ri}','${escJs(a)}','m2',this.value.replace(/[^0-9]/g,''))" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('amb-val-${ri}-${ai}').focus();document.getElementById('amb-val-${ri}-${ai}').select();}" style="width:50px;text-align:center;background:none;border:none;color:#e8e7e2;font-size:14px;outline:none">
           <button type="button" onclick="stepAmbienteM2('${ri}','${escJs(a)}',1)" style="background:#232323;border:none;color:#ccc;width:30px;height:30px;border-radius:5px;cursor:pointer;font-size:16px">+</button>
-          <span style="color:#777;font-size:12px;padding:0 8px 0 4px">m²</span>
+          <span style="color:#777;font-size:12px;padding:0 8px 0 4px">${unidLabel}</span>
         </div>
         <div style="display:flex;align-items:center;gap:6px;background:#111;border:1px solid #3a3a3a;border-radius:6px;padding:7px 10px">
           <span style="color:#777;font-size:12px;flex-shrink:0">R$</span>
           <input type="text" id="amb-val-${ri}-${ai}" value="${vals.valorM2||''}" placeholder="0,00" oninput="setAmbienteField('${ri}','${escJs(a)}','valorM2',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('amb-tipo-${ri}-${ai}').focus();document.getElementById('amb-tipo-${ri}-${ai}').select();}" style="width:66px;background:none;border:none;color:#e8e7e2;font-size:14px;outline:none">
-          <span style="color:#777;font-size:12px;flex-shrink:0">/m²</span>
+          <span style="color:#777;font-size:12px;flex-shrink:0">/${unidLabel}</span>
         </div>
         <input type="text" id="amb-tipo-${ri}-${ai}" value="${vals.tipo||''}" placeholder="tipo / material do revestimento" oninput="setAmbienteField('${ri}','${escJs(a)}','tipo',this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" style="flex:1;min-width:220px;background:#111;border:1px solid #3a3a3a;border-radius:6px;padding:8px 10px;color:#e8e7e2;font-size:13px">
       </div>` : (showArea && checked && modoUnico ? `<div style="flex:1;color:#777;font-size:11px;font-style:italic">usando metragem/valor únicos (acima)</div>` : `<div style="flex:1"></div>`)}
     </div>`;
   }).join('');
 
-  document.getElementById('emp-ambiente-modal-body').innerHTML = toggleHtml + rowsHtml;
+  document.getElementById('emp-ambiente-modal-body').innerHTML = unidPickerHtml + toggleHtml + rowsHtml;
 }
 
 function getModoUnicoDataForRow(ri){
@@ -2588,6 +2683,22 @@ function stepModoUnicoM2(ri, delta){
   let v = parseInt(shared.m2||'0',10) || 0;
   v = Math.max(0, v+delta);
   setModoUnicoField(ri, 'm2', String(v));
+  renderAmbienteModalBody(ri);
+}
+
+let ambDragIdx = null;
+function ambRowDragStart(idx, e){
+  ambDragIdx = idx;
+  e.dataTransfer.effectAllowed = 'move';
+}
+function ambRowDrop(ri, targetIdx, e){
+  e.preventDefault();
+  if(ambDragIdx===null || ambDragIdx===targetIdx){ ambDragIdx=null; return; }
+  const options = getAmbienteOptions();
+  const moved = options.splice(ambDragIdx,1)[0];
+  options.splice(targetIdx,0,moved);
+  saveAmbienteOrder(options);
+  ambDragIdx = null;
   renderAmbienteModalBody(ri);
 }
 
@@ -2636,8 +2747,8 @@ function saveCustomAmbiente(nome){
   localStorage.setItem('pirati_custom_ambientes', JSON.stringify(list));
 }
 
-let empreitadaRowMap = {};
 let empreitadaRowShowArea = {};
+let empreitadaCheckedServices = {}; // sk -> bool (serviço marcado), sobrevive a reordenação
 
 function updateAmbienteBtnLabel(ri){
   const data = ambienteData[ri] || {};
@@ -2660,9 +2771,8 @@ async function confirmEmpreitada(){
   if(!checks.length){ alert('Marque pelo menos um serviço coberto pelo pacote.'); return; }
   const servicos = [];
   checks.forEach(el=>{
-    const ri = el.dataset.row;
-    const sk = empreitadaRowMap[ri];
-    const data = ambienteData[ri] || {};
+    const sk = el.dataset.row;
+    const data = ambienteData[sk] || {};
     const names = Object.keys(data);
     if(names.length){
       names.forEach(nome=>{
