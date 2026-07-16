@@ -135,6 +135,13 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
 .nav-item-wrap.drag-over{border-radius:6px;box-shadow:0 0 0 2px #e8b544 inset,0 0 14px rgba(232,181,68,.55);background:rgba(232,181,68,0.14);transform:scale(1.015);transition:all .12s;animation:dropPulse 1s ease-in-out infinite}
 .subcat-row-drop-target{border-radius:6px;box-shadow:0 0 0 2px #e8b544 inset,0 0 14px rgba(232,181,68,.55);background:rgba(232,181,68,0.16);transform:scale(1.015);transition:all .12s;animation:dropPulse 1s ease-in-out infinite}
 .fase-group-draggable.drag-over{border-radius:6px;box-shadow:0 0 0 2px #e8b544 inset,0 0 14px rgba(232,181,68,.55);background:rgba(232,181,68,0.16);transform:scale(1.015);transition:all .12s;animation:dropPulse 1s ease-in-out infinite}
+/* Entrelinhas: cor DIFERENTE (ciano) do amarelo de "juntar" — indica que vai
+   virar uma FASE NOVA numerada naquela posição, não juntar na fase vizinha. */
+.fase-group-draggable.insert-line-before{box-shadow:inset 0 3px 0 0 #42d9e8;background:rgba(66,217,232,.08);transition:all .12s}
+.fase-group-draggable.insert-line-after{box-shadow:inset 0 -3px 0 0 #42d9e8;background:rgba(66,217,232,.08);transition:all .12s}
+/* Entrelinhas entre SUBS: cor roxa — vira sub nova naquela posição exata */
+.subcat-row.subcat-insert-before{box-shadow:inset 0 2px 0 0 #b565d8;background:rgba(181,101,216,.1);transition:all .12s}
+.subcat-row.subcat-insert-after{box-shadow:inset 0 -2px 0 0 #b565d8;background:rgba(181,101,216,.1);transition:all .12s}
 @keyframes dropPulse{0%,100%{box-shadow:0 0 0 2px #e8b544 inset,0 0 10px rgba(232,181,68,.4)}50%{box-shadow:0 0 0 2px #ffd76b inset,0 0 20px rgba(232,181,68,.75)}}
 .fase-source-dragging{opacity:.5}
 #etapas-header.fase-drop-armed{background:rgba(232,181,68,.06);outline:1px dashed #8a6d1f}
@@ -197,7 +204,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 12JUL26 (versão 38)</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 12JUL26 (versão 39)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -1168,6 +1175,32 @@ function handleNavGroupClick(k, gName, e){
   }
 }
 
+// Solta a etapa "nas entrelinhas" entre duas subs (dentro de uma fase já
+// aberta) → vira subs novas bem naquela posição exata dentro da fase.
+async function insertEtapaAsNewSubsAt(srcKey, refSk, position){
+  const catInfo = CATS[srcKey];
+  const refEntry = SUBCATS['obra-bruta']?.[refSk];
+  if(!catInfo || !refEntry) return;
+  const grupoName = refEntry.grupo;
+  if(!confirm(`Adicionar os serviços de "${catInfo.label}" dentro da fase "${grupoName}", ${position==='before'?'antes':'depois'} de "${refEntry.label}"?\n\nOs lançamentos serão movidos, mantendo valores e tudo mais.`)) return;
+  const cat = 'obra-bruta';
+  const items = Object.keys(SUBCATS[cat]).filter(k=>SUBCATS[cat][k].grupo===grupoName).sort((a,b)=>(SUBCATS[cat][a].ordem??0)-(SUBCATS[cat][b].ordem??0));
+  const refIdx = items.indexOf(refSk);
+  if(refIdx<0) return;
+  const insertIdx = position==='before' ? refIdx : refIdx+1;
+  const faseBase = Math.floor((refEntry.ordem??0)/100)*100;
+  items.splice(insertIdx, 0, '__NOVO__');
+  items.forEach((k,ii)=>{
+    if(k==='__NOVO__') return;
+    const novoOrdem = faseBase+ii;
+    SUBCATS[cat][k].ordem = novoOrdem;
+    SUBCATS[cat][k].ordemCustom = novoOrdem;
+  });
+  saveSubCats();
+  const novoIdx = items.indexOf('__NOVO__');
+  await mergeCategoriaIntoObraBruta(srcKey, grupoName, true, faseBase+novoIdx);
+}
+
 function toggleFaseAtivo(k, skList, e){
   if(e) e.stopPropagation();
   if(!SUBCATS[k]) return;
@@ -1261,13 +1294,14 @@ function buildSubcatRowsHtml(k){
     const skListJson = items.map(e=>e.sk);
     const gNameEsc = gName.replace(/'/g,"\\'");
     const groupRow = `
-      <div class="nav-item-wrap fase-group-draggable" id="fase-wrap-${safeId}" draggable="${k==='obra-bruta'?'true':'false'}"
+      <div class="nav-item-wrap fase-group-draggable" id="fase-wrap-${safeId}" draggable="false"
         ondragstart="faseGroupDragStart('${gNameEsc}',event)"
         ondragend="faseGroupDragEnd(event)"
         ondragover="faseGroupDragOver('${gNameEsc}',event)"
         ondragleave="faseGroupDragLeave('${gNameEsc}',event)"
         ondrop="faseGroupDrop('${gNameEsc}',event)"
-        style="display:flex;align-items:center;gap:5px;padding:5px 6px 5px 1rem;user-select:none;${faseAtiva?'':'opacity:.4'}">
+        style="display:flex;align-items:center;gap:5px;padding:5px 6px 5px .4rem;user-select:none;${faseAtiva?'':'opacity:.4'}">
+        <span class="fase-drag-handle" title="Arrastar" style="cursor:grab;color:#3a3a3a;font-size:11px;padding:0 2px;flex-shrink:0" onmousedown="this.closest('.fase-group-draggable').setAttribute('draggable','true')" onmouseup="this.closest('.fase-group-draggable').setAttribute('draggable','false')">⠿</span>
         <button id="chev-grp-btn-${safeId}" onclick="toggleSubGroup('${k}','${gNameEsc}',event)" title="Expandir/recolher itens" style="background:none;border:none;cursor:pointer;padding:2px 4px;flex-shrink:0">
           <span id="chev-grp-${safeId}" style="color:#555;font-size:9px;transition:transform .15s;transform:rotate(${isOpen?90:0}deg);display:inline-block">▶</span>
         </button>
@@ -1871,15 +1905,16 @@ function faseGroupDragEnd(e){
   draggedFaseName = null;
   document.getElementById('etapas-header')?.classList.remove('fase-drop-armed','fase-drop-over');
   document.querySelectorAll('.fase-source-dragging').forEach(el=>el.classList.remove('fase-source-dragging'));
-  document.querySelectorAll('.fase-group-draggable').forEach(el=>el.classList.remove('drag-over'));
+  document.querySelectorAll('.fase-group-draggable').forEach(el=>{ el.classList.remove('drag-over'); el.setAttribute('draggable','false'); });
 }
+let etapaDropZone = null;
 function faseGroupDragOver(gName, e){
   sidebarAutoScroll(e);
   if(draggedFaseName){
     e.preventDefault();
     e.stopPropagation();
     if(draggedFaseName!==gName){
-      document.querySelectorAll('.fase-group-draggable').forEach(el=>el.classList.remove('drag-over'));
+      document.querySelectorAll('.fase-group-draggable').forEach(el=>el.classList.remove('drag-over','insert-line-before','insert-line-after'));
       e.currentTarget.classList.add('drag-over');
     }
     return;
@@ -1887,13 +1922,24 @@ function faseGroupDragOver(gName, e){
   if(dragKey && CATS[dragKey] && !IMOVEL_CATS[dragKey] && dragKey!=='obra-bruta'){
     e.preventDefault();
     e.stopPropagation();
-    document.querySelectorAll('.fase-group-draggable').forEach(el=>el.classList.remove('drag-over'));
-    e.currentTarget.classList.add('drag-over');
+    const rect = e.currentTarget.getBoundingClientRect();
+    const relY = (e.clientY - rect.top) / rect.height;
+    document.querySelectorAll('.fase-group-draggable').forEach(el=>el.classList.remove('drag-over','insert-line-before','insert-line-after'));
+    if(relY < 0.25){
+      e.currentTarget.classList.add('insert-line-before');
+      etapaDropZone = {gName, mode:'before'};
+    } else if(relY > 0.75){
+      e.currentTarget.classList.add('insert-line-after');
+      etapaDropZone = {gName, mode:'after'};
+    } else {
+      e.currentTarget.classList.add('drag-over');
+      etapaDropZone = {gName, mode:'merge'};
+    }
   }
 }
 function faseGroupDragLeave(gName, e){
   e.stopPropagation();
-  e.currentTarget.classList.remove('drag-over');
+  e.currentTarget.classList.remove('drag-over','insert-line-before','insert-line-after');
 }
 function faseGroupDrop(gName, e){
   if(draggedFaseName){
@@ -1908,11 +1954,52 @@ function faseGroupDrop(gName, e){
     e.preventDefault();
     e.stopPropagation();
     const draggedKey = dragKey;
-    dragKey = null; dragOverKey = null;
-    document.querySelectorAll('.fase-group-draggable').forEach(el=>el.classList.remove('drag-over'));
+    const zone = etapaDropZone;
+    dragKey = null; dragOverKey = null; etapaDropZone = null;
+    document.querySelectorAll('.fase-group-draggable').forEach(el=>el.classList.remove('drag-over','insert-line-before','insert-line-after'));
     document.querySelectorAll('.nav-cat-wrap').forEach(el=>el.classList.remove('dragging'));
-    mergeCategoriaIntoObraBruta(draggedKey, gName);
+    if(zone && zone.mode!=='merge'){
+      insertEtapaAsNewFase(draggedKey, zone.gName, zone.mode);
+    } else {
+      mergeCategoriaIntoObraBruta(draggedKey, gName);
+    }
   }
+}
+// Solta a etapa "nas entrelinhas" entre duas fases → vira uma FASE NOVA
+// (numerada) bem naquela posição, em vez de virar subs dentro da fase que
+// está do lado.
+async function insertEtapaAsNewFase(srcKey, refGName, position){
+  const catInfo = CATS[srcKey];
+  if(!catInfo) return;
+  if(!confirm(`Transformar a etapa "${catInfo.label}" numa fase nova dentro de Execução de Obra, ${position==='before'?'antes':'depois'} de "${refGName}"?\n\nOs lançamentos serão movidos, mantendo valores e tudo mais.`)) return;
+  const cat = 'obra-bruta';
+  const groups = {};
+  Object.keys(SUBCATS[cat]||{}).forEach(sk=>{
+    const g = SUBCATS[cat][sk].grupo || '';
+    if(!g) return;
+    (groups[g]=groups[g]||[]).push(sk);
+  });
+  const groupNames = Object.keys(groups).sort((a,b)=>{
+    const oa = Math.min(...groups[a].map(sk=>SUBCATS[cat][sk].ordem??0));
+    const ob = Math.min(...groups[b].map(sk=>SUBCATS[cat][sk].ordem??0));
+    return oa-ob;
+  });
+  const refIdx = groupNames.indexOf(refGName);
+  if(refIdx<0) return;
+  const insertIdx = position==='before' ? refIdx : refIdx+1;
+  groupNames.splice(insertIdx, 0, '__NOVA__');
+  groupNames.forEach((gName, newFi)=>{
+    if(gName==='__NOVA__') return;
+    const items = groups[gName].sort((a,b)=>(SUBCATS[cat][a].ordem??0)-(SUBCATS[cat][b].ordem??0));
+    items.forEach((sk,ii)=>{
+      const novoOrdem = newFi*100+ii;
+      SUBCATS[cat][sk].ordem = novoOrdem;
+      SUBCATS[cat][sk].ordemCustom = novoOrdem;
+    });
+  });
+  saveSubCats();
+  const novaFasePos = groupNames.indexOf('__NOVA__');
+  await mergeCategoriaIntoObraBruta(srcKey, catInfo.label, true, novaFasePos*100);
 }
 // Reordena duas fases inteiras (troca de posição) dentro de Execução de Obra,
 // renumerando 1-17 automaticamente — preserva a ordem dos itens dentro de cada uma.
@@ -2360,13 +2447,16 @@ function ensureObraBrutaPhases(){
     ];
     if(!SUBCATS['obra-bruta']) SUBCATS['obra-bruta'] = {};
 
-    // Guarda a ordem customizada (arrastada manualmente) de cada sub ANTES de
-    // apagar, pra não perder o reposicionamento que a pessoa já fez — só usa o
-    // padrão de fábrica pra quem NUNCA foi mexido.
+    // Guarda a ordem customizada E o estado ligado/desligado de cada sub ANTES
+    // de apagar, pra não perder o que a pessoa já ajustou.
     const ordemCustomizada = {};
+    const ativoCustomizado = {};
     Object.keys(SUBCATS['obra-bruta']).forEach(k=>{
       if(SUBCATS['obra-bruta'][k].auto && SUBCATS['obra-bruta'][k].ordemCustom!=null){
         ordemCustomizada[k] = SUBCATS['obra-bruta'][k].ordemCustom;
+      }
+      if(SUBCATS['obra-bruta'][k].auto && SUBCATS['obra-bruta'][k].ativo===false){
+        ativoCustomizado[k] = false;
       }
     });
 
@@ -2384,7 +2474,8 @@ function ensureObraBrutaPhases(){
         SUBCATS['obra-bruta'][slug] = {
           label:itemLabel, grupo:f.fase, auto:true,
           ordem: ordemCustomizada[slug]!=null ? ordemCustomizada[slug] : ordemPadrao,
-          ordemCustom: ordemCustomizada[slug]!=null ? ordemCustomizada[slug] : undefined
+          ordemCustom: ordemCustomizada[slug]!=null ? ordemCustomizada[slug] : undefined,
+          ativo: ativoCustomizado[slug]===false ? false : undefined
         };
       });
     });
@@ -4096,7 +4187,7 @@ function getPinnedStageKeys(){
 function savePinnedStageOrder(order){ localStorage.setItem('pinned_stage_order', JSON.stringify(order)); }
 
 // ── Arrastar uma ETAPA pra dentro de "Execução de Obra" → vira uma FASE lá dentro ──
-async function mergeCategoriaIntoObraBruta(srcKey, targetGrupo, skipConfirm){
+async function mergeCategoriaIntoObraBruta(srcKey, targetGrupo, skipConfirm, ordemBaseOverride){
   const catInfo = CATS[srcKey];
   if(!catInfo || srcKey==='obra-bruta') return;
   const grupoName = targetGrupo || catInfo.label;
@@ -4107,13 +4198,13 @@ async function mergeCategoriaIntoObraBruta(srcKey, targetGrupo, skipConfirm){
   const subsAntigas = SUBCATS[srcKey] || {};
   if(!SUBCATS['obra-bruta']) SUBCATS['obra-bruta'] = {};
   const existingKeys = new Set(Object.keys(SUBCATS['obra-bruta']));
-  let ordemBase = Object.values(SUBCATS['obra-bruta']).reduce((m,s)=>Math.max(m, s.ordem??0), 0) + 1;
+  let ordemBase = ordemBaseOverride!=null ? ordemBaseOverride : (Object.values(SUBCATS['obra-bruta']).reduce((m,s)=>Math.max(m, s.ordem??0), 0) + 1);
   const renameMap = {};
   let idx = 0;
   Object.keys(subsAntigas).forEach(oldKey=>{
     let newKey = oldKey;
     if(existingKeys.has(newKey)) newKey = srcKey+'-'+oldKey;
-    SUBCATS['obra-bruta'][newKey] = {label: subsAntigas[oldKey].label, grupo: grupoName, ordem: ordemBase+idx};
+    SUBCATS['obra-bruta'][newKey] = {label: subsAntigas[oldKey].label, grupo: grupoName, ordem: ordemBase+idx, ordemCustom: ordemBase+idx};
     idx++;
     if(newKey!==oldKey) renameMap[oldKey] = newKey;
   });
@@ -6639,14 +6730,20 @@ function subDragStart(catKey, sk, e){
   },0);
 }
 
+let etapaSubDropZone = null;
 function subDragOver(catKey, sk, e){
   e.preventDefault();
   e.stopPropagation();
   // Arrastando uma ETAPA inteira (não uma sub) por cima de uma sub de Execução de Obra
   if(dragKey && catKey==='obra-bruta' && dragKey!=='obra-bruta' && CATS[dragKey] && !IMOVEL_CATS[dragKey]){
-    document.querySelectorAll('.subcat-row-drop-target').forEach(el=>el.classList.remove('subcat-row-drop-target'));
+    const rect = e.currentTarget.getBoundingClientRect();
+    const relY = (e.clientY - rect.top) / rect.height;
+    document.querySelectorAll('.subcat-row-drop-target,.subcat-insert-before,.subcat-insert-after').forEach(el=>el.classList.remove('subcat-row-drop-target','subcat-insert-before','subcat-insert-after'));
     const el = document.getElementById('subcat-row-'+catKey+'-'+sk);
-    if(el) el.classList.add('subcat-row-drop-target');
+    if(!el) return;
+    if(relY < 0.25){ el.classList.add('subcat-insert-before'); etapaSubDropZone = {sk, mode:'before'}; }
+    else if(relY > 0.75){ el.classList.add('subcat-insert-after'); etapaSubDropZone = {sk, mode:'after'}; }
+    else { el.classList.add('subcat-row-drop-target'); etapaSubDropZone = {sk, mode:'merge'}; }
     return;
   }
   if(sk===subDragKey) return;
@@ -6657,19 +6754,22 @@ function subDragOver(catKey, sk, e){
 
 function subDragLeave(catKey, sk, e){
   const el = document.getElementById('subcat-row-'+catKey+'-'+sk);
-  if(el){ el.classList.remove('sub-drag-over'); el.classList.remove('subcat-row-drop-target'); }
+  if(el){ el.classList.remove('sub-drag-over'); el.classList.remove('subcat-row-drop-target','subcat-insert-before','subcat-insert-after'); }
 }
 
 function subDragDrop(catKey, sk, e){
   e.preventDefault();
   e.stopPropagation();
-  // Soltou uma ETAPA inteira em cima de uma sub → pergunta como juntar
+  // Soltou uma ETAPA inteira em cima de uma sub → pergunta como juntar (no meio)
+  // ou insere como sub nova bem naquela posição (nas entrelinhas)
   if(dragKey && catKey==='obra-bruta' && dragKey!=='obra-bruta' && CATS[dragKey] && !IMOVEL_CATS[dragKey]){
     const draggedKey = dragKey;
-    dragKey = null; dragOverKey = null;
-    document.querySelectorAll('.subcat-row-drop-target').forEach(el=>el.classList.remove('subcat-row-drop-target'));
+    const zone = etapaSubDropZone;
+    dragKey = null; dragOverKey = null; etapaSubDropZone = null;
+    document.querySelectorAll('.subcat-row-drop-target,.subcat-insert-before,.subcat-insert-after').forEach(el=>el.classList.remove('subcat-row-drop-target','subcat-insert-before','subcat-insert-after'));
     document.querySelectorAll('.nav-cat-wrap').forEach(el=>el.classList.remove('dragging'));
-    openMergeChoiceModal(draggedKey, sk);
+    if(zone && zone.mode!=='merge') insertEtapaAsNewSubsAt(draggedKey, zone.sk, zone.mode);
+    else openMergeChoiceModal(draggedKey, sk);
     return;
   }
   if(sk===subDragKey || catKey!==subDragCat) return;
@@ -6701,6 +6801,20 @@ function subDragEnd(e){
 // ── HISTÓRICO UNDO/REDO ──────────────────────────────────────────
 const historyStack = [];
 let historyIndex = -1;
+
+// Atalho de teclado: Ctrl+Z desfaz, Ctrl+Shift+Z (ou Ctrl+Y) refaz — usa o
+// mesmo sistema de undo/redo dos botõezinhos. Ignora se a pessoa estiver
+// digitando em algum campo de texto, pra não atrapalhar o "desfazer" nativo
+// do navegador dentro de um input.
+document.addEventListener('keydown', function(e){
+  const isCtrl = e.ctrlKey || e.metaKey;
+  if(!isCtrl || e.key.toLowerCase()!=='z' && e.key.toLowerCase()!=='y') return;
+  const tag = (document.activeElement?.tagName||'').toLowerCase();
+  if(tag==='input' || tag==='textarea' || document.activeElement?.isContentEditable) return;
+  e.preventDefault();
+  if(e.key.toLowerCase()==='y' || (e.key.toLowerCase()==='z' && e.shiftKey)) historyRedo();
+  else historyUndo();
+});
 
 function historyPush(action){
   // remove anything ahead of current index
