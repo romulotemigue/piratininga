@@ -197,7 +197,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 12JUL26 (versão 36)</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 12JUL26 (versão 38)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -215,7 +215,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         </div>
       </div>
     </div>
-    <div class="sidebar-nav">
+    <div class="sidebar-nav" id="sidebar-nav" ondragover="sidebarAutoScroll(event)">
       <div class="nav-item active" onclick="navigate('geral')" id="nav-geral">
         <i class="ti ti-layout-dashboard"></i> Visão Geral
       </div>
@@ -1347,7 +1347,8 @@ function toggleFaseMenu(k, gName, e){
   menu.dataset.forKey = idKey;
   const gNameEsc = gName.replace(/'/g,"\\'");
   menu.innerHTML = `<div class="cat-menu-item" onclick="openModalAddSubCatInGroup('${k}','${gNameEsc}')"><i class="ti ti-plus"></i> Cartão</div>
-    <div class="cat-menu-item" onclick="renameFaseGroup('${k}','${gNameEsc}')"><i class="ti ti-pencil"></i> Renomear</div>`;
+    <div class="cat-menu-item" onclick="renameFaseGroup('${k}','${gNameEsc}')"><i class="ti ti-pencil"></i> Renomear</div>
+    <div class="cat-menu-item" onclick="document.querySelectorAll('.cat-menu,.subcat-menu').forEach(m=>m.classList.remove('open'));splitFaseOutOfObraBruta('${gNameEsc}')"><i class="ti ti-arrow-up-right"></i> Transformar em etapa própria</div>`;
   const btn = e.currentTarget;
   const rect = btn.getBoundingClientRect();
   menu.style.top = rect.bottom + 'px';
@@ -1843,14 +1844,28 @@ function toggleSubCatMenu(k, sk, e){
 
 // ── DRAG & DROP CATEGORIAS ───────────────────────────────────────
 let draggedFaseName = null;
+// Rola a barra lateral sozinha quando o arraste chega perto do topo/fundo —
+// sem isso, era impossível levar uma fase lá de baixo até o cabeçalho
+// "ETAPAS" no topo, que é o dropzone pra virar etapa própria.
+function sidebarAutoScroll(e){
+  const el = document.getElementById('sidebar-nav');
+  if(!el) return;
+  const rect = el.getBoundingClientRect();
+  const margin = 60;
+  const y = e.clientY;
+  if(y - rect.top < margin){
+    el.scrollTop -= 14;
+  } else if(rect.bottom - y < margin){
+    el.scrollTop += 14;
+  }
+}
 function faseGroupDragStart(gName, e){
   draggedFaseName = gName;
   e.stopPropagation();
   e.dataTransfer.effectAllowed = 'move';
   e.dataTransfer.setData('text/plain', 'fase:'+gName);
   document.getElementById('etapas-header')?.classList.add('fase-drop-armed');
-  const wrap = e.currentTarget.closest('.nav-cat-wrap');
-  if(wrap) wrap.classList.add('fase-source-dragging');
+  e.currentTarget.classList.add('fase-source-dragging');
 }
 function faseGroupDragEnd(e){
   draggedFaseName = null;
@@ -1858,12 +1873,17 @@ function faseGroupDragEnd(e){
   document.querySelectorAll('.fase-source-dragging').forEach(el=>el.classList.remove('fase-source-dragging'));
   document.querySelectorAll('.fase-group-draggable').forEach(el=>el.classList.remove('drag-over'));
 }
-// Passar por cima de uma fase (dentro de Execução de Obra) — dois cenários:
-// 1) arrastando OUTRA fase por cima (não faz nada, só bloqueia o hover de vazar
-//    pro cabeçalho da etapa); 2) arrastando uma ETAPA INTEIRA por cima de uma
-//    fase específica — destaca só essa fase, pra soltar e virar sub nela.
 function faseGroupDragOver(gName, e){
-  if(draggedFaseName){ e.preventDefault(); e.stopPropagation(); return; }
+  sidebarAutoScroll(e);
+  if(draggedFaseName){
+    e.preventDefault();
+    e.stopPropagation();
+    if(draggedFaseName!==gName){
+      document.querySelectorAll('.fase-group-draggable').forEach(el=>el.classList.remove('drag-over'));
+      e.currentTarget.classList.add('drag-over');
+    }
+    return;
+  }
   if(dragKey && CATS[dragKey] && !IMOVEL_CATS[dragKey] && dragKey!=='obra-bruta'){
     e.preventDefault();
     e.stopPropagation();
@@ -1876,7 +1896,14 @@ function faseGroupDragLeave(gName, e){
   e.currentTarget.classList.remove('drag-over');
 }
 function faseGroupDrop(gName, e){
-  if(draggedFaseName){ e.preventDefault(); e.stopPropagation(); return; }
+  if(draggedFaseName){
+    e.preventDefault();
+    e.stopPropagation();
+    document.querySelectorAll('.fase-group-draggable').forEach(el=>el.classList.remove('drag-over'));
+    if(draggedFaseName!==gName) reorderFases(draggedFaseName, gName);
+    draggedFaseName = null;
+    return;
+  }
   if(dragKey && CATS[dragKey] && !IMOVEL_CATS[dragKey] && dragKey!=='obra-bruta'){
     e.preventDefault();
     e.stopPropagation();
@@ -1886,6 +1913,37 @@ function faseGroupDrop(gName, e){
     document.querySelectorAll('.nav-cat-wrap').forEach(el=>el.classList.remove('dragging'));
     mergeCategoriaIntoObraBruta(draggedKey, gName);
   }
+}
+// Reordena duas fases inteiras (troca de posição) dentro de Execução de Obra,
+// renumerando 1-17 automaticamente — preserva a ordem dos itens dentro de cada uma.
+function reorderFases(fromGName, toGName){
+  const cat = 'obra-bruta';
+  const groups = {};
+  Object.keys(SUBCATS[cat]||{}).forEach(sk=>{
+    const g = SUBCATS[cat][sk].grupo || '';
+    if(!g) return;
+    (groups[g]=groups[g]||[]).push(sk);
+  });
+  const groupNames = Object.keys(groups).sort((a,b)=>{
+    const oa = Math.min(...groups[a].map(sk=>SUBCATS[cat][sk].ordem??0));
+    const ob = Math.min(...groups[b].map(sk=>SUBCATS[cat][sk].ordem??0));
+    return oa-ob;
+  });
+  const fi = groupNames.indexOf(fromGName);
+  const ti = groupNames.indexOf(toGName);
+  if(fi<0 || ti<0) return;
+  groupNames.splice(ti, 0, groupNames.splice(fi,1)[0]);
+  groupNames.forEach((gName, newFi)=>{
+    const items = groups[gName].sort((a,b)=>(SUBCATS[cat][a].ordem??0)-(SUBCATS[cat][b].ordem??0));
+    items.forEach((sk,ii)=>{
+      const novoOrdem = newFi*100+ii;
+      SUBCATS[cat][sk].ordem = novoOrdem;
+      SUBCATS[cat][sk].ordemCustom = novoOrdem;
+    });
+  });
+  saveSubCats();
+  renderCatNav();
+  toast(`Fases reordenadas.`);
 }
 function etapasHeaderDragOver(e){
   if(!draggedFaseName) return;
@@ -2302,6 +2360,16 @@ function ensureObraBrutaPhases(){
     ];
     if(!SUBCATS['obra-bruta']) SUBCATS['obra-bruta'] = {};
 
+    // Guarda a ordem customizada (arrastada manualmente) de cada sub ANTES de
+    // apagar, pra não perder o reposicionamento que a pessoa já fez — só usa o
+    // padrão de fábrica pra quem NUNCA foi mexido.
+    const ordemCustomizada = {};
+    Object.keys(SUBCATS['obra-bruta']).forEach(k=>{
+      if(SUBCATS['obra-bruta'][k].auto && SUBCATS['obra-bruta'][k].ordemCustom!=null){
+        ordemCustomizada[k] = SUBCATS['obra-bruta'][k].ordemCustom;
+      }
+    });
+
     // Apaga TUDO que essa função criou antes (marcado com auto:true) e recria do
     // zero, sempre. Isso evita qualquer bug de comparação de texto/acumulação —
     // é sempre a mesma foto limpa das 17 fases, todo carregamento.
@@ -2312,7 +2380,12 @@ function ensureObraBrutaPhases(){
     FASES.forEach((f,fi)=>{
       f.itens.forEach((itemLabel,ii)=>{
         const slug = (f.fase+'-'+itemLabel).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
-        SUBCATS['obra-bruta'][slug] = {label:itemLabel, grupo:f.fase, ordem:fi*100+ii, auto:true};
+        const ordemPadrao = fi*100+ii;
+        SUBCATS['obra-bruta'][slug] = {
+          label:itemLabel, grupo:f.fase, auto:true,
+          ordem: ordemCustomizada[slug]!=null ? ordemCustomizada[slug] : ordemPadrao,
+          ordemCustom: ordemCustomizada[slug]!=null ? ordemCustomizada[slug] : undefined
+        };
       });
     });
 
@@ -2973,7 +3046,7 @@ function empServiceDrop(targetSk, faseName, e){
   const toIdx = ordered.indexOf(targetSk);
   if(fromIdx<0 || toIdx<0){ empDragSk=null; empDragFase=null; return; }
   ordered.splice(toIdx, 0, ordered.splice(fromIdx,1)[0]);
-  ordered.forEach((k,i)=>{ SUBCATS[cat][k].ordem = i; });
+  ordered.forEach((k,i)=>{ SUBCATS[cat][k].ordem = i; SUBCATS[cat][k].ordemCustom = i; });
   saveSubCats();
   empDragSk = null; empDragFase = null;
   renderEmpreitadaServiceGrid(true); // preserva o que já foi marcado/preenchido
