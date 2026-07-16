@@ -132,8 +132,11 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
 .nav-drag:active{cursor:grabbing}
 .nav-cat-wrap{transition:opacity .2s, transform .2s, box-shadow .2s, filter .2s}
 .nav-cat-wrap.dragging{opacity:.2;transform:scale(0.93) rotate(-1deg);filter:blur(1px)}
-.nav-item-wrap.drag-over{border-radius:6px;box-shadow:0 0 0 2px #e8b544 inset;background:rgba(232,181,68,0.1)}
-.subcat-row-drop-target{border-radius:6px;box-shadow:0 0 0 2px #e8b544 inset;background:rgba(232,181,68,0.12)}
+.nav-item-wrap.drag-over{border-radius:6px;box-shadow:0 0 0 2px #e8b544 inset,0 0 14px rgba(232,181,68,.55);background:rgba(232,181,68,0.14);transform:scale(1.015);transition:all .12s;animation:dropPulse 1s ease-in-out infinite}
+.subcat-row-drop-target{border-radius:6px;box-shadow:0 0 0 2px #e8b544 inset,0 0 14px rgba(232,181,68,.55);background:rgba(232,181,68,0.16);transform:scale(1.015);transition:all .12s;animation:dropPulse 1s ease-in-out infinite}
+.fase-group-draggable.drag-over{border-radius:6px;box-shadow:0 0 0 2px #e8b544 inset,0 0 14px rgba(232,181,68,.55);background:rgba(232,181,68,0.16);transform:scale(1.015);transition:all .12s;animation:dropPulse 1s ease-in-out infinite}
+@keyframes dropPulse{0%,100%{box-shadow:0 0 0 2px #e8b544 inset,0 0 10px rgba(232,181,68,.4)}50%{box-shadow:0 0 0 2px #ffd76b inset,0 0 20px rgba(232,181,68,.75)}}
+.fase-source-dragging{opacity:.5}
 #etapas-header.fase-drop-armed{background:rgba(232,181,68,.06);outline:1px dashed #8a6d1f}
 #etapas-header.fase-drop-over{background:rgba(232,181,68,.16);outline:2px dashed #e8b544}
 .nav-cat-wrap.imovel-dimmed{opacity:.62;filter:saturate(0.65)}
@@ -194,7 +197,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 12JUL26 (versão 35)</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 12JUL26 (versão 36)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -1258,7 +1261,13 @@ function buildSubcatRowsHtml(k){
     const skListJson = items.map(e=>e.sk);
     const gNameEsc = gName.replace(/'/g,"\\'");
     const groupRow = `
-      <div class="nav-item-wrap" draggable="${k==='obra-bruta'?'true':'false'}" ondragstart="faseGroupDragStart('${gNameEsc}',event)" ondragend="faseGroupDragEnd(event)" style="display:flex;align-items:center;gap:5px;padding:5px 6px 5px 1rem;user-select:none;${faseAtiva?'':'opacity:.4'}">
+      <div class="nav-item-wrap fase-group-draggable" id="fase-wrap-${safeId}" draggable="${k==='obra-bruta'?'true':'false'}"
+        ondragstart="faseGroupDragStart('${gNameEsc}',event)"
+        ondragend="faseGroupDragEnd(event)"
+        ondragover="faseGroupDragOver('${gNameEsc}',event)"
+        ondragleave="faseGroupDragLeave('${gNameEsc}',event)"
+        ondrop="faseGroupDrop('${gNameEsc}',event)"
+        style="display:flex;align-items:center;gap:5px;padding:5px 6px 5px 1rem;user-select:none;${faseAtiva?'':'opacity:.4'}">
         <button id="chev-grp-btn-${safeId}" onclick="toggleSubGroup('${k}','${gNameEsc}',event)" title="Expandir/recolher itens" style="background:none;border:none;cursor:pointer;padding:2px 4px;flex-shrink:0">
           <span id="chev-grp-${safeId}" style="color:#555;font-size:9px;transition:transform .15s;transform:rotate(${isOpen?90:0}deg);display:inline-block">▶</span>
         </button>
@@ -1838,11 +1847,45 @@ function faseGroupDragStart(gName, e){
   draggedFaseName = gName;
   e.stopPropagation();
   e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', 'fase:'+gName);
   document.getElementById('etapas-header')?.classList.add('fase-drop-armed');
+  const wrap = e.currentTarget.closest('.nav-cat-wrap');
+  if(wrap) wrap.classList.add('fase-source-dragging');
 }
 function faseGroupDragEnd(e){
   draggedFaseName = null;
   document.getElementById('etapas-header')?.classList.remove('fase-drop-armed','fase-drop-over');
+  document.querySelectorAll('.fase-source-dragging').forEach(el=>el.classList.remove('fase-source-dragging'));
+  document.querySelectorAll('.fase-group-draggable').forEach(el=>el.classList.remove('drag-over'));
+}
+// Passar por cima de uma fase (dentro de Execução de Obra) — dois cenários:
+// 1) arrastando OUTRA fase por cima (não faz nada, só bloqueia o hover de vazar
+//    pro cabeçalho da etapa); 2) arrastando uma ETAPA INTEIRA por cima de uma
+//    fase específica — destaca só essa fase, pra soltar e virar sub nela.
+function faseGroupDragOver(gName, e){
+  if(draggedFaseName){ e.preventDefault(); e.stopPropagation(); return; }
+  if(dragKey && CATS[dragKey] && !IMOVEL_CATS[dragKey] && dragKey!=='obra-bruta'){
+    e.preventDefault();
+    e.stopPropagation();
+    document.querySelectorAll('.fase-group-draggable').forEach(el=>el.classList.remove('drag-over'));
+    e.currentTarget.classList.add('drag-over');
+  }
+}
+function faseGroupDragLeave(gName, e){
+  e.stopPropagation();
+  e.currentTarget.classList.remove('drag-over');
+}
+function faseGroupDrop(gName, e){
+  if(draggedFaseName){ e.preventDefault(); e.stopPropagation(); return; }
+  if(dragKey && CATS[dragKey] && !IMOVEL_CATS[dragKey] && dragKey!=='obra-bruta'){
+    e.preventDefault();
+    e.stopPropagation();
+    const draggedKey = dragKey;
+    dragKey = null; dragOverKey = null;
+    document.querySelectorAll('.fase-group-draggable').forEach(el=>el.classList.remove('drag-over'));
+    document.querySelectorAll('.nav-cat-wrap').forEach(el=>el.classList.remove('dragging'));
+    mergeCategoriaIntoObraBruta(draggedKey, gName);
+  }
 }
 function etapasHeaderDragOver(e){
   if(!draggedFaseName) return;
@@ -1865,6 +1908,7 @@ function etapasHeaderDrop(e){
 let dragKey = null;
 
 function dragStart(k, e){
+  if(e.target.closest('.fase-group-draggable')) return; // deixa o handler da fase cuidar disso
   dragKey = k;
   e.dataTransfer.effectAllowed = 'move';
   e.dataTransfer.setData('text/plain', k);
@@ -1881,6 +1925,7 @@ function dragStart(k, e){
 
 let dragOverKey = null;
 function dragOver(k, e){
+  if(e.target.closest('.fase-group-draggable') || e.target.closest('.subcat-row')) return; // já tratado no handler específico
   e.preventDefault();
   e.dataTransfer.dropEffect = 'move';
   if(k===dragKey) return;
@@ -1900,6 +1945,7 @@ function dragLeave(k, e){
 }
 
 function dragDrop(k, e){
+  if(e.target.closest('.fase-group-draggable') || e.target.closest('.subcat-row')) return;
   e.preventDefault();
   if(k===dragKey) return;
   // Arrastou uma etapa pra dentro de "Execução de Obra" → vira fase lá dentro,
@@ -3977,11 +4023,14 @@ function getPinnedStageKeys(){
 function savePinnedStageOrder(order){ localStorage.setItem('pinned_stage_order', JSON.stringify(order)); }
 
 // ── Arrastar uma ETAPA pra dentro de "Execução de Obra" → vira uma FASE lá dentro ──
-async function mergeCategoriaIntoObraBruta(srcKey, targetGrupo){
+async function mergeCategoriaIntoObraBruta(srcKey, targetGrupo, skipConfirm){
   const catInfo = CATS[srcKey];
   if(!catInfo || srcKey==='obra-bruta') return;
   const grupoName = targetGrupo || catInfo.label;
-  if(!targetGrupo && !confirm(`Transformar a etapa "${catInfo.label}" numa fase dentro de Execução de Obra?\n\nOs lançamentos serão movidos pra lá, mantendo valores, ambientes, status — tudo. A etapa "${catInfo.label}" deixa de existir separada.`)) return;
+  const msg = targetGrupo
+    ? `Transformar a etapa "${catInfo.label}" em subs dentro da fase "${targetGrupo}" (Execução de Obra)?\n\nOs lançamentos serão movidos pra lá, mantendo valores, ambientes, status — tudo. A etapa "${catInfo.label}" deixa de existir separada.`
+    : `Transformar a etapa "${catInfo.label}" numa fase dentro de Execução de Obra?\n\nOs lançamentos serão movidos pra lá, mantendo valores, ambientes, status — tudo. A etapa "${catInfo.label}" deixa de existir separada.`;
+  if(!skipConfirm && !confirm(msg)) return;
   const subsAntigas = SUBCATS[srcKey] || {};
   if(!SUBCATS['obra-bruta']) SUBCATS['obra-bruta'] = {};
   const existingKeys = new Set(Object.keys(SUBCATS['obra-bruta']));
@@ -4062,7 +4111,7 @@ function confirmMergeChoice(modo){
     mergeCategoriaIntoExistingSub(srcKey, targetSk);
   } else {
     const targetInfo = SUBCATS['obra-bruta']?.[targetSk];
-    mergeCategoriaIntoObraBruta(srcKey, targetInfo?.grupo);
+    mergeCategoriaIntoObraBruta(srcKey, targetInfo?.grupo, true);
   }
 }
 
