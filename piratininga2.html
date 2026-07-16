@@ -208,7 +208,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 12JUL26 (versão 49)</div>
+          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 12JUL26 (versão 50)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -1657,7 +1657,7 @@ let editingIsGanho = false;
 function openEdit(id){
   const g = gastos.find(x=>x.id===id);
   if(!g) return;
-  if(g.pacote_subs){
+  if(g.pacote_subs || g.categoria==='obra-bruta'){
     openObraEmpreitadaModalForEdit(g);
     return;
   }
@@ -3007,11 +3007,13 @@ function updateMateriaisBtnLabel(){
 
 let empreitadaMaterial = null;
 let empreitadaEditingId = null; // null = criando pacote novo; senão, é o id do gasto sendo editado
+let empreitadaLegacySemGrade = null; // {sub,ambiente} de um lançamento antigo cuja sub não existe mais na grade — evita travar o salvamento
 let empreitadaIsUnico = false; // true quando veio do fluxo "Serviço único" (mesma grade, só copy diferente)
 let empreitadaFocusFase = null; // se setado, mostra só essa fase inicialmente (menos poluído)
 let empreitadaShowAllFases = true;
 function openObraEmpreitadaModal(material, presetSub, isUnico){
   empreitadaEditingId = null;
+  empreitadaLegacySemGrade = null;
   empreitadaMaterial = material;
   empreitadaIsUnico = !!isUnico;
   const isSoItem = material==='sem-mao-de-obra';
@@ -3060,10 +3062,10 @@ function closeObraEmpreitadaModal(){
 function openObraEmpreitadaModalForEdit(g){
   empreitadaEditingId = g.id;
   const tipoRaw = g.tipo_contratacao || 'com-material';
-  empreitadaIsUnico = tipoRaw.startsWith('unico-');
+  empreitadaIsUnico = tipoRaw.startsWith('unico-') || !g.pacote_subs;
   empreitadaMaterial = tipoRaw.replace('unico-','') || 'com-material';
   empreitadaFocusFase = null;
-  empreitadaShowAllFases = true; // editando um pacote existente, mostra tudo (pode abranger várias fases)
+  empreitadaShowAllFases = true; // editando um lançamento existente, mostra tudo (pode abranger várias fases)
   const isSoItem = empreitadaMaterial==='sem-mao-de-obra';
   const tipoLabel = isSoItem ? 'item' : (empreitadaIsUnico ? 'serviço' : 'pacote de empreitada');
   const icon = isSoItem ? '🏷️' : (empreitadaMaterial==='com-material' ? (empreitadaIsUnico?'🔧🧱':'📦🧱') : (empreitadaIsUnico?'🔧':'📦'));
@@ -3083,13 +3085,24 @@ function openObraEmpreitadaModalForEdit(g){
   pendingMateriais = getMateriais(g).map(m=>({...m}));
   updateMateriaisBtnLabel();
   renderEmpreitadaServiceGrid();
-  const servicos = parsePacoteSubs(g.pacote_subs);
+  // Lançamento antigo/simples sem pacote_subs — trata como um serviço único com
+  // uma sub e um ambiente só, pra também abrir certinho nesse menu.
+  let servicos = parsePacoteSubs(g.pacote_subs);
+  if(!servicos.length && g.subcategoria){
+    servicos = [{sub: g.subcategoria, ambiente: g.ambiente||''}];
+  }
   // Agrupa por sub pra marcar os checkboxes certos, com todos os detalhes de cada ambiente
   const porSub = {};
   servicos.forEach(s=>{ (porSub[s.sub]=porSub[s.sub]||[]).push(s); });
+  empreitadaLegacySemGrade = null;
   Object.keys(porSub).forEach(sk=>{
     const checkEl = document.querySelector(`.emp-sub-check[value="${sk}"]`);
-    if(!checkEl) return;
+    if(!checkEl){
+      // Sub antiga/órfã que não existe mais na grade atual — guarda pra não
+      // travar o salvamento, e ainda assim deixa editar valor/descrição/status.
+      if(!g.pacote_subs) empreitadaLegacySemGrade = {sub: sk, ambiente: porSub[sk][0]?.ambiente||''};
+      return;
+    }
     checkEl.checked = true;
     checkEl.dispatchEvent(new Event('change'));
     const ri = checkEl.dataset.row;
@@ -3655,8 +3668,11 @@ async function confirmEmpreitada(){
   if(!desc){ alert('Preencha a descrição/empreiteiro.'); return; }
   if(isNaN(val)||val<=0){ alert('Preencha um valor válido.'); return; }
   const checks = [...document.querySelectorAll('.emp-sub-check:checked')];
-  if(!checks.length){ alert('Marque pelo menos um serviço coberto pelo pacote.'); return; }
+  if(!checks.length && !empreitadaLegacySemGrade){ alert('Marque pelo menos um serviço coberto pelo pacote.'); return; }
   const servicos = [];
+  if(!checks.length && empreitadaLegacySemGrade){
+    servicos.push({sub: empreitadaLegacySemGrade.sub, ambiente: empreitadaLegacySemGrade.ambiente});
+  }
   checks.forEach(el=>{
     const sk = el.dataset.row;
     const data = ambienteData[sk] || {};
