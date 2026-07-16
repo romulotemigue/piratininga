@@ -46,6 +46,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 @media(max-width:700px){.cards-row{grid-template-columns:1fr 1fr}}
 .card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:1rem 1.25rem}
 .card-label{font-size:10px;color:#ccc;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+/* Reserva espaço fixo pros ícones (⠿/lápis/olho) só nos cards da Visão Geral,
+   pra nunca ficarem em cima do texto, não importa a largura da tela */
+.geral-card-wrap .card-label{padding-right:92px;box-sizing:border-box}
+.geral-card-controls{flex-wrap:nowrap}
 .card-value{font-size:22px;font-weight:500;color:#e8e7e2}
 .card-value.yellow{color:#e8b544}
 .card-value.green{color:#4caf50}
@@ -204,7 +208,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 12JUL26 (versão 43)</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 12JUL26 (versão 45)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -2504,6 +2508,30 @@ function ensureObraBrutaPhases(){
     console.log('[piratininga][obra-bruta-debug] Entradas SEM grupo (deveria ser 0):', semGrupo.length, semGrupo);
     console.log('[piratininga][obra-bruta-debug] Grupos únicos encontrados (deveria ser 17):', gruposUnicos.length, gruposUnicos);
   }catch(e){ console.warn('Erro ao criar fases da Execução de Obra:', e); }
+}
+
+// Recupera UMA categoria órfã específica, sob demanda (clicando no botão do
+// Diagnóstico) — recria a etapa (com nome legível) e as subs que os lançamentos
+// reais ainda usam, com base no que já está gravado no banco. Nada é apagado;
+// só reconecta o que já existia.
+function recuperarCategoriaOrfa(catKey){
+  if(CATS[catKey]){ toast('Essa categoria já existe.','err'); return; }
+  const itens = gastos.filter(g=>g.categoria===catKey);
+  if(!itens.length){ toast('Não achei lançamentos dessa categoria.','err'); return; }
+  const labelBase = catKey.split(/[-_]/).map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
+  CATS[catKey] = {label: labelBase, icon:'📦', color: subGroupColor(Object.keys(CATS).length)};
+  if(!SUBCATS[catKey]) SUBCATS[catKey] = {};
+  const subsUsadas = [...new Set(itens.map(g=>g.subcategoria).filter(Boolean))];
+  subsUsadas.forEach(sk=>{
+    if(SUBCATS[catKey][sk]) return;
+    const subLabel = sk.split(/[-_]/).map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
+    SUBCATS[catKey][sk] = {label: subLabel};
+  });
+  if(!EXTRA_PINNED_STAGES.includes(catKey)){ EXTRA_PINNED_STAGES.push(catKey); saveCustomStages(); }
+  saveCats(); saveSubCats();
+  toast(`"${labelBase}" recuperada com ${itens.length} lançamento(s).`);
+  renderCatNav();
+  navigate(catKey);
 }
 
 function restoreOrphanCategoriesWithData(){
@@ -5689,6 +5717,7 @@ function renderDiagnostico(){
           <span style="font-size:12px;font-weight:700;color:#e8b544">"${k}"</span>
           <span style="font-size:11px;color:#666">${items.length} lançamento(s)</span>
           <span style="margin-left:auto;font-size:13px;font-weight:700;color:#e8b544">${fmt(total)}</span>
+          <button onclick="recuperarCategoriaOrfa('${k}')" style="background:#2a2000;border:1px solid #8a6d1f;color:#e8b544;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer">↩ Recuperar etapa</button>
         </div>
         <table style="width:100%;border-collapse:collapse">${items.map(rowHtml).join('')}</table>
       </div>`;
