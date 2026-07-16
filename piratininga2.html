@@ -208,7 +208,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 12JUL26 (versão 50)</div>
+          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 12JUL26 (versão 51)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -833,6 +833,123 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <button onclick="confirmPacoteDelete()" style="background:#c62828;border:none;color:#fff;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px">Excluir pacote inteiro</button>
       </div>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="material-lancamento-overlay" onclick="if(event.target===this) closeMaterialModal()">
+  <div class="modal" style="max-width:720px;width:94vw;max-height:90vh;display:flex;flex-direction:column">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3 style="margin:0;font-size:16px">🧱 Lançar material</h3>
+      <button onclick="closeMaterialModal()" style="background:none;border:none;color:#ccc;font-size:20px;cursor:pointer">×</button>
+    </div>
+    <div style="overflow-y:auto;flex:1;padding-right:4px">
+      <div class="modal-row" style="margin-bottom:14px">
+        <div class="form-group" style="margin-bottom:0">
+          <label>Descrição</label>
+          <input type="text" id="mat-l-desc" placeholder="Ex: Colchão e Baú">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Valor (R$)</label>
+          <input type="text" id="mat-l-valor" placeholder="0,00" inputmode="numeric" oninput="maskMoney(this)">
+        </div>
+      </div>
+      <div class="modal-row" style="margin-bottom:14px">
+        <div class="form-group" style="margin-bottom:0">
+          <label>Marca</label>
+          <input type="text" id="mat-l-marca" placeholder="Ex: Ikea">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Loja / Fornecedor</label>
+          <input type="text" id="mat-l-loja" placeholder="Ex: Leroy Merlin">
+        </div>
+      </div>
+      <div class="modal-row" style="margin-bottom:14px">
+        <div class="form-group" style="margin-bottom:0">
+          <label>Data da compra</label>
+          <input type="date" id="mat-l-data">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Status</label>
+          <select id="mat-l-status">
+            <option value="necessario">Necessário</option>
+            <option value="pago">Pago</option>
+            <option value="apagar">Dispensável</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-row" style="margin-bottom:6px">
+        <div class="form-group" style="margin-bottom:0">
+          <label>Previsão de entrega (opcional)</label>
+          <input type="date" id="mat-l-entrega" onchange="updateMatPrazoPreview()">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Prazo estimado (dias corridos)</label>
+          <input type="text" inputmode="numeric" id="mat-l-prazo" placeholder="Ex: 15" oninput="this.value=this.value.replace(/[^0-9]/g,'');updateMatPrazoPreview()">
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#ccc;cursor:pointer">
+          <input type="checkbox" id="mat-l-entregue" style="width:auto"> Já foi entregue
+        </label>
+        <div id="mat-l-prazo-preview" style="display:none;font-size:11px;color:#ccc"></div>
+      </div>
+      <div class="modal-row" style="margin-bottom:14px">
+        <div class="form-group" style="margin-bottom:0">
+          <label>Forma de pagamento</label>
+          <input type="text" id="mat-l-pagamento" placeholder="Ex: Cartão 3x">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Garantia</label>
+          <input type="text" id="mat-l-garantia" placeholder="Ex: 12 meses">
+        </div>
+      </div>
+      <div class="modal-row" style="margin-bottom:14px">
+        <div class="form-group" style="margin-bottom:0">
+          <label>Cor / modelo</label>
+          <input type="text" id="mat-l-modelo" placeholder="Ex: Branco, mod. X200">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Contato do vendedor</label>
+          <input type="text" id="mat-l-contato" placeholder="Nome / telefone">
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label>Observação</label>
+        <textarea id="mat-l-obs" rows="2" placeholder="Alguma nota importante..." style="width:100%;box-sizing:border-box;background:#111;border:1px solid #333;border-radius:8px;padding:10px 12px;color:#e8e7e2;font-size:13px;resize:vertical"></textarea>
+      </div>
+      <div style="background:#111;border:1px solid #333;border-radius:8px;padding:12px;margin-bottom:14px">
+        <div style="font-size:10px;color:#ccc;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Onde isso entra</div>
+        <div class="modal-row" style="margin-bottom:10px">
+          <div class="form-group" style="margin-bottom:0">
+            <label>Etapa</label>
+            <select id="mat-l-etapa" onchange="onMatEtapaChange()"></select>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label id="mat-l-subetapa-label">Sub-etapa</label>
+            <select id="mat-l-subetapa" onchange="onMatSubEtapaChange()"></select>
+          </div>
+        </div>
+        <div class="form-group" id="mat-l-subsub-group" style="margin-bottom:0;display:none">
+          <label>Sub da sub-etapa</label>
+          <select id="mat-l-subsub"></select>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label>Link do site onde comprou</label>
+        <input type="text" id="mat-l-link" placeholder="https://...">
+      </div>
+      <div class="modal-row" style="margin-bottom:8px">
+        <div class="form-group" style="margin-bottom:0">
+          <label>📄 Nota fiscal</label>
+          <input type="file" id="mat-l-nf">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>💳 Comprovante de pagamento</label>
+          <input type="file" id="mat-l-comprovante">
+        </div>
+      </div>
+    </div>
+    <button class="btn-confirm" id="mat-l-btn-confirm" onclick="confirmMaterialLancamento()" style="margin-top:10px">Confirmar lançamento</button>
   </div>
 </div>
 
@@ -2612,6 +2729,156 @@ function runBuscaGeral(){
         : `<button onclick="closeBuscaGeralModal();navigate('diagnostico')" style="background:#1a0d0d;border:1px solid #5c2b2b;color:#ef9a9a;border-radius:5px;padding:5px 10px;font-size:11px;cursor:pointer;flex-shrink:0">Diagnóstico</button>`}
     </div>`;
   }).join('');
+}
+
+// ── LANÇAR MATERIAL (janela rica: marca/loja/prazo/anexos/etapa cascata) ──
+let matLancamentoPendingAnexos = {nf:null, comprovante:null};
+
+function todasEtapasParaSelect(){
+  // todas as categorias existentes hoje, imóvel + normais (exceto ganho)
+  const lista = [];
+  Object.keys(IMOVEL_CATS).forEach(k=>lista.push({key:k, label:IMOVEL_CATS[k].label}));
+  Object.keys(CATS).forEach(k=>{ if(k!=='ganho') lista.push({key:k, label:CATS[k].label}); });
+  return lista;
+}
+
+function openMaterialModal(presetCat, presetFase, presetSub){
+  document.getElementById('mat-l-desc').value = '';
+  document.getElementById('mat-l-valor').value = '';
+  document.getElementById('mat-l-marca').value = '';
+  document.getElementById('mat-l-loja').value = '';
+  document.getElementById('mat-l-data').value = new Date().toISOString().slice(0,10);
+  document.getElementById('mat-l-status').value = 'necessario';
+  document.getElementById('mat-l-entrega').value = '';
+  document.getElementById('mat-l-prazo').value = '';
+  document.getElementById('mat-l-entregue').checked = false;
+  document.getElementById('mat-l-prazo-preview').style.display = 'none';
+  document.getElementById('mat-l-pagamento').value = '';
+  document.getElementById('mat-l-garantia').value = '';
+  document.getElementById('mat-l-modelo').value = '';
+  document.getElementById('mat-l-contato').value = '';
+  document.getElementById('mat-l-obs').value = '';
+  document.getElementById('mat-l-link').value = '';
+  document.getElementById('mat-l-nf').value = '';
+  document.getElementById('mat-l-comprovante').value = '';
+  matLancamentoPendingAnexos = {nf:null, comprovante:null};
+
+  const etapaSel = document.getElementById('mat-l-etapa');
+  etapaSel.innerHTML = todasEtapasParaSelect().map(e=>`<option value="${e.key}">${e.label}</option>`).join('');
+  etapaSel.value = presetCat || 'obra-bruta';
+  onMatEtapaChange(presetFase, presetSub);
+  document.getElementById('material-lancamento-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('mat-l-desc').focus(), 80);
+}
+function closeMaterialModal(){
+  document.getElementById('material-lancamento-overlay').classList.remove('open');
+}
+
+function onMatEtapaChange(presetFase, presetSub){
+  const catKey = document.getElementById('mat-l-etapa').value;
+  const isObra = catKey==='obra-bruta';
+  const subEl = document.getElementById('mat-l-subetapa');
+  const subsubGroup = document.getElementById('mat-l-subsub-group');
+  document.getElementById('mat-l-subetapa-label').textContent = isObra ? 'Sub-etapa (fase)' : 'Sub-etapa';
+  if(isObra){
+    const fases = [...new Set(Object.values(SUBCATS['obra-bruta']||{}).map(s=>s.grupo).filter(Boolean))];
+    subEl.innerHTML = fases.map(f=>`<option value="${f}">${f}</option>`).join('');
+    if(presetFase && fases.includes(presetFase)) subEl.value = presetFase;
+    subsubGroup.style.display = '';
+    onMatSubEtapaChange(presetSub);
+  } else {
+    const subs = SUBCATS[catKey] || {};
+    subEl.innerHTML = '<option value="">— nenhuma —</option>' + Object.keys(subs).map(sk=>`<option value="${sk}">${subs[sk].label}</option>`).join('');
+    if(presetSub && subs[presetSub]) subEl.value = presetSub;
+    subsubGroup.style.display = 'none';
+  }
+}
+function onMatSubEtapaChange(presetSub){
+  const catKey = document.getElementById('mat-l-etapa').value;
+  if(catKey!=='obra-bruta') return;
+  const fase = document.getElementById('mat-l-subetapa').value;
+  const subsubEl = document.getElementById('mat-l-subsub');
+  const subs = Object.keys(SUBCATS['obra-bruta']||{}).filter(k=>SUBCATS['obra-bruta'][k].grupo===fase);
+  subsubEl.innerHTML = subs.map(sk=>`<option value="${sk}">${SUBCATS['obra-bruta'][sk].label}</option>`).join('');
+  if(presetSub && subs.includes(presetSub)) subsubEl.value = presetSub;
+}
+function updateMatPrazoPreview(){
+  const el = document.getElementById('mat-l-prazo-preview');
+  const meta = { dataInicio: document.getElementById('mat-l-entrega').value, prazoDias: document.getElementById('mat-l-prazo').value };
+  const info = calcPrazoInfo(meta);
+  if(!info){ el.style.display='none'; return; }
+  el.style.display = '';
+  el.textContent = `Previsão de chegada: ${fmtDateTxt(info.fim.toISOString().slice(0,10))}`;
+}
+
+async function confirmMaterialLancamento(){
+  const desc = document.getElementById('mat-l-desc').value.trim();
+  const val = parseMoney(document.getElementById('mat-l-valor').value);
+  if(!desc){ alert('Preencha a descrição.'); return; }
+  if(isNaN(val)||val<=0){ alert('Preencha um valor válido.'); return; }
+  const catKey = document.getElementById('mat-l-etapa').value;
+  const isObra = catKey==='obra-bruta';
+  const subKey = isObra ? document.getElementById('mat-l-subsub').value : document.getElementById('mat-l-subetapa').value;
+
+  const linhas = [];
+  const marca = document.getElementById('mat-l-marca').value.trim();
+  const loja = document.getElementById('mat-l-loja').value.trim();
+  const pagamento = document.getElementById('mat-l-pagamento').value.trim();
+  const garantia = document.getElementById('mat-l-garantia').value.trim();
+  const modelo = document.getElementById('mat-l-modelo').value.trim();
+  const contato = document.getElementById('mat-l-contato').value.trim();
+  const entregue = document.getElementById('mat-l-entregue').checked;
+  if(marca) linhas.push('Marca: '+marca);
+  if(loja) linhas.push('Loja: '+loja);
+  if(pagamento) linhas.push('Pagamento: '+pagamento);
+  if(garantia) linhas.push('Garantia: '+garantia);
+  if(modelo) linhas.push('Cor/modelo: '+modelo);
+  if(contato) linhas.push('Contato: '+contato);
+  if(entregue) linhas.push('Entregue: sim');
+  const obsLivre = document.getElementById('mat-l-obs').value.trim();
+  if(obsLivre) linhas.push(obsLivre);
+  const obs = linhas.join(' · ');
+
+  const btn = document.getElementById('mat-l-btn-confirm');
+  btn.disabled = true; btn.textContent = 'Salvando...';
+  try{
+    const row = {
+      descricao: desc, categoria: catKey, subcategoria: subKey||'', valor: val, quantidade:1,
+      status: document.getElementById('mat-l-status').value,
+      data: document.getElementById('mat-l-data').value,
+      obs, link: document.getElementById('mat-l-link').value.trim(),
+      tipo_contratacao: 'material',
+      data_inicio: entregue ? null : (document.getElementById('mat-l-entrega').value || null),
+      prazo_dias: entregue ? null : (document.getElementById('mat-l-prazo').value ? parseInt(document.getElementById('mat-l-prazo').value,10) : null)
+    };
+    const inserted = await sbInsert(row);
+    const novoGasto = Array.isArray(inserted) ? inserted[0] : inserted;
+    const nfFile = document.getElementById('mat-l-nf').files[0];
+    const compFile = document.getElementById('mat-l-comprovante').files[0];
+    const arquivos = [nfFile,compFile].filter(Boolean);
+    if(arquivos.length){
+      const urls = await uploadAnexos(novoGasto.id, arquivos);
+      const rotulos = [];
+      if(nfFile && urls[0]) rotulos.push(`📄 Nota fiscal: [${urls[0].nome}](${urls[0].url})`);
+      if(compFile){
+        const compUrl = urls.find(u=>u.nome===compFile.name);
+        if(compUrl) rotulos.push(`💳 Comprovante: [${compUrl.nome}](${compUrl.url})`);
+      }
+      if(rotulos.length){
+        const novoObs = obs ? obs+' · '+rotulos.join(' · ') : rotulos.join(' · ');
+        await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${novoGasto.id}`,{
+          method:'PATCH', headers:{...HEADERS}, body: JSON.stringify({obs: novoObs, link: urls[0]?.url || row.link})
+        });
+      }
+    }
+    toast('Material lançado com sucesso!');
+    closeMaterialModal();
+    await loadGastos();
+  } catch(e){
+    toast('Erro ao salvar: '+e.message,'err');
+  } finally{
+    btn.disabled = false; btn.textContent = 'Confirmar lançamento';
+  }
 }
 
 function recuperarCategoriaOrfa(catKey){
@@ -6114,7 +6381,13 @@ function renderFaseGroup(catKey, gName){
         <span class="cat-stat-label">Dispensáveis</span>
         <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
       </div>
-      <div style="margin-left:auto">
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <button onclick="openMaterialModal('${catKey}','${gName.replace(/'/g,"\\'")}',null)"
+          style="background:transparent;border:1px solid #c77dea;color:#c77dea;padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
+          onmouseover="this.style.background='#c77dea';this.style.color='#111'"
+          onmouseout="this.style.background='transparent';this.style.color='#c77dea'">
+          🧱 + material
+        </button>
         <button onclick="openObraTriagemModal()"
           style="background:transparent;border:1px solid ${info.color};color:${info.color};padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
           onmouseover="this.style.background='${info.color}';this.style.color='#111'"
@@ -6166,7 +6439,13 @@ function renderSubCat(page){
         <span class="cat-stat-label">Dispensáveis</span>
         <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
       </div>
-      <div style="margin-left:auto">
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <button onclick="openMaterialModal('${catKey}',${catKey==='obra-bruta' ? `'${(SUBCATS[catKey]?.[subKey]?.grupo||'').replace(/'/g,"\\'")}'` : 'null'},'${subKey}')"
+          style="background:transparent;border:1px solid #c77dea;color:#c77dea;padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
+          onmouseover="this.style.background='#c77dea';this.style.color='#111'"
+          onmouseout="this.style.background='transparent';this.style.color='#c77dea'">
+          🧱 + material
+        </button>
         <button onclick="${catKey==='obra-bruta' ? `openObraTriagemModal('${subKey}')` : `openModal('${catKey}','${subKey}')`}"
           style="background:transparent;border:1px solid ${info.color};color:${info.color};padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
           onmouseover="this.style.background='${info.color}';this.style.color='#111'"
@@ -6289,7 +6568,13 @@ function renderObraBrutaSteps(){
         <span class="cat-stat-label">Dispensáveis</span>
         <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
       </div>
-      <div style="margin-left:auto">
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <button onclick="openMaterialModal('${cat}',null,null)"
+          style="background:transparent;border:1px solid #c77dea;color:#c77dea;padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
+          onmouseover="this.style.background='#c77dea';this.style.color='#111'"
+          onmouseout="this.style.background='transparent';this.style.color='#c77dea'">
+          🧱 + material
+        </button>
         <button onclick="openObraTriagemModal()"
           style="background:transparent;border:1px solid ${info.color};color:${info.color};padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
           onmouseover="this.style.background='${info.color}';this.style.color='#111'"
@@ -6465,7 +6750,13 @@ function renderCat(cat){
         <span class="cat-stat-label">Lançamentos</span>
         <span class="cat-stat-value" style="color:#e8e7e2">${ativos.length}</span>
       </div>
-      <div style="margin-left:auto">
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <button onclick="openMaterialModal('${cat}',null,null)"
+          style="background:transparent;border:1px solid #c77dea;color:#c77dea;padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
+          onmouseover="this.style.background='#c77dea';this.style.color='#111'"
+          onmouseout="this.style.background='transparent';this.style.color='#c77dea'">
+          🧱 + material
+        </button>
         <button onclick="openModal('${cat}')"
           style="background:transparent;border:1px solid ${info.color};color:${info.color};padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
           onmouseover="this.style.background='${info.color}';this.style.color='#111'"
