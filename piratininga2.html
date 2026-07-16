@@ -132,7 +132,8 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
 .nav-drag:active{cursor:grabbing}
 .nav-cat-wrap{transition:opacity .2s, transform .2s, box-shadow .2s, filter .2s}
 .nav-cat-wrap.dragging{opacity:.2;transform:scale(0.93) rotate(-1deg);filter:blur(1px)}
-.nav-cat-wrap.drag-over{border-top:3px solid #e8b544;transform:translateY(6px) scale(1.02);box-shadow:0 -4px 12px rgba(232,181,68,0.4);background:rgba(232,181,68,0.05)}
+.nav-item-wrap.drag-over{border-radius:6px;box-shadow:0 0 0 2px #e8b544 inset;background:rgba(232,181,68,0.1)}
+.subcat-row-drop-target{border-radius:6px;box-shadow:0 0 0 2px #e8b544 inset;background:rgba(232,181,68,0.12)}
 #etapas-header.fase-drop-armed{background:rgba(232,181,68,.06);outline:1px dashed #8a6d1f}
 #etapas-header.fase-drop-over{background:rgba(232,181,68,.16);outline:2px dashed #e8b544}
 .nav-cat-wrap.imovel-dimmed{opacity:.62;filter:saturate(0.65)}
@@ -193,7 +194,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 12JUL26 (versão 34)</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 12JUL26 (versão 35)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -749,6 +750,25 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
           </div>
         </button>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="merge-choice-overlay" onclick="if(event.target===this) closeMergeChoiceModal()">
+  <div class="modal" style="max-width:460px;width:92vw">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3 style="margin:0;font-size:15px" id="merge-choice-title">Como adicionar aqui?</h3>
+      <button onclick="closeMergeChoiceModal()" style="background:none;border:none;color:#888;font-size:18px;cursor:pointer">×</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button id="merge-choice-btn-junto" onclick="confirmMergeChoice('junto')" style="text-align:left;background:#111;border:1px solid #333;color:#e8e7e2;padding:12px 14px;border-radius:8px;cursor:pointer;font-size:13px">
+        <b>Juntar tudo em <span id="merge-choice-sub-label" style="color:#e8b544"></span></b><br>
+        <span id="merge-choice-junto-desc" style="font-size:11px;color:#888"></span>
+      </button>
+      <button id="merge-choice-btn-separado" onclick="confirmMergeChoice('separado')" style="text-align:left;background:#111;border:1px solid #333;color:#e8e7e2;padding:12px 14px;border-radius:8px;cursor:pointer;font-size:13px">
+        <b>Manter como sub separada</b><br>
+        <span id="merge-choice-separado-desc" style="font-size:11px;color:#888"></span>
+      </button>
     </div>
   </div>
 </div>
@@ -1866,15 +1886,15 @@ function dragOver(k, e){
   if(k===dragKey) return;
   if(k===dragOverKey) return; // already highlighted
   dragOverKey = k;
-  document.querySelectorAll('.nav-cat-wrap').forEach(el=>el.classList.remove('drag-over'));
-  const el = document.getElementById('cat-wrap-'+k);
+  document.querySelectorAll('.nav-item-wrap').forEach(el=>el.classList.remove('drag-over'));
+  const el = document.getElementById('nav-wrap-'+k);
   if(el) el.classList.add('drag-over');
 }
 
 function dragLeave(k, e){
   // only remove if actually leaving (not entering child)
   if(e.relatedTarget && document.getElementById('cat-wrap-'+k)?.contains(e.relatedTarget)) return;
-  const el = document.getElementById('cat-wrap-'+k);
+  const el = document.getElementById('nav-wrap-'+k);
   if(el) el.classList.remove('drag-over');
   if(dragOverKey===k) dragOverKey=null;
 }
@@ -1923,6 +1943,8 @@ function dragEnd(e){
   document.querySelectorAll('.nav-cat-wrap').forEach(el=>{
     el.classList.remove('dragging','drag-over');
   });
+  document.querySelectorAll('.nav-item-wrap').forEach(el=>el.classList.remove('drag-over'));
+  document.querySelectorAll('.subcat-row-drop-target').forEach(el=>el.classList.remove('subcat-row-drop-target'));
 }
 
 // ── QUANTIDADE ───────────────────────────────────────────────────
@@ -3955,11 +3977,11 @@ function getPinnedStageKeys(){
 function savePinnedStageOrder(order){ localStorage.setItem('pinned_stage_order', JSON.stringify(order)); }
 
 // ── Arrastar uma ETAPA pra dentro de "Execução de Obra" → vira uma FASE lá dentro ──
-async function mergeCategoriaIntoObraBruta(srcKey){
+async function mergeCategoriaIntoObraBruta(srcKey, targetGrupo){
   const catInfo = CATS[srcKey];
   if(!catInfo || srcKey==='obra-bruta') return;
-  if(!confirm(`Transformar a etapa "${catInfo.label}" numa fase dentro de Execução de Obra?\n\nOs lançamentos serão movidos pra lá, mantendo valores, ambientes, status — tudo. A etapa "${catInfo.label}" deixa de existir separada.`)) return;
-  const grupoName = catInfo.label;
+  const grupoName = targetGrupo || catInfo.label;
+  if(!targetGrupo && !confirm(`Transformar a etapa "${catInfo.label}" numa fase dentro de Execução de Obra?\n\nOs lançamentos serão movidos pra lá, mantendo valores, ambientes, status — tudo. A etapa "${catInfo.label}" deixa de existir separada.`)) return;
   const subsAntigas = SUBCATS[srcKey] || {};
   if(!SUBCATS['obra-bruta']) SUBCATS['obra-bruta'] = {};
   const existingKeys = new Set(Object.keys(SUBCATS['obra-bruta']));
@@ -3992,6 +4014,56 @@ async function mergeCategoriaIntoObraBruta(srcKey){
   saveCustomStages(); saveSubCats(); saveCats();
   toast(`"${grupoName}" agora é uma fase dentro de Execução de Obra.`);
   await loadGastos();
+}
+
+// Junta TODOS os lançamentos de uma etapa inteira dentro de UMA sub já existente
+// de Execução de Obra (em vez de criar subs novas) — tudo passa a contar como
+// se sempre tivesse sido daquela sub.
+async function mergeCategoriaIntoExistingSub(srcKey, targetSk){
+  const catInfo = CATS[srcKey];
+  const targetInfo = SUBCATS['obra-bruta']?.[targetSk];
+  if(!catInfo || !targetInfo) return;
+  try{
+    await fetch(`${SB_URL}/rest/v1/${TABLE}?categoria=eq.${srcKey}`,{
+      method:'PATCH', headers:{...HEADERS}, body: JSON.stringify({categoria:'obra-bruta', subcategoria:targetSk})
+    });
+  }catch(e){ toast('Erro ao mover lançamentos: '+e.message,'err'); return; }
+  delete SUBCATS[srcKey];
+  delete CATS[srcKey];
+  const idxPinned = EXTRA_PINNED_STAGES.indexOf(srcKey);
+  if(idxPinned>-1) EXTRA_PINNED_STAGES.splice(idxPinned,1);
+  saveCustomStages(); saveSubCats(); saveCats();
+  toast(`"${catInfo.label}" foi juntado em "${targetInfo.label}".`);
+  await loadGastos();
+}
+
+// ── Janela de escolha: ao soltar uma etapa inteira em cima de uma sub existente ──
+let mergeChoiceState = {srcKey:null, targetSk:null};
+function openMergeChoiceModal(srcKey, targetSk){
+  const catInfo = CATS[srcKey];
+  const targetInfo = SUBCATS['obra-bruta']?.[targetSk];
+  if(!catInfo || !targetInfo) return;
+  mergeChoiceState = {srcKey, targetSk};
+  document.getElementById('merge-choice-title').textContent = `Como adicionar "${catInfo.label}" aqui?`;
+  document.getElementById('merge-choice-sub-label').textContent = targetInfo.label;
+  document.getElementById('merge-choice-junto-desc').textContent = `Todos os lançamentos de "${catInfo.label}" passam a fazer parte de "${targetInfo.label}", como se sempre tivessem sido dessa sub.`;
+  document.getElementById('merge-choice-separado-desc').textContent = `"${catInfo.label}" vira uma sub nova dentro da fase "${targetInfo.grupo}", ao lado de "${targetInfo.label}" — sem misturar os lançamentos.`;
+  document.getElementById('merge-choice-overlay').classList.add('open');
+}
+function closeMergeChoiceModal(){
+  document.getElementById('merge-choice-overlay').classList.remove('open');
+  mergeChoiceState = {srcKey:null, targetSk:null};
+}
+function confirmMergeChoice(modo){
+  const {srcKey, targetSk} = mergeChoiceState;
+  closeMergeChoiceModal();
+  if(!srcKey || !targetSk) return;
+  if(modo==='junto'){
+    mergeCategoriaIntoExistingSub(srcKey, targetSk);
+  } else {
+    const targetInfo = SUBCATS['obra-bruta']?.[targetSk];
+    mergeCategoriaIntoObraBruta(srcKey, targetInfo?.grupo);
+  }
 }
 
 // ── Arrastar uma FASE de dentro de "Execução de Obra" pra fora → vira uma ETAPA própria ──
@@ -6448,6 +6520,13 @@ function subDragStart(catKey, sk, e){
 function subDragOver(catKey, sk, e){
   e.preventDefault();
   e.stopPropagation();
+  // Arrastando uma ETAPA inteira (não uma sub) por cima de uma sub de Execução de Obra
+  if(dragKey && catKey==='obra-bruta' && dragKey!=='obra-bruta' && CATS[dragKey] && !IMOVEL_CATS[dragKey]){
+    document.querySelectorAll('.subcat-row-drop-target').forEach(el=>el.classList.remove('subcat-row-drop-target'));
+    const el = document.getElementById('subcat-row-'+catKey+'-'+sk);
+    if(el) el.classList.add('subcat-row-drop-target');
+    return;
+  }
   if(sk===subDragKey) return;
   document.querySelectorAll('.subcat-row').forEach(el=>el.classList.remove('sub-drag-over'));
   const el = document.getElementById('subcat-row-'+catKey+'-'+sk);
@@ -6456,12 +6535,21 @@ function subDragOver(catKey, sk, e){
 
 function subDragLeave(catKey, sk, e){
   const el = document.getElementById('subcat-row-'+catKey+'-'+sk);
-  if(el) el.classList.remove('sub-drag-over');
+  if(el){ el.classList.remove('sub-drag-over'); el.classList.remove('subcat-row-drop-target'); }
 }
 
 function subDragDrop(catKey, sk, e){
   e.preventDefault();
   e.stopPropagation();
+  // Soltou uma ETAPA inteira em cima de uma sub → pergunta como juntar
+  if(dragKey && catKey==='obra-bruta' && dragKey!=='obra-bruta' && CATS[dragKey] && !IMOVEL_CATS[dragKey]){
+    const draggedKey = dragKey;
+    dragKey = null; dragOverKey = null;
+    document.querySelectorAll('.subcat-row-drop-target').forEach(el=>el.classList.remove('subcat-row-drop-target'));
+    document.querySelectorAll('.nav-cat-wrap').forEach(el=>el.classList.remove('dragging'));
+    openMergeChoiceModal(draggedKey, sk);
+    return;
+  }
   if(sk===subDragKey || catKey!==subDragCat) return;
   const subs = SUBCATS[catKey];
   if(!subs) return;
