@@ -191,7 +191,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 12JUL26 (versão 31)</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 12JUL26 (versão 32)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -2394,11 +2394,9 @@ let obraTriagemPresetSub = null; // guarda qual item foi clicado, se veio de um 
 // peça/acabamento sem contratar instalação junto (ex: comprar a luminária e
 // instalar depois, ou nem instalar).
 const FASES_ITEM_SEM_MAO_DE_OBRA = ['Iluminação e Acabamentos Elétricos','Louças, Metais e Vidros','Marcenaria e Móveis Planejados'];
-function openObraTriagemModal(presetSub){
+function openObraTriagemModal(presetSub, presetFase){
   obraTriagemPresetSub = presetSub || null;
-  const entry = presetSub && SUBCATS['obra-bruta']?.[presetSub];
-  const mostraItemSemMaoDeObra = entry && FASES_ITEM_SEM_MAO_DE_OBRA.includes(entry.grupo);
-  document.getElementById('obra-triagem-item-wrap').style.display = mostraItemSemMaoDeObra ? '' : 'none';
+  document.getElementById('obra-triagem-item-wrap').style.display = '';
   document.getElementById('obra-triagem-overlay').classList.add('open');
 }
 function closeObraTriagemModal(){
