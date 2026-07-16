@@ -208,7 +208,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 12JUL26 (versão 47)</div>
+          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 12JUL26 (versão 48)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -2572,13 +2572,31 @@ function runBuscaGeral(){
   resultsEl.innerHTML = achados.map(g=>{
     const catInfo = CATS[g.categoria] || IMOVEL_CATS[g.categoria];
     const catLabel = catInfo ? catInfo.label : `⚠️ categoria "${g.categoria}" (órfã — não aparece em nenhuma etapa)`;
-    const subLabel = g.subcategoria ? (SUBCATS[g.categoria]?.[g.subcategoria]?.label || g.subcategoria) : '';
+    const subEntry = g.subcategoria ? SUBCATS[g.categoria]?.[g.subcategoria] : null;
+    const subLabel = subEntry ? subEntry.label : (g.subcategoria||'');
+    const faseLabel = subEntry?.grupo || '';
+    // Se o termo bateu num item de pacote específico (ex: "Geladeira" dentro de
+    // um pacote de instalação), mostra qual item exatamente, não só o pacote todo.
+    let itemPacoteBatido = '';
+    if(g.pacote_subs){
+      const itens = parsePacoteSubs(g.pacote_subs);
+      const bateu = itens.find(it=>
+        normalizaBusca(it.sub).includes(termo) ||
+        normalizaBusca(SUBCATS['obra-bruta']?.[it.sub]?.label).includes(termo) ||
+        (it.itens && it.itens.some(x=>normalizaBusca(x).includes(termo)))
+      );
+      if(bateu){
+        const itemLabel = SUBCATS['obra-bruta']?.[bateu.sub]?.label || bateu.sub;
+        itemPacoteBatido = itemLabel + (bateu.ambiente ? ' — '+bateu.ambiente : '');
+      }
+    }
+    const caminho = [catLabel, faseLabel, subLabel].filter(Boolean).join(' › ');
     const val = gastoValor(g);
     const podeNavegar = !!catInfo;
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 8px;border-bottom:1px solid #262626">
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;color:#e8e7e2">${g.descricao||'(sem descrição)'}</div>
-        <div style="font-size:11px;color:${catInfo?'#7aa7d9':'#e8b544'};margin-top:2px">${catLabel}${subLabel?' — '+subLabel:''}</div>
+        <div style="font-size:13px;color:#e8e7e2">${g.descricao||'(sem descrição)'}${itemPacoteBatido?` <span style="color:#c77dea">— achado em: ${itemPacoteBatido}</span>`:''}</div>
+        <div style="font-size:11px;color:${catInfo?'#7aa7d9':'#e8b544'};margin-top:2px">${caminho}</div>
       </div>
       <div style="font-size:13px;font-weight:700;color:#e8b544;flex-shrink:0">${fmt(val)}</div>
       ${podeNavegar ? `<button onclick="closeBuscaGeralModal();navigate('${g.categoria}${g.subcategoria?'__'+g.subcategoria:''}')" style="background:#2a2000;border:1px solid #8a6d1f;color:#e8b544;border-radius:5px;padding:5px 10px;font-size:11px;cursor:pointer;flex-shrink:0">Ver</button>`
