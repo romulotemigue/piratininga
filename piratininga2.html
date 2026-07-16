@@ -208,7 +208,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 12JUL26 (versão 45)</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 12JUL26 (versão 46)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -232,10 +232,11 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       </div>
       <div class="divider"></div>
       <div id="etapas-header" ondragover="etapasHeaderDragOver(event)" ondragleave="etapasHeaderDragLeave(event)" ondrop="etapasHeaderDrop(event)" style="display:flex;align-items:center;justify-content:space-between;padding:.75rem 1.25rem .25rem;border-radius:6px;transition:background .15s">
-        <span style="font-size:10px;color:#444;text-transform:uppercase;letter-spacing:.08em">Etapas</span>
+        <span style="font-size:10px;color:#ccc;text-transform:uppercase;letter-spacing:.08em">Etapas</span>
         <div style="display:flex;gap:4px;align-items:center">
-          <button onclick="toggleAllExpand()" id="btn-expand-all" title="Expandir/recolher todos" style="background:none;border:none;color:#555;cursor:pointer;font-size:13px;padding:0 2px;line-height:1" onmouseover="this.style.color='#e8b544'" onmouseout="this.style.color='#555'"><i class="ti ti-chevrons-down"></i></button>
-          <button onclick="openModalAddCat()" title="Nova categoria" style="background:none;border:none;color:#555;cursor:pointer;font-size:16px;padding:0 2px;line-height:1" onmouseover="this.style.color='#e8b544'" onmouseout="this.style.color='#555'"><i class="ti ti-plus"></i></button>
+          <button onclick="openBuscaGeralModal()" title="Buscar lançamento por palavra" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:13px;padding:0 2px;line-height:1" onmouseover="this.style.color='#e8b544'" onmouseout="this.style.color='#ccc'"><i class="ti ti-search"></i></button>
+          <button onclick="toggleAllExpand()" id="btn-expand-all" title="Expandir/recolher todos" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:13px;padding:0 2px;line-height:1" onmouseover="this.style.color='#e8b544'" onmouseout="this.style.color='#ccc'"><i class="ti ti-chevrons-down"></i></button>
+          <button onclick="openModalAddCat()" title="Nova categoria" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:16px;padding:0 2px;line-height:1" onmouseover="this.style.color='#e8b544'" onmouseout="this.style.color='#ccc'"><i class="ti ti-plus"></i></button>
         </div>
       </div>
       <div id="cat-nav-list"></div>
@@ -765,6 +766,17 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         </button>
       </div>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="busca-geral-overlay" onclick="if(event.target===this) closeBuscaGeralModal()">
+  <div class="modal" style="max-width:640px;width:92vw;max-height:80vh;display:flex;flex-direction:column">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3 style="margin:0;font-size:15px">🔍 Buscar lançamento</h3>
+      <button onclick="closeBuscaGeralModal()" style="background:none;border:none;color:#ccc;font-size:18px;cursor:pointer">×</button>
+    </div>
+    <input type="text" id="busca-geral-input" placeholder="Digite uma palavra (ex: geladeira)..." oninput="runBuscaGeral()" style="width:100%;box-sizing:border-box;background:#111;border:1px solid #333;border-radius:8px;padding:12px 14px;color:#e8e7e2;font-size:14px;margin-bottom:14px">
+    <div id="busca-geral-results" style="overflow-y:auto;flex:1"></div>
   </div>
 </div>
 
@@ -2514,6 +2526,47 @@ function ensureObraBrutaPhases(){
 // Diagnóstico) — recria a etapa (com nome legível) e as subs que os lançamentos
 // reais ainda usam, com base no que já está gravado no banco. Nada é apagado;
 // só reconecta o que já existia.
+// ── Busca geral por palavra — acha um lançamento em qualquer lugar, mesmo se
+// a categoria dele estiver "perdida"/órfã (não aparecendo em nenhuma etapa) ──
+function openBuscaGeralModal(){
+  document.getElementById('busca-geral-input').value = '';
+  document.getElementById('busca-geral-results').innerHTML = '<div style="color:#666;font-size:12px;text-align:center;padding:20px 0">Digite algo pra buscar...</div>';
+  document.getElementById('busca-geral-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('busca-geral-input').focus(), 80);
+}
+function closeBuscaGeralModal(){
+  document.getElementById('busca-geral-overlay').classList.remove('open');
+}
+function normalizaBusca(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+function runBuscaGeral(){
+  const termo = normalizaBusca(document.getElementById('busca-geral-input').value.trim());
+  const resultsEl = document.getElementById('busca-geral-results');
+  if(!termo){ resultsEl.innerHTML = '<div style="color:#666;font-size:12px;text-align:center;padding:20px 0">Digite algo pra buscar...</div>'; return; }
+  const achados = gastos.filter(g=>
+    normalizaBusca(g.descricao).includes(termo) || normalizaBusca(g.obs).includes(termo)
+  );
+  if(!achados.length){
+    resultsEl.innerHTML = '<div style="color:#666;font-size:12px;text-align:center;padding:20px 0">Nada encontrado com "'+document.getElementById('busca-geral-input').value+'".</div>';
+    return;
+  }
+  resultsEl.innerHTML = achados.map(g=>{
+    const catInfo = CATS[g.categoria] || IMOVEL_CATS[g.categoria];
+    const catLabel = catInfo ? catInfo.label : `⚠️ categoria "${g.categoria}" (órfã — não aparece em nenhuma etapa)`;
+    const subLabel = g.subcategoria ? (SUBCATS[g.categoria]?.[g.subcategoria]?.label || g.subcategoria) : '';
+    const val = gastoValor(g);
+    const podeNavegar = !!catInfo;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 8px;border-bottom:1px solid #262626">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;color:#e8e7e2">${g.descricao||'(sem descrição)'}</div>
+        <div style="font-size:11px;color:${catInfo?'#7aa7d9':'#e8b544'};margin-top:2px">${catLabel}${subLabel?' — '+subLabel:''}</div>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:#e8b544;flex-shrink:0">${fmt(val)}</div>
+      ${podeNavegar ? `<button onclick="closeBuscaGeralModal();navigate('${g.categoria}${g.subcategoria?'__'+g.subcategoria:''}')" style="background:#2a2000;border:1px solid #8a6d1f;color:#e8b544;border-radius:5px;padding:5px 10px;font-size:11px;cursor:pointer;flex-shrink:0">Ver</button>`
+        : `<button onclick="closeBuscaGeralModal();navigate('diagnostico')" style="background:#1a0d0d;border:1px solid #5c2b2b;color:#ef9a9a;border-radius:5px;padding:5px 10px;font-size:11px;cursor:pointer;flex-shrink:0">Diagnóstico</button>`}
+    </div>`;
+  }).join('');
+}
+
 function recuperarCategoriaOrfa(catKey){
   if(CATS[catKey]){ toast('Essa categoria já existe.','err'); return; }
   const itens = gastos.filter(g=>g.categoria===catKey);
