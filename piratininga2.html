@@ -208,7 +208,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 12JUL26 (versão 48)</div>
+          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 12JUL26 (versão 49)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -2541,6 +2541,7 @@ function normalizaBusca(s){ return String(s||'').toLowerCase().normalize('NFD').
 function gastoMatchBusca(g, termo){
   if(normalizaBusca(g.descricao).includes(termo)) return true;
   if(normalizaBusca(g.obs).includes(termo)) return true;
+  if(normalizaBusca(g.categoria).includes(termo)) return true;
   if(normalizaBusca(g.subcategoria).includes(termo)) return true;
   const subLbl = g.subcategoria ? SUBCATS[g.categoria]?.[g.subcategoria]?.label : '';
   if(normalizaBusca(subLbl).includes(termo)) return true;
@@ -2557,6 +2558,14 @@ function gastoMatchBusca(g, termo){
   if(g.materiais){
     const mats = getMateriais(g);
     if(mats.some(m=>normalizaBusca(m.nome).includes(termo))) return true;
+  }
+  // Busca por valor também — digitando números (com ou sem ponto/vírgula) acha
+  // pelo valor do lançamento ou pelo total (valor × quantidade)
+  const termoNum = termo.replace(/[^0-9]/g,'');
+  if(termoNum.length>=2){
+    const valorStr = String(Math.round((g.valor||0)*100));
+    const totalStr = String(Math.round(gastoValor(g)*100));
+    if(valorStr.includes(termoNum) || totalStr.includes(termoNum)) return true;
   }
   return false;
 }
