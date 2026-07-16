@@ -29,7 +29,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sidebar-brand .name{font-size:13px;font-weight:600;color:#e8e7e2}
 .sidebar-brand .sub{font-size:11px;color:#555;margin-top:2px}
 .sidebar-nav{padding:.5rem 0;flex:1 1 0;overflow-y:auto;min-height:0}
-.nav-item{display:flex;align-items:center;gap:10px;padding:9px 1.25rem;font-size:13px;color:#888;cursor:pointer;border-left:2px solid transparent;transition:all .15s}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 1.25rem;font-size:13px;color:#ccc;cursor:pointer;border-left:2px solid transparent;transition:all .15s}
 .nav-item:hover{color:#e8e7e2;background:#1e1e1e}
 .nav-item.active{color:#e8b544;border-left-color:#e8b544;background:#1e1e1e}
 .nav-item i{font-size:16px}
@@ -98,7 +98,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
 .btn-add-cat:hover{color:#e8b544;border-color:#e8b544}
 .nav-item-wrap{position:relative;display:flex;align-items:center}
 .nav-item-wrap .nav-item{flex:1}
-.nav-dots{background:none;border:none;color:#444;cursor:pointer;padding:6px 8px;font-size:14px;opacity:1;transition:color .15s;border-radius:4px;flex-shrink:0}
+.nav-dots{background:none;border:none;color:#ccc;cursor:pointer;padding:6px 8px;font-size:14px;opacity:1;transition:color .15s;border-radius:4px;flex-shrink:0}
 .nav-dots:hover{color:#e8b544;background:#2a2000}
 .cat-menu{display:none;position:fixed;background:#222;border:1px solid #333;border-radius:7px;z-index:9999;min-width:140px;padding:4px 0;box-shadow:0 4px 20px rgba(0,0,0,.8)}
 .cat-menu.open{display:block}
@@ -128,7 +128,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
 .qty-input{font-size:11px;color:#e8e7e2;width:26px;text-align:center;font-weight:500;background:#111;border:1px solid #333;border-radius:3px;padding:1px 2px;-moz-appearance:textfield}
 .qty-input::-webkit-outer-spin-button,.qty-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .qty-input:focus{outline:none;border-color:#e8b544}
-.nav-drag{cursor:grab;color:#333;padding:4px 2px 4px 6px;font-size:13px;flex-shrink:0}
+.nav-drag{cursor:grab;color:#e8e7e2;padding:4px 2px 4px 6px;font-size:13px;flex-shrink:0}
 .nav-drag:active{cursor:grabbing}
 .nav-cat-wrap{transition:opacity .2s, transform .2s, box-shadow .2s, filter .2s}
 .nav-cat-wrap.dragging{opacity:.2;transform:scale(0.93) rotate(-1deg);filter:blur(1px)}
@@ -204,7 +204,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 12JUL26 (versão 42)</div>
+          <div id="build-marker" style="font-size:9px;color:#333;margin-top:2px">atualizado em 12JUL26 (versão 43)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -1127,7 +1127,7 @@ function renderCatNav(){
         <span class="nav-drag" draggable="true" title="Arrastar"
           ondragstart="dragStart('${k}',event)"
           style="cursor:grab">⠿</span>
-        <button id="chev-${k}" style="background:none;border:none;color:#777;cursor:pointer;padding:4px 2px;font-size:11px;transition:transform .2s;transform:rotate(${isOpen?90:0}deg)" onclick="toggleExpand('${k}',event)"><i class="ti ti-chevron-right"></i></button>
+        <button id="chev-${k}" style="background:none;border:none;color:#ccc;cursor:pointer;padding:4px 2px;font-size:11px;transition:transform .2s;transform:rotate(${isOpen?90:0}deg)" onclick="toggleExpand('${k}',event)"><i class="ti ti-chevron-right"></i></button>
         <div class="nav-item" onclick="handleNavItemClick('${k}',event)" id="nav-${k}" style="padding-left:2px;flex:1;display:flex;align-items:center;gap:6px;${imovelNavStyle}">
           ${etapaNum ? `<span style="width:16px;height:16px;border-radius:50%;background:${info.color};color:#111;font-size:9px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">${etapaNum}</span>` : `<span style="width:6px;height:6px;border-radius:50%;background:${info.color};display:inline-block;flex-shrink:0"></span>`}${info.icon||''} ${info.label}
         </div>
@@ -1236,14 +1236,14 @@ function renderFlatSubcatRow(k, sk, subColor, extraIndent){
       ondragleave="subDragLeave('${k}','${sk}',event)"
       ondrop="subDragDrop('${k}','${sk}',event)"
       ondragend="subDragEnd(event)">
-      <span style="color:#2a2a2a;cursor:grab;font-size:11px;padding:0 4px 0 ${extraIndent?'1.9rem':'1rem'};user-select:none" title="Arrastar">⠿</span>
+      <span style="color:#e8e7e2;cursor:grab;font-size:11px;padding:0 4px 0 ${extraIndent?'1.9rem':'1rem'};user-select:none" title="Arrastar">⠿</span>
       ${isObra ? miniToggleHtml(ativo, `toggleSubAtivo('${k}','${sk}',event)`) : ''}
-      <div class="nav-item" style="padding-left:0;font-size:11px;color:#555;flex:1;border-left:2px solid #2a2a2a;padding-left:8px;margin:2px 0 2px ${isObra?'6px':'0'};border-radius:0" onclick="navigate('${k}__${sk}')" id="nav-${k}__${sk}"
-        onmouseover="this.style.borderColor='${subColor}';this.style.color='#999'"
-        onmouseout="this.style.borderColor='#2a2a2a';this.style.color='#555'">
+      <div class="nav-item" style="padding-left:0;font-size:11px;color:#ccc;flex:1;border-left:2px solid #2a2a2a;padding-left:8px;margin:2px 0 2px ${isObra?'6px':'0'};border-radius:0" onclick="navigate('${k}__${sk}')" id="nav-${k}__${sk}"
+        onmouseover="this.style.borderColor='${subColor}';this.style.color='#fff'"
+        onmouseout="this.style.borderColor='#2a2a2a';this.style.color='#ccc'">
         ${SUBCATS[k][sk].label}
       </div>
-      <button class="subcat-dots-btn" style="background:none;border:none;color:#444;cursor:pointer;padding:4px 6px;font-size:13px;transition:opacity .15s" onclick="toggleSubCatMenu('${k}','${sk}',event)"><i class="ti ti-dots-vertical"></i></button>
+      <button class="subcat-dots-btn" style="background:none;border:none;color:#ccc;cursor:pointer;padding:4px 6px;font-size:13px;transition:opacity .15s" onclick="toggleSubCatMenu('${k}','${sk}',event)"><i class="ti ti-dots-vertical"></i></button>
     </div>`;
 }
 
@@ -4187,6 +4187,44 @@ function getPinnedStageKeys(){
 function savePinnedStageOrder(order){ localStorage.setItem('pinned_stage_order', JSON.stringify(order)); }
 
 // ── Arrastar uma ETAPA pra dentro de "Execução de Obra" → vira uma FASE lá dentro ──
+// ── Rede de segurança pras ações estruturais grandes (fundir/separar etapas) —
+// o desfazer normal (Ctrl+Z) não cobre isso, então guardamos um snapshot à
+// parte e oferecemos "Desfazer" direto no aviso de sucesso.
+let lastStructuralSnapshot = null;
+function snapshotStructural(gastoChanges){
+  lastStructuralSnapshot = {
+    cats: JSON.parse(JSON.stringify(CATS)),
+    subcats: JSON.parse(JSON.stringify(SUBCATS)),
+    extraPinned: [...EXTRA_PINNED_STAGES],
+    gastoChanges // [{id, categoria, subcategoria}] — valores ANTES da mudança
+  };
+}
+async function undoLastStructural(){
+  if(!lastStructuralSnapshot) return;
+  const snap = lastStructuralSnapshot;
+  lastStructuralSnapshot = null;
+  try{
+    for(const ch of snap.gastoChanges){
+      const res = await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${ch.id}`,{
+        method:'PATCH', headers:{...HEADERS}, body: JSON.stringify({categoria: ch.categoria, subcategoria: ch.subcategoria})
+      });
+      if(!res.ok) throw new Error(await res.text());
+    }
+  }catch(e){ toast('Erro ao desfazer: '+e.message,'err'); return; }
+  CATS = snap.cats;
+  SUBCATS = snap.subcats;
+  EXTRA_PINNED_STAGES = snap.extraPinned;
+  saveCats(); saveSubCats(); saveCustomStages();
+  toast('Desfeito.');
+  await loadGastos();
+}
+function toastComDesfazer(msg){
+  const t = document.getElementById('toast');
+  t.innerHTML = `${msg} <span onclick="undoLastStructural()" style="text-decoration:underline;cursor:pointer;font-weight:700;margin-left:6px">Desfazer</span>`;
+  t.className = 'toast show ok';
+  setTimeout(()=>t.className='toast', 8000);
+}
+
 async function mergeCategoriaIntoObraBruta(srcKey, targetGrupo, skipConfirm, ordemBaseOverride){
   const catInfo = CATS[srcKey];
   if(!catInfo || srcKey==='obra-bruta') return;
@@ -4195,6 +4233,7 @@ async function mergeCategoriaIntoObraBruta(srcKey, targetGrupo, skipConfirm, ord
     ? `Transformar a etapa "${catInfo.label}" em subs dentro da fase "${targetGrupo}" (Execução de Obra)?\n\nOs lançamentos serão movidos pra lá, mantendo valores, ambientes, status — tudo. A etapa "${catInfo.label}" deixa de existir separada.`
     : `Transformar a etapa "${catInfo.label}" numa fase dentro de Execução de Obra?\n\nOs lançamentos serão movidos pra lá, mantendo valores, ambientes, status — tudo. A etapa "${catInfo.label}" deixa de existir separada.`;
   if(!skipConfirm && !confirm(msg)) return;
+  const gastoChanges = gastos.filter(g=>g.categoria===srcKey).map(g=>({id:g.id, categoria:g.categoria, subcategoria:g.subcategoria}));
   const subsAntigas = SUBCATS[srcKey] || {};
   if(!SUBCATS['obra-bruta']) SUBCATS['obra-bruta'] = {};
   const existingKeys = new Set(Object.keys(SUBCATS['obra-bruta']));
@@ -4210,22 +4249,26 @@ async function mergeCategoriaIntoObraBruta(srcKey, targetGrupo, skipConfirm, ord
   });
   try{
     // Primeiro corrige os que precisaram trocar de chave (evita colisão), depois
-    // move o resto em massa numa única chamada.
+    // move o resto em massa numa única chamada. Confere se CADA uma deu certo —
+    // só apaga a etapa antiga se o banco realmente aceitou a mudança.
     for(const oldKey of Object.keys(renameMap)){
-      await fetch(`${SB_URL}/rest/v1/${TABLE}?categoria=eq.${srcKey}&subcategoria=eq.${oldKey}`,{
+      const res = await fetch(`${SB_URL}/rest/v1/${TABLE}?categoria=eq.${srcKey}&subcategoria=eq.${oldKey}`,{
         method:'PATCH', headers:{...HEADERS}, body: JSON.stringify({categoria:'obra-bruta', subcategoria:renameMap[oldKey]})
       });
+      if(!res.ok) throw new Error(await res.text());
     }
-    await fetch(`${SB_URL}/rest/v1/${TABLE}?categoria=eq.${srcKey}`,{
+    const resFinal = await fetch(`${SB_URL}/rest/v1/${TABLE}?categoria=eq.${srcKey}`,{
       method:'PATCH', headers:{...HEADERS}, body: JSON.stringify({categoria:'obra-bruta'})
     });
-  }catch(e){ toast('Erro ao mover lançamentos: '+e.message,'err'); return; }
+    if(!resFinal.ok) throw new Error(await resFinal.text());
+  }catch(e){ toast('Erro ao mover lançamentos — nada foi apagado: '+e.message,'err'); return; }
+  snapshotStructural(gastoChanges);
   delete SUBCATS[srcKey];
   delete CATS[srcKey];
   const idxPinned = EXTRA_PINNED_STAGES.indexOf(srcKey);
   if(idxPinned>-1) EXTRA_PINNED_STAGES.splice(idxPinned,1);
   saveCustomStages(); saveSubCats(); saveCats();
-  toast(`"${grupoName}" agora é uma fase dentro de Execução de Obra.`);
+  toastComDesfazer(`"${grupoName}" agora é uma fase dentro de Execução de Obra.`);
   await loadGastos();
 }
 
@@ -4236,17 +4279,20 @@ async function mergeCategoriaIntoExistingSub(srcKey, targetSk){
   const catInfo = CATS[srcKey];
   const targetInfo = SUBCATS['obra-bruta']?.[targetSk];
   if(!catInfo || !targetInfo) return;
+  const gastoChanges = gastos.filter(g=>g.categoria===srcKey).map(g=>({id:g.id, categoria:g.categoria, subcategoria:g.subcategoria}));
   try{
-    await fetch(`${SB_URL}/rest/v1/${TABLE}?categoria=eq.${srcKey}`,{
+    const res = await fetch(`${SB_URL}/rest/v1/${TABLE}?categoria=eq.${srcKey}`,{
       method:'PATCH', headers:{...HEADERS}, body: JSON.stringify({categoria:'obra-bruta', subcategoria:targetSk})
     });
-  }catch(e){ toast('Erro ao mover lançamentos: '+e.message,'err'); return; }
+    if(!res.ok) throw new Error(await res.text());
+  }catch(e){ toast('Erro ao mover lançamentos — nada foi apagado: '+e.message,'err'); return; }
+  snapshotStructural(gastoChanges);
   delete SUBCATS[srcKey];
   delete CATS[srcKey];
   const idxPinned = EXTRA_PINNED_STAGES.indexOf(srcKey);
   if(idxPinned>-1) EXTRA_PINNED_STAGES.splice(idxPinned,1);
   saveCustomStages(); saveSubCats(); saveCats();
-  toast(`"${catInfo.label}" foi juntado em "${targetInfo.label}".`);
+  toastComDesfazer(`"${catInfo.label}" foi juntado em "${targetInfo.label}".`);
   await loadGastos();
 }
 
@@ -4284,6 +4330,10 @@ async function splitFaseOutOfObraBruta(grupoName){
   const subKeys = Object.keys(SUBCATS['obra-bruta']||{}).filter(k=>SUBCATS['obra-bruta'][k].grupo===grupoName);
   if(!subKeys.length){ toast('Essa fase não tem serviços.','err'); return; }
   if(!confirm(`Transformar a fase "${grupoName}" numa etapa própria, fora de Execução de Obra?\n\nOs lançamentos serão movidos, mantendo valores, ambientes, status — tudo.`)) return;
+  const gastoChanges = gastos.filter(g=>g.categoria==='obra-bruta' && subKeys.includes(g.subcategoria)).map(g=>({id:g.id, categoria:g.categoria, subcategoria:g.subcategoria}));
+  const catsAntes = JSON.parse(JSON.stringify(CATS));
+  const subcatsAntes = JSON.parse(JSON.stringify(SUBCATS));
+  const pinnedAntes = [...EXTRA_PINNED_STAGES];
   let newKey = grupoName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
   let suffix = 1;
   while(CATS[newKey]){ newKey = newKey+'-'+suffix; suffix++; }
@@ -4292,15 +4342,17 @@ async function splitFaseOutOfObraBruta(grupoName){
   subKeys.forEach(k=>{ SUBCATS[newKey][k] = {label: SUBCATS['obra-bruta'][k].label}; });
   try{
     for(const k of subKeys){
-      await fetch(`${SB_URL}/rest/v1/${TABLE}?categoria=eq.obra-bruta&subcategoria=eq.${k}`,{
+      const res = await fetch(`${SB_URL}/rest/v1/${TABLE}?categoria=eq.obra-bruta&subcategoria=eq.${k}`,{
         method:'PATCH', headers:{...HEADERS}, body: JSON.stringify({categoria:newKey})
       });
+      if(!res.ok) throw new Error(await res.text());
     }
-  }catch(e){ toast('Erro ao mover lançamentos: '+e.message,'err'); return; }
+  }catch(e){ toast('Erro ao mover lançamentos — nada foi apagado: '+e.message,'err'); return; }
+  lastStructuralSnapshot = {cats:catsAntes, subcats:subcatsAntes, extraPinned:pinnedAntes, gastoChanges};
   subKeys.forEach(k=>{ delete SUBCATS['obra-bruta'][k]; });
   EXTRA_PINNED_STAGES.push(newKey);
   saveCustomStages(); saveSubCats(); saveCats();
-  toast(`"${grupoName}" agora é uma etapa própria.`);
+  toastComDesfazer(`"${grupoName}" agora é uma etapa própria.`);
   await loadGastos();
 }
 function getStageColor(k){ return IMOVEL_CATS[k]?.color || CATS[k]?.color || '#e8b544'; }
