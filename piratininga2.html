@@ -208,7 +208,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 12JUL26 (versão 51)</div>
+          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 12JUL26 (versão 52)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -905,8 +905,8 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       </div>
       <div class="modal-row" style="margin-bottom:14px">
         <div class="form-group" style="margin-bottom:0">
-          <label>Cor / modelo</label>
-          <input type="text" id="mat-l-modelo" placeholder="Ex: Branco, mod. X200">
+          <label>Modelo/código do produto</label>
+          <input type="text" id="mat-l-modelo" placeholder="Ex: mod. X200">
         </div>
         <div class="form-group" style="margin-bottom:0">
           <label>Contato do vendedor</label>
@@ -1774,6 +1774,10 @@ let editingIsGanho = false;
 function openEdit(id){
   const g = gastos.find(x=>x.id===id);
   if(!g) return;
+  if(g.tipo_contratacao==='material'){
+    openMaterialModalForEdit(g);
+    return;
+  }
   if(g.pacote_subs || g.categoria==='obra-bruta'){
     openObraEmpreitadaModalForEdit(g);
     return;
@@ -2742,7 +2746,10 @@ function todasEtapasParaSelect(){
   return lista;
 }
 
+let materialEditingId = null;
 function openMaterialModal(presetCat, presetFase, presetSub){
+  materialEditingId = null;
+  document.getElementById('mat-l-btn-confirm').textContent = 'Confirmar lançamento';
   document.getElementById('mat-l-desc').value = '';
   document.getElementById('mat-l-valor').value = '';
   document.getElementById('mat-l-marca').value = '';
@@ -2772,6 +2779,81 @@ function openMaterialModal(presetCat, presetFase, presetSub){
 }
 function closeMaterialModal(){
   document.getElementById('material-lancamento-overlay').classList.remove('open');
+  materialEditingId = null;
+}
+
+// Extrai marca/loja/pagamento/garantia/modelo/contato/entregue de volta da
+// observação (foram salvos ali, separados por " · ", como "Marca: X")
+function parseMaterialObs(obs){
+  const result = {marca:'',loja:'',pagamento:'',garantia:'',modelo:'',contato:'',entregue:false,livre:''};
+  if(!obs) return result;
+  const partes = obs.split(' · ');
+  const livre = [];
+  partes.forEach(p=>{
+    const m = p.match(/^([^:]+):\s*(.*)$/);
+    if(m){
+      const chave = m[1].trim().toLowerCase();
+      const valor = m[2].trim();
+      if(chave==='marca') result.marca=valor;
+      else if(chave==='loja') result.loja=valor;
+      else if(chave==='pagamento') result.pagamento=valor;
+      else if(chave==='garantia') result.garantia=valor;
+      else if(chave==='modelo/código'||chave==='cor/modelo') result.modelo=valor;
+      else if(chave==='contato') result.contato=valor;
+      else if(chave==='entregue') result.entregue = valor.toLowerCase()==='sim';
+      else livre.push(p);
+    } else livre.push(p);
+  });
+  result.livre = livre.join(' · ');
+  return result;
+}
+
+function openMaterialModalForEdit(g){
+  materialEditingId = g.id;
+  const parsed = parseMaterialObs(g.obs);
+  document.getElementById('mat-l-desc').value = g.descricao||'';
+  document.getElementById('mat-l-valor').value = g.valor ? fmtInput(g.valor) : '';
+  document.getElementById('mat-l-marca').value = parsed.marca;
+  document.getElementById('mat-l-loja').value = parsed.loja;
+  document.getElementById('mat-l-data').value = g.data || new Date().toISOString().slice(0,10);
+  document.getElementById('mat-l-status').value = g.status || 'necessario';
+  const meta = getPacoteMeta(g);
+  document.getElementById('mat-l-entrega').value = meta.dataInicio || '';
+  document.getElementById('mat-l-prazo').value = meta.prazoDias || '';
+  document.getElementById('mat-l-entregue').checked = parsed.entregue;
+  document.getElementById('mat-l-pagamento').value = parsed.pagamento;
+  document.getElementById('mat-l-garantia').value = parsed.garantia;
+  document.getElementById('mat-l-modelo').value = parsed.modelo;
+  document.getElementById('mat-l-contato').value = parsed.contato;
+  document.getElementById('mat-l-obs').value = parsed.livre;
+  document.getElementById('mat-l-link').value = g.link || '';
+  document.getElementById('mat-l-nf').value = '';
+  document.getElementById('mat-l-comprovante').value = '';
+  updateMatPrazoPreview();
+
+  const etapaSel = document.getElementById('mat-l-etapa');
+  etapaSel.innerHTML = todasEtapasParaSelect().map(e=>`<option value="${e.key}">${e.label}</option>`).join('');
+  etapaSel.value = g.categoria;
+  const subEntry = g.categoria==='obra-bruta' ? SUBCATS['obra-bruta']?.[g.subcategoria] : null;
+  onMatEtapaChange(subEntry?.grupo, g.subcategoria);
+  document.getElementById('mat-l-btn-confirm').textContent = 'Salvar alterações';
+  document.getElementById('material-lancamento-overlay').classList.add('open');
+}
+
+// Converte rapidamente um lançamento simples (sem pacote) de Execução de Obra
+// pra abrir na tela de material daqui pra frente, e já abre editando.
+async function converterParaMaterial(id){
+  const g = gastos.find(x=>x.id===id);
+  if(!g) return;
+  try{
+    const res = await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${id}`,{
+      method:'PATCH', headers:{...HEADERS}, body: JSON.stringify({tipo_contratacao:'material'})
+    });
+    if(!res.ok) throw new Error(await res.text());
+    g.tipo_contratacao = 'material';
+    toast('Convertido pra material.');
+    openMaterialModalForEdit(g);
+  }catch(e){ toast('Erro ao converter: '+e.message,'err'); }
 }
 
 function onMatEtapaChange(presetFase, presetSub){
@@ -2832,7 +2914,7 @@ async function confirmMaterialLancamento(){
   if(loja) linhas.push('Loja: '+loja);
   if(pagamento) linhas.push('Pagamento: '+pagamento);
   if(garantia) linhas.push('Garantia: '+garantia);
-  if(modelo) linhas.push('Cor/modelo: '+modelo);
+  if(modelo) linhas.push('Modelo/código: '+modelo);
   if(contato) linhas.push('Contato: '+contato);
   if(entregue) linhas.push('Entregue: sim');
   const obsLivre = document.getElementById('mat-l-obs').value.trim();
@@ -2840,6 +2922,7 @@ async function confirmMaterialLancamento(){
   const obs = linhas.join(' · ');
 
   const btn = document.getElementById('mat-l-btn-confirm');
+  const isEditing = !!materialEditingId;
   btn.disabled = true; btn.textContent = 'Salvando...';
   try{
     const row = {
@@ -2851,13 +2934,23 @@ async function confirmMaterialLancamento(){
       data_inicio: entregue ? null : (document.getElementById('mat-l-entrega').value || null),
       prazo_dias: entregue ? null : (document.getElementById('mat-l-prazo').value ? parseInt(document.getElementById('mat-l-prazo').value,10) : null)
     };
-    const inserted = await sbInsert(row);
-    const novoGasto = Array.isArray(inserted) ? inserted[0] : inserted;
+    let gastoId;
+    if(isEditing){
+      const res = await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${materialEditingId}`,{
+        method:'PATCH', headers:{...HEADERS}, body: JSON.stringify(row)
+      });
+      if(!res.ok) throw new Error(await res.text());
+      gastoId = materialEditingId;
+    } else {
+      const inserted = await sbInsert(row);
+      const novoGasto = Array.isArray(inserted) ? inserted[0] : inserted;
+      gastoId = novoGasto.id;
+    }
     const nfFile = document.getElementById('mat-l-nf').files[0];
     const compFile = document.getElementById('mat-l-comprovante').files[0];
     const arquivos = [nfFile,compFile].filter(Boolean);
     if(arquivos.length){
-      const urls = await uploadAnexos(novoGasto.id, arquivos);
+      const urls = await uploadAnexos(gastoId, arquivos);
       const rotulos = [];
       if(nfFile && urls[0]) rotulos.push(`📄 Nota fiscal: [${urls[0].nome}](${urls[0].url})`);
       if(compFile){
@@ -2866,18 +2959,18 @@ async function confirmMaterialLancamento(){
       }
       if(rotulos.length){
         const novoObs = obs ? obs+' · '+rotulos.join(' · ') : rotulos.join(' · ');
-        await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${novoGasto.id}`,{
+        await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${gastoId}`,{
           method:'PATCH', headers:{...HEADERS}, body: JSON.stringify({obs: novoObs, link: urls[0]?.url || row.link})
         });
       }
     }
-    toast('Material lançado com sucesso!');
+    toast(isEditing ? 'Material atualizado!' : 'Material lançado com sucesso!');
     closeMaterialModal();
     await loadGastos();
   } catch(e){
     toast('Erro ao salvar: '+e.message,'err');
   } finally{
-    btn.disabled = false; btn.textContent = 'Confirmar lançamento';
+    btn.disabled = false; btn.textContent = isEditing ? 'Salvar alterações' : 'Confirmar lançamento';
   }
 }
 
@@ -7013,6 +7106,8 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
   const ambEsc = (ambienteOverride||'').replace(/'/g,"\\'");
   const subEsc = (effSub||'').replace(/'/g,"\\'");
   const delOnclick = isPacote ? `openPacoteDeleteModal(${g.id},'${subEsc}','${ambEsc}')` : `removeGasto(${g.id})`;
+  const podeConverterMaterial = g.categoria==='obra-bruta' && !g.pacote_subs && g.tipo_contratacao!=='material';
+  const converterBtn = podeConverterMaterial ? `<button class="edit-btn" title="Converter pra tela de material" style="opacity:1;padding:2px 4px;color:#c77dea" onclick="converterParaMaterial(${g.id})">🧱</button>` : '';
   return `<tr draggable="true" data-id="${g.id}" data-status="${status}" data-catkey="${catKey||''}"
     onDragStart="onRowDragStart(event,${g.id})"
     onDragEnd="onRowDragEnd(event)"
@@ -7031,6 +7126,7 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
     <td style="white-space:nowrap;padding:4px 6px 4px 2px;min-width:90px">
       <span style="display:inline-block;width:18px;text-align:center">${g.link?`<a href="${g.link}" target="_blank" style="color:#2a78d6;font-size:13px"><i class="ti ti-external-link"></i></a>`:''}</span>
       <span style="display:inline-block;width:18px;text-align:center">${g.obs?`<span title="${g.obs}" style="color:#e8e7e2;font-size:12px;cursor:default"><i class="ti ti-message-circle"></i></span>`:''}</span>
+      ${converterBtn}
       <button class="edit-btn" style="opacity:1;padding:2px 4px" onclick="openEdit(${g.id})"><i class="ti ti-pencil"></i></button>
       <button class="del-btn" style="opacity:1;padding:2px 4px" onclick="${delOnclick}"><i class="ti ti-trash"></i></button>
     </td>
