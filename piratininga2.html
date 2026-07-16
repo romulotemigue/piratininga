@@ -208,7 +208,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 12JUL26 (versão 52)</div>
+          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 12JUL26 (versão 53)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -837,13 +837,13 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
 </div>
 
 <div class="modal-overlay" id="material-lancamento-overlay" onclick="if(event.target===this) closeMaterialModal()">
-  <div class="modal" style="max-width:720px;width:94vw;max-height:90vh;display:flex;flex-direction:column">
+  <div class="modal" style="max-width:1040px;width:96vw;max-height:88vh;display:flex;flex-direction:column">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
       <h3 style="margin:0;font-size:16px">🧱 Lançar material</h3>
       <button onclick="closeMaterialModal()" style="background:none;border:none;color:#ccc;font-size:20px;cursor:pointer">×</button>
     </div>
     <div style="overflow-y:auto;flex:1;padding-right:4px">
-      <div class="modal-row" style="margin-bottom:14px">
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:14px;margin-bottom:14px">
         <div class="form-group" style="margin-bottom:0">
           <label>Descrição</label>
           <input type="text" id="mat-l-desc" placeholder="Ex: Colchão e Baú">
@@ -852,18 +852,6 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
           <label>Valor (R$)</label>
           <input type="text" id="mat-l-valor" placeholder="0,00" inputmode="numeric" oninput="maskMoney(this)">
         </div>
-      </div>
-      <div class="modal-row" style="margin-bottom:14px">
-        <div class="form-group" style="margin-bottom:0">
-          <label>Marca</label>
-          <input type="text" id="mat-l-marca" placeholder="Ex: Ikea">
-        </div>
-        <div class="form-group" style="margin-bottom:0">
-          <label>Loja / Fornecedor</label>
-          <input type="text" id="mat-l-loja" placeholder="Ex: Leroy Merlin">
-        </div>
-      </div>
-      <div class="modal-row" style="margin-bottom:14px">
         <div class="form-group" style="margin-bottom:0">
           <label>Data da compra</label>
           <input type="date" id="mat-l-data">
@@ -877,23 +865,15 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
           </select>
         </div>
       </div>
-      <div class="modal-row" style="margin-bottom:6px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;margin-bottom:14px">
         <div class="form-group" style="margin-bottom:0">
-          <label>Previsão de entrega (opcional)</label>
-          <input type="date" id="mat-l-entrega" onchange="updateMatPrazoPreview()">
+          <label>Marca</label>
+          <input type="text" id="mat-l-marca" placeholder="Ex: Ikea">
         </div>
         <div class="form-group" style="margin-bottom:0">
-          <label>Prazo estimado (dias corridos)</label>
-          <input type="text" inputmode="numeric" id="mat-l-prazo" placeholder="Ex: 15" oninput="this.value=this.value.replace(/[^0-9]/g,'');updateMatPrazoPreview()">
+          <label>Loja / Fornecedor</label>
+          <input type="text" id="mat-l-loja" placeholder="Ex: Leroy Merlin">
         </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#ccc;cursor:pointer">
-          <input type="checkbox" id="mat-l-entregue" style="width:auto"> Já foi entregue
-        </label>
-        <div id="mat-l-prazo-preview" style="display:none;font-size:11px;color:#ccc"></div>
-      </div>
-      <div class="modal-row" style="margin-bottom:14px">
         <div class="form-group" style="margin-bottom:0">
           <label>Forma de pagamento</label>
           <input type="text" id="mat-l-pagamento" placeholder="Ex: Cartão 3x">
@@ -903,7 +883,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
           <input type="text" id="mat-l-garantia" placeholder="Ex: 12 meses">
         </div>
       </div>
-      <div class="modal-row" style="margin-bottom:14px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
         <div class="form-group" style="margin-bottom:0">
           <label>Modelo/código do produto</label>
           <input type="text" id="mat-l-modelo" placeholder="Ex: mod. X200">
@@ -913,13 +893,27 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
           <input type="text" id="mat-l-contato" placeholder="Nome / telefone">
         </div>
       </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr auto 1fr;gap:14px;align-items:end;margin-bottom:14px">
+        <div class="form-group" style="margin-bottom:0">
+          <label>Previsão de entrega (opcional)</label>
+          <input type="date" id="mat-l-entrega" onchange="updateMatPrazoPreview()">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Prazo estimado (dias corridos)</label>
+          <input type="text" inputmode="numeric" id="mat-l-prazo" placeholder="Ex: 15" oninput="this.value=this.value.replace(/[^0-9]/g,'');updateMatPrazoPreview()">
+        </div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#ccc;cursor:pointer;white-space:nowrap;padding-bottom:9px">
+          <input type="checkbox" id="mat-l-entregue" style="width:auto"> Já foi entregue
+        </label>
+        <div id="mat-l-prazo-preview" style="display:none;font-size:11px;color:#ccc;padding-bottom:9px"></div>
+      </div>
       <div class="form-group" style="margin-bottom:14px">
         <label>Observação</label>
         <textarea id="mat-l-obs" rows="2" placeholder="Alguma nota importante..." style="width:100%;box-sizing:border-box;background:#111;border:1px solid #333;border-radius:8px;padding:10px 12px;color:#e8e7e2;font-size:13px;resize:vertical"></textarea>
       </div>
       <div style="background:#111;border:1px solid #333;border-radius:8px;padding:12px;margin-bottom:14px">
         <div style="font-size:10px;color:#ccc;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Onde isso entra</div>
-        <div class="modal-row" style="margin-bottom:10px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
           <div class="form-group" style="margin-bottom:0">
             <label>Etapa</label>
             <select id="mat-l-etapa" onchange="onMatEtapaChange()"></select>
@@ -928,17 +922,17 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
             <label id="mat-l-subetapa-label">Sub-etapa</label>
             <select id="mat-l-subetapa" onchange="onMatSubEtapaChange()"></select>
           </div>
-        </div>
-        <div class="form-group" id="mat-l-subsub-group" style="margin-bottom:0;display:none">
-          <label>Sub da sub-etapa</label>
-          <select id="mat-l-subsub"></select>
+          <div class="form-group" id="mat-l-subsub-group" style="margin-bottom:0;display:none">
+            <label>Sub da sub-etapa</label>
+            <select id="mat-l-subsub"></select>
+          </div>
         </div>
       </div>
-      <div class="form-group" style="margin-bottom:14px">
-        <label>Link do site onde comprou</label>
-        <input type="text" id="mat-l-link" placeholder="https://...">
-      </div>
-      <div class="modal-row" style="margin-bottom:8px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:8px">
+        <div class="form-group" style="margin-bottom:0">
+          <label>Link do site onde comprou</label>
+          <input type="text" id="mat-l-link" placeholder="https://...">
+        </div>
         <div class="form-group" style="margin-bottom:0">
           <label>📄 Nota fiscal</label>
           <input type="file" id="mat-l-nf">
@@ -946,6 +940,12 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div class="form-group" style="margin-bottom:0">
           <label>💳 Comprovante de pagamento</label>
           <input type="file" id="mat-l-comprovante">
+        </div>
+      </div>
+    </div>
+    <button class="btn-confirm" id="mat-l-btn-confirm" onclick="confirmMaterialLancamento()" style="margin-top:10px">Confirmar lançamento</button>
+  </div>
+</div>
         </div>
       </div>
     </div>
