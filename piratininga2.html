@@ -208,7 +208,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 12JUL26 (versão 57)</div>
+          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 12JUL26 (versão 58)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -1034,6 +1034,54 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       </div>
     </div>
     <div id="emp-prazo-preview" style="display:none;font-size:11px;color:#e8e7e2;margin:-8px 0 14px"></div>
+    <div id="emp-extra-info-group" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
+        <div class="form-group" style="margin-bottom:0">
+          <label>Marca</label>
+          <input type="text" id="emp-marca" placeholder="Ex: Ikea">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Loja / Fornecedor</label>
+          <input type="text" id="emp-loja" placeholder="Ex: Leroy Merlin">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Forma de pagamento</label>
+          <input type="text" id="emp-pagamento" placeholder="Ex: Cartão 3x">
+        </div>
+      </div>
+      <div class="modal-row" style="margin-bottom:14px">
+        <div class="form-group" style="margin-bottom:0">
+          <label>Modelo/código do produto</label>
+          <input type="text" id="emp-modelo" placeholder="Ex: mod. X200">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>WhatsApp da loja/vendedor</label>
+          <div style="display:flex;gap:6px">
+            <input type="text" id="emp-contato" placeholder="Ex: (11) 91234-5678" style="flex:1">
+            <button type="button" onclick="abrirWhatsAppEmp()" title="Abrir no WhatsApp" style="background:#0d1a10;border:1px solid #2e5a34;color:#4caf50;border-radius:8px;padding:0 12px;cursor:pointer;font-size:16px;flex-shrink:0"><i class="ti ti-brand-whatsapp"></i></button>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#ccc;cursor:pointer">
+          <input type="checkbox" id="emp-entregue" style="width:auto"> Já foi entregue
+        </label>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
+        <div class="form-group" style="margin-bottom:0">
+          <label>Link do site onde comprou</label>
+          <input type="text" id="emp-link" placeholder="https://...">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>📄 Nota fiscal</label>
+          <input type="file" id="emp-nf">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>💳 Comprovante de pagamento</label>
+          <input type="file" id="emp-comprovante">
+        </div>
+      </div>
+    </div>
     <div style="margin:-6px 0 14px">
       <button type="button" id="emp-materiais-btn" onclick="openMateriaisModal('pending')" style="background:#161616;border:1px solid #3a3a3a;color:#bbb;border-radius:6px;padding:7px 14px;font-size:12px;cursor:pointer">🧱 Adicionar material</button>
     </div>
@@ -2906,6 +2954,13 @@ function onMatSubEtapaChange(presetSub){
   subsubEl.innerHTML = subs.map(sk=>`<option value="${sk}">${SUBCATS['obra-bruta'][sk].label}</option>`).join('');
   if(presetSub && subs.includes(presetSub)) subsubEl.value = presetSub;
 }
+function abrirWhatsAppEmp(){
+  const raw = document.getElementById('emp-contato').value.trim();
+  let digitos = raw.replace(/\D/g,'');
+  if(!digitos){ alert('Digite o número de WhatsApp primeiro.'); return; }
+  if(digitos.length<=11) digitos = '55'+digitos;
+  window.open('https://wa.me/'+digitos, '_blank');
+}
 function abrirWhatsAppMaterial(){
   const raw = document.getElementById('mat-l-contato').value.trim();
   let digitos = raw.replace(/\D/g,'');
@@ -3418,6 +3473,16 @@ function openObraEmpreitadaModal(material, presetSub, isUnico){
   document.getElementById('emp-data-inicio').value = '';
   document.getElementById('emp-prazo-dias').value = '';
   document.getElementById('emp-prazo-preview').style.display = 'none';
+  document.getElementById('emp-marca').value = '';
+  document.getElementById('emp-loja').value = '';
+  document.getElementById('emp-pagamento').value = '';
+  document.getElementById('emp-modelo').value = '';
+  document.getElementById('emp-contato').value = '';
+  document.getElementById('emp-entregue').checked = false;
+  document.getElementById('emp-link').value = '';
+  document.getElementById('emp-nf').value = '';
+  document.getElementById('emp-comprovante').value = '';
+  document.getElementById('emp-extra-info-group').style.display = isUnico ? '' : 'none';
   pendingMateriais = [];
   updateMateriaisBtnLabel();
   document.getElementById('emp-btn-confirm').textContent = isUnico ? 'Confirmar lançamento' : 'Confirmar pacote';
@@ -3472,6 +3537,17 @@ function openObraEmpreitadaModalForEdit(g){
   document.getElementById('emp-data-inicio').value = meta.dataInicio || '';
   document.getElementById('emp-prazo-dias').value = meta.prazoDias || '';
   updateEmpPrazoPreview();
+  document.getElementById('emp-extra-info-group').style.display = empreitadaIsUnico ? '' : 'none';
+  const parsedEmp = parseMaterialObs(g.obs);
+  document.getElementById('emp-marca').value = parsedEmp.marca;
+  document.getElementById('emp-loja').value = parsedEmp.loja;
+  document.getElementById('emp-pagamento').value = parsedEmp.pagamento;
+  document.getElementById('emp-modelo').value = parsedEmp.modelo;
+  document.getElementById('emp-contato').value = parsedEmp.contato;
+  document.getElementById('emp-entregue').checked = parsedEmp.entregue;
+  document.getElementById('emp-link').value = g.link || '';
+  document.getElementById('emp-nf').value = '';
+  document.getElementById('emp-comprovante').value = '';
   pendingMateriais = getMateriais(g).map(m=>({...m}));
   updateMateriaisBtnLabel();
   renderEmpreitadaServiceGrid();
@@ -4083,6 +4159,23 @@ async function confirmEmpreitada(){
   btn.disabled = true; btn.textContent = 'Salvando...';
   const dataInicio = document.getElementById('emp-data-inicio').value;
   const prazoDias = document.getElementById('emp-prazo-dias').value;
+
+  const linhas = [];
+  const marca = document.getElementById('emp-marca').value.trim();
+  const loja = document.getElementById('emp-loja').value.trim();
+  const pagamento = document.getElementById('emp-pagamento').value.trim();
+  const modelo = document.getElementById('emp-modelo').value.trim();
+  const contato = document.getElementById('emp-contato').value.trim();
+  const entregue = document.getElementById('emp-entregue').checked;
+  if(marca) linhas.push('Marca: '+marca);
+  if(loja) linhas.push('Loja: '+loja);
+  if(pagamento) linhas.push('Pagamento: '+pagamento);
+  if(modelo) linhas.push('Modelo/código: '+modelo);
+  if(contato) linhas.push('WhatsApp: '+contato);
+  if(entregue) linhas.push('Entregue: sim');
+  const obs = linhas.join(' · ');
+  const link = document.getElementById('emp-link').value.trim();
+
   const row = {
     descricao: desc, categoria:'obra-bruta', subcategoria: primeiro.sub, data, valor: val, status,
     ambiente: primeiro.ambiente,
@@ -4092,14 +4185,36 @@ async function confirmEmpreitada(){
     prazo_dias: prazoDias ? parseInt(prazoDias,10) : null,
     materiais: pendingMateriais.length ? JSON.stringify(pendingMateriais) : null
   };
+  if(empreitadaIsUnico){ row.obs = obs; row.link = link; }
   try{
+    let gastoId;
     if(isEditing){
       const res = await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${empreitadaEditingId}`,{
         method:'PATCH', headers:{...HEADERS,'Prefer':'return=representation'}, body:JSON.stringify(row)
       });
       if(!res.ok) throw new Error(await res.text());
+      gastoId = empreitadaEditingId;
     } else {
-      await sbInsert({...row, obs:'', orcamento:0, quantidade:1, link:''});
+      const inserted = await sbInsert({...row, orcamento:0, quantidade:1});
+      gastoId = (Array.isArray(inserted) ? inserted[0] : inserted).id;
+    }
+    const nfFile = document.getElementById('emp-nf').files[0];
+    const compFile = document.getElementById('emp-comprovante').files[0];
+    const arquivos = [nfFile,compFile].filter(Boolean);
+    if(arquivos.length){
+      const urls = await uploadAnexos(gastoId, arquivos);
+      const rotulos = [];
+      if(nfFile && urls[0]) rotulos.push(`📄 Nota fiscal: [${urls[0].nome}](${urls[0].url})`);
+      if(compFile){
+        const compUrl = urls.find(u=>u.nome===compFile.name);
+        if(compUrl) rotulos.push(`💳 Comprovante: [${compUrl.nome}](${compUrl.url})`);
+      }
+      if(rotulos.length){
+        const novoObs = obs ? obs+' · '+rotulos.join(' · ') : rotulos.join(' · ');
+        await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${gastoId}`,{
+          method:'PATCH', headers:{...HEADERS}, body: JSON.stringify({obs: novoObs, link: urls[0]?.url || link})
+        });
+      }
     }
     closeObraEmpreitadaModal();
     toast(isEditing ? 'Pacote atualizado com sucesso!' : (empreitadaIsUnico ? 'Lançamento salvo com sucesso!' : 'Pacote salvo com sucesso!'));
