@@ -177,6 +177,13 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
 .modal-close{background:none;border:none;color:#e8e7e2;font-size:18px;cursor:pointer;padding:4px}
 .modal-close:hover{color:#e8e7e2}
 .modal .form-group{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.pay-pill{background:#111;border:1px solid #3a3a3a;color:#ccc;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;transition:all .15s}
+.pay-pill:hover{border-color:#e8b544}
+.pay-pill.active{background:#2a2000;border-color:#e8b544;color:#e8b544;font-weight:600}
+.dropzone{border:1.5px dashed #444;border-radius:8px;padding:14px 10px;text-align:center;cursor:pointer;font-size:11px;color:#ccc;transition:border-color .15s,background .15s}
+.dropzone:hover{border-color:#666}
+.dropzone.drag-over{border-color:#e8b544;background:rgba(232,181,68,.08)}
+.dropzone.has-file{border-style:solid;border-color:#4caf50;color:#4caf50}
 .modal .form-group label{font-size:10px;color:#e8e7e2;text-transform:uppercase;letter-spacing:.06em}
 .modal .form-group input,
 .modal .form-group select{height:38px;background:#111;border:1px solid #333;border-radius:7px;padding:0 12px;font-size:13px;color:#e8e7e2}
@@ -208,7 +215,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 12JUL26 (versão 58)</div>
+          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 12JUL26 (versão 59)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -876,7 +883,15 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         </div>
         <div class="form-group" style="margin-bottom:0">
           <label>Forma de pagamento</label>
-          <input type="text" id="mat-l-pagamento" placeholder="Ex: Cartão 3x">
+          <div id="mat-l-pagamento-pills" style="display:flex;gap:6px;flex-wrap:wrap">
+            <button type="button" class="pay-pill" data-val="À vista" onclick="selectPayPill(this,'mat-l')">À vista</button>
+            <button type="button" class="pay-pill" data-val="Pix" onclick="selectPayPill(this,'mat-l')">Pix</button>
+            <button type="button" class="pay-pill" data-val="Débito" onclick="selectPayPill(this,'mat-l')">Débito</button>
+            <button type="button" class="pay-pill" data-val="Crédito" onclick="selectPayPill(this,'mat-l')">Crédito</button>
+            <button type="button" class="pay-pill" data-val="Boleto" onclick="selectPayPill(this,'mat-l')">Boleto</button>
+          </div>
+          <input type="text" id="mat-l-parcelas" placeholder="Quantas parcelas? (ex: 3)" style="display:none;margin-top:6px" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+          <input type="hidden" id="mat-l-pagamento">
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
@@ -938,11 +953,17 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         </div>
         <div class="form-group" style="margin-bottom:0">
           <label>📄 Nota fiscal</label>
-          <input type="file" id="mat-l-nf">
+          <div class="dropzone" id="dz-mat-l-nf" onclick="document.getElementById('mat-l-nf').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDropzoneFile(event,'mat-l-nf')">
+            <span id="dz-mat-l-nf-label">☁ arraste seu comprovante aqui ou clique para buscar</span>
+          </div>
+          <input type="file" id="mat-l-nf" style="display:none" onchange="updateDropzoneLabel('mat-l-nf')">
         </div>
         <div class="form-group" style="margin-bottom:0">
           <label>💳 Comprovante de pagamento</label>
-          <input type="file" id="mat-l-comprovante">
+          <div class="dropzone" id="dz-mat-l-comprovante" onclick="document.getElementById('mat-l-comprovante').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDropzoneFile(event,'mat-l-comprovante')">
+            <span id="dz-mat-l-comprovante-label">☁ arraste seu comprovante aqui ou clique para buscar</span>
+          </div>
+          <input type="file" id="mat-l-comprovante" style="display:none" onchange="updateDropzoneLabel('mat-l-comprovante')">
         </div>
       </div>
     </div>
@@ -1046,7 +1067,15 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         </div>
         <div class="form-group" style="margin-bottom:0">
           <label>Forma de pagamento</label>
-          <input type="text" id="emp-pagamento" placeholder="Ex: Cartão 3x">
+          <div id="emp-pagamento-pills" style="display:flex;gap:6px;flex-wrap:wrap">
+            <button type="button" class="pay-pill" data-val="À vista" onclick="selectPayPill(this,'emp')">À vista</button>
+            <button type="button" class="pay-pill" data-val="Pix" onclick="selectPayPill(this,'emp')">Pix</button>
+            <button type="button" class="pay-pill" data-val="Débito" onclick="selectPayPill(this,'emp')">Débito</button>
+            <button type="button" class="pay-pill" data-val="Crédito" onclick="selectPayPill(this,'emp')">Crédito</button>
+            <button type="button" class="pay-pill" data-val="Boleto" onclick="selectPayPill(this,'emp')">Boleto</button>
+          </div>
+          <input type="text" id="emp-parcelas" placeholder="Quantas parcelas? (ex: 3)" style="display:none;margin-top:6px" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+          <input type="hidden" id="emp-pagamento">
         </div>
       </div>
       <div class="modal-row" style="margin-bottom:14px">
@@ -1074,11 +1103,17 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         </div>
         <div class="form-group" style="margin-bottom:0">
           <label>📄 Nota fiscal</label>
-          <input type="file" id="emp-nf">
+          <div class="dropzone" id="dz-emp-nf" onclick="document.getElementById('emp-nf').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDropzoneFile(event,'emp-nf')">
+            <span id="dz-emp-nf-label">☁ arraste seu comprovante aqui ou clique para buscar</span>
+          </div>
+          <input type="file" id="emp-nf" style="display:none" onchange="updateDropzoneLabel('emp-nf')">
         </div>
         <div class="form-group" style="margin-bottom:0">
           <label>💳 Comprovante de pagamento</label>
-          <input type="file" id="emp-comprovante">
+          <div class="dropzone" id="dz-emp-comprovante" onclick="document.getElementById('emp-comprovante').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDropzoneFile(event,'emp-comprovante')">
+            <span id="dz-emp-comprovante-label">☁ arraste seu comprovante aqui ou clique para buscar</span>
+          </div>
+          <input type="file" id="emp-comprovante" style="display:none" onchange="updateDropzoneLabel('emp-comprovante')">
         </div>
       </div>
     </div>
@@ -2811,13 +2846,13 @@ function openMaterialModal(presetCat, presetFase, presetSub){
   document.getElementById('mat-l-prazo').value = '';
   document.getElementById('mat-l-entregue').checked = false;
   document.getElementById('mat-l-prazo-preview').style.display = 'none';
-  document.getElementById('mat-l-pagamento').value = '';
+  setPayPillValue('mat-l', '');
   document.getElementById('mat-l-modelo').value = '';
   document.getElementById('mat-l-contato').value = '';
   document.getElementById('mat-l-obs').value = '';
   document.getElementById('mat-l-link').value = '';
-  document.getElementById('mat-l-nf').value = '';
-  document.getElementById('mat-l-comprovante').value = '';
+  resetDropzone('mat-l-nf');
+  resetDropzone('mat-l-comprovante');
   matLancamentoPendingAnexos = {nf:null, comprovante:null};
 
   const etapaSel = document.getElementById('mat-l-etapa');
@@ -2870,13 +2905,13 @@ function openMaterialModalForEdit(g){
   document.getElementById('mat-l-entrega').value = meta.dataInicio || '';
   document.getElementById('mat-l-prazo').value = meta.prazoDias || '';
   document.getElementById('mat-l-entregue').checked = parsed.entregue;
-  document.getElementById('mat-l-pagamento').value = parsed.pagamento;
+  setPayPillValue('mat-l', parsed.pagamento);
   document.getElementById('mat-l-modelo').value = parsed.modelo;
   document.getElementById('mat-l-contato').value = parsed.contato;
   document.getElementById('mat-l-obs').value = parsed.livre;
   document.getElementById('mat-l-link').value = g.link || '';
-  document.getElementById('mat-l-nf').value = '';
-  document.getElementById('mat-l-comprovante').value = '';
+  resetDropzone('mat-l-nf');
+  resetDropzone('mat-l-comprovante');
   updateMatPrazoPreview();
 
   const etapaSel = document.getElementById('mat-l-etapa');
@@ -2954,6 +2989,75 @@ function onMatSubEtapaChange(presetSub){
   subsubEl.innerHTML = subs.map(sk=>`<option value="${sk}">${SUBCATS['obra-bruta'][sk].label}</option>`).join('');
   if(presetSub && subs.includes(presetSub)) subsubEl.value = presetSub;
 }
+// ── Pílulas de forma de pagamento (clicáveis, com parcelas se for crédito) ──
+function selectPayPill(btn, prefix){
+  const container = document.getElementById(prefix+'-pagamento-pills');
+  const jaEstavaAtivo = btn.classList.contains('active');
+  container.querySelectorAll('.pay-pill').forEach(b=>b.classList.remove('active'));
+  const parcelasEl = document.getElementById(prefix+'-parcelas');
+  if(jaEstavaAtivo){
+    // clicar de novo na mesma desmarca
+    document.getElementById(prefix+'-pagamento').value = '';
+    parcelasEl.style.display = 'none';
+    return;
+  }
+  btn.classList.add('active');
+  document.getElementById(prefix+'-pagamento').value = btn.dataset.val;
+  parcelasEl.style.display = btn.dataset.val==='Crédito' ? '' : 'none';
+}
+function setPayPillValue(prefix, valorSalvo){
+  const container = document.getElementById(prefix+'-pagamento-pills');
+  container.querySelectorAll('.pay-pill').forEach(b=>b.classList.remove('active'));
+  document.getElementById(prefix+'-pagamento').value = valorSalvo || '';
+  document.getElementById(prefix+'-parcelas').style.display = 'none';
+  if(!valorSalvo) return;
+  const match = [...container.querySelectorAll('.pay-pill')].find(b=>valorSalvo.startsWith(b.dataset.val));
+  if(match){
+    match.classList.add('active');
+    if(match.dataset.val==='Crédito'){
+      document.getElementById(prefix+'-parcelas').style.display = '';
+      const numeros = valorSalvo.replace(/\D/g,'');
+      if(numeros) document.getElementById(prefix+'-parcelas').value = numeros;
+    }
+  }
+}
+function getPayPillFinalValue(prefix){
+  const base = document.getElementById(prefix+'-pagamento').value;
+  if(!base) return '';
+  if(base==='Crédito'){
+    const parcelas = document.getElementById(prefix+'-parcelas').value.trim();
+    return parcelas ? `Crédito ${parcelas}x` : 'Crédito';
+  }
+  return base;
+}
+
+// ── Área de arrastar-e-soltar pros anexos (nota fiscal / comprovante) ──
+function handleDropzoneFile(e, inputId){
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  const files = e.dataTransfer.files;
+  if(files && files.length){
+    document.getElementById(inputId).files = files;
+    updateDropzoneLabel(inputId);
+  }
+}
+function updateDropzoneLabel(inputId){
+  const input = document.getElementById(inputId);
+  const zone = document.getElementById('dz-'+inputId);
+  const labelEl = document.getElementById('dz-'+inputId+'-label');
+  if(input.files && input.files[0]){
+    labelEl.textContent = '📎 '+input.files[0].name;
+    zone.classList.add('has-file');
+  } else {
+    labelEl.textContent = '☁ arraste seu comprovante aqui ou clique para buscar';
+    zone.classList.remove('has-file');
+  }
+}
+function resetDropzone(inputId){
+  document.getElementById(inputId).value = '';
+  updateDropzoneLabel(inputId);
+}
+
 function abrirWhatsAppEmp(){
   const raw = document.getElementById('emp-contato').value.trim();
   let digitos = raw.replace(/\D/g,'');
@@ -2989,7 +3093,7 @@ async function confirmMaterialLancamento(){
   const linhas = [];
   const marca = document.getElementById('mat-l-marca').value.trim();
   const loja = document.getElementById('mat-l-loja').value.trim();
-  const pagamento = document.getElementById('mat-l-pagamento').value.trim();
+  const pagamento = getPayPillFinalValue('mat-l');
   const modelo = document.getElementById('mat-l-modelo').value.trim();
   const contato = document.getElementById('mat-l-contato').value.trim();
   const entregue = document.getElementById('mat-l-entregue').checked;
@@ -3475,13 +3579,13 @@ function openObraEmpreitadaModal(material, presetSub, isUnico){
   document.getElementById('emp-prazo-preview').style.display = 'none';
   document.getElementById('emp-marca').value = '';
   document.getElementById('emp-loja').value = '';
-  document.getElementById('emp-pagamento').value = '';
+  setPayPillValue('emp', '');
   document.getElementById('emp-modelo').value = '';
   document.getElementById('emp-contato').value = '';
   document.getElementById('emp-entregue').checked = false;
   document.getElementById('emp-link').value = '';
-  document.getElementById('emp-nf').value = '';
-  document.getElementById('emp-comprovante').value = '';
+  resetDropzone('emp-nf');
+  resetDropzone('emp-comprovante');
   document.getElementById('emp-extra-info-group').style.display = isUnico ? '' : 'none';
   pendingMateriais = [];
   updateMateriaisBtnLabel();
@@ -3541,13 +3645,13 @@ function openObraEmpreitadaModalForEdit(g){
   const parsedEmp = parseMaterialObs(g.obs);
   document.getElementById('emp-marca').value = parsedEmp.marca;
   document.getElementById('emp-loja').value = parsedEmp.loja;
-  document.getElementById('emp-pagamento').value = parsedEmp.pagamento;
+  setPayPillValue('emp', parsedEmp.pagamento);
   document.getElementById('emp-modelo').value = parsedEmp.modelo;
   document.getElementById('emp-contato').value = parsedEmp.contato;
   document.getElementById('emp-entregue').checked = parsedEmp.entregue;
   document.getElementById('emp-link').value = g.link || '';
-  document.getElementById('emp-nf').value = '';
-  document.getElementById('emp-comprovante').value = '';
+  resetDropzone('emp-nf');
+  resetDropzone('emp-comprovante');
   pendingMateriais = getMateriais(g).map(m=>({...m}));
   updateMateriaisBtnLabel();
   renderEmpreitadaServiceGrid();
@@ -4163,7 +4267,7 @@ async function confirmEmpreitada(){
   const linhas = [];
   const marca = document.getElementById('emp-marca').value.trim();
   const loja = document.getElementById('emp-loja').value.trim();
-  const pagamento = document.getElementById('emp-pagamento').value.trim();
+  const pagamento = getPayPillFinalValue('emp');
   const modelo = document.getElementById('emp-modelo').value.trim();
   const contato = document.getElementById('emp-contato').value.trim();
   const entregue = document.getElementById('emp-entregue').checked;
