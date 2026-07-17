@@ -215,7 +215,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 12JUL26 (versão 59)</div>
+          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 12JUL26 (versão 60)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -894,7 +894,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
           <input type="hidden" id="mat-l-pagamento">
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
         <div class="form-group" style="margin-bottom:0">
           <label>Modelo/código do produto</label>
           <input type="text" id="mat-l-modelo" placeholder="Ex: mod. X200">
@@ -904,6 +904,13 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
           <div style="display:flex;gap:6px">
             <input type="text" id="mat-l-contato" placeholder="Ex: (11) 91234-5678" style="flex:1">
             <button type="button" onclick="abrirWhatsAppMaterial()" title="Abrir no WhatsApp" style="background:#0d1a10;border:1px solid #2e5a34;color:#4caf50;border-radius:8px;padding:0 12px;cursor:pointer;font-size:16px;flex-shrink:0"><i class="ti ti-brand-whatsapp"></i></button>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Endereço da loja</label>
+          <div style="display:flex;gap:6px">
+            <input type="text" id="mat-l-endereco" placeholder="Ex: Av. Brasil, 123 - Santos/SP" style="flex:1">
+            <button type="button" onclick="abrirMapsMaterial()" title="Abrir no Google Maps" style="background:#0d1520;border:1px solid #2d5a8a;color:#42a5f5;border-radius:8px;padding:0 12px;cursor:pointer;font-size:16px;flex-shrink:0"><i class="ti ti-map-pin"></i></button>
           </div>
         </div>
       </div>
@@ -1078,7 +1085,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
           <input type="hidden" id="emp-pagamento">
         </div>
       </div>
-      <div class="modal-row" style="margin-bottom:14px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
         <div class="form-group" style="margin-bottom:0">
           <label>Modelo/código do produto</label>
           <input type="text" id="emp-modelo" placeholder="Ex: mod. X200">
@@ -1088,6 +1095,13 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
           <div style="display:flex;gap:6px">
             <input type="text" id="emp-contato" placeholder="Ex: (11) 91234-5678" style="flex:1">
             <button type="button" onclick="abrirWhatsAppEmp()" title="Abrir no WhatsApp" style="background:#0d1a10;border:1px solid #2e5a34;color:#4caf50;border-radius:8px;padding:0 12px;cursor:pointer;font-size:16px;flex-shrink:0"><i class="ti ti-brand-whatsapp"></i></button>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Endereço da loja</label>
+          <div style="display:flex;gap:6px">
+            <input type="text" id="emp-endereco" placeholder="Ex: Av. Brasil, 123 - Santos/SP" style="flex:1">
+            <button type="button" onclick="abrirMapsEmp()" title="Abrir no Google Maps" style="background:#0d1520;border:1px solid #2d5a8a;color:#42a5f5;border-radius:8px;padding:0 12px;cursor:pointer;font-size:16px;flex-shrink:0"><i class="ti ti-map-pin"></i></button>
           </div>
         </div>
       </div>
@@ -2849,6 +2863,7 @@ function openMaterialModal(presetCat, presetFase, presetSub){
   setPayPillValue('mat-l', '');
   document.getElementById('mat-l-modelo').value = '';
   document.getElementById('mat-l-contato').value = '';
+  document.getElementById('mat-l-endereco').value = '';
   document.getElementById('mat-l-obs').value = '';
   document.getElementById('mat-l-link').value = '';
   resetDropzone('mat-l-nf');
@@ -2870,7 +2885,7 @@ function closeMaterialModal(){
 // Extrai marca/loja/pagamento/garantia/modelo/contato/entregue de volta da
 // observação (foram salvos ali, separados por " · ", como "Marca: X")
 function parseMaterialObs(obs){
-  const result = {marca:'',loja:'',pagamento:'',garantia:'',modelo:'',contato:'',entregue:false,livre:''};
+  const result = {marca:'',loja:'',pagamento:'',garantia:'',modelo:'',contato:'',endereco:'',entregue:false,livre:''};
   if(!obs) return result;
   const partes = obs.split(' · ');
   const livre = [];
@@ -2884,6 +2899,7 @@ function parseMaterialObs(obs){
       else if(chave==='pagamento') result.pagamento=valor;
             else if(chave==='modelo/código'||chave==='cor/modelo') result.modelo=valor;
       else if(chave==='contato'||chave==='whatsapp') result.contato=valor;
+      else if(chave==='endereço'||chave==='endereco') result.endereco=valor;
       else if(chave==='entregue') result.entregue = valor.toLowerCase()==='sim';
       else livre.push(p);
     } else livre.push(p);
@@ -2908,6 +2924,7 @@ function openMaterialModalForEdit(g){
   setPayPillValue('mat-l', parsed.pagamento);
   document.getElementById('mat-l-modelo').value = parsed.modelo;
   document.getElementById('mat-l-contato').value = parsed.contato;
+  document.getElementById('mat-l-endereco').value = parsed.endereco;
   document.getElementById('mat-l-obs').value = parsed.livre;
   document.getElementById('mat-l-link').value = g.link || '';
   resetDropzone('mat-l-nf');
@@ -3065,6 +3082,16 @@ function abrirWhatsAppEmp(){
   if(digitos.length<=11) digitos = '55'+digitos;
   window.open('https://wa.me/'+digitos, '_blank');
 }
+function abrirMapsMaterial(){
+  const end = document.getElementById('mat-l-endereco').value.trim();
+  if(!end){ alert('Digite o endereço primeiro.'); return; }
+  window.open('https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(end), '_blank');
+}
+function abrirMapsEmp(){
+  const end = document.getElementById('emp-endereco').value.trim();
+  if(!end){ alert('Digite o endereço primeiro.'); return; }
+  window.open('https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(end), '_blank');
+}
 function abrirWhatsAppMaterial(){
   const raw = document.getElementById('mat-l-contato').value.trim();
   let digitos = raw.replace(/\D/g,'');
@@ -3096,12 +3123,14 @@ async function confirmMaterialLancamento(){
   const pagamento = getPayPillFinalValue('mat-l');
   const modelo = document.getElementById('mat-l-modelo').value.trim();
   const contato = document.getElementById('mat-l-contato').value.trim();
+  const endereco = document.getElementById('mat-l-endereco').value.trim();
   const entregue = document.getElementById('mat-l-entregue').checked;
   if(marca) linhas.push('Marca: '+marca);
   if(loja) linhas.push('Loja: '+loja);
   if(pagamento) linhas.push('Pagamento: '+pagamento);
   if(modelo) linhas.push('Modelo/código: '+modelo);
   if(contato) linhas.push('WhatsApp: '+contato);
+  if(endereco) linhas.push('Endereço: '+endereco);
   if(entregue) linhas.push('Entregue: sim');
   const obsLivre = document.getElementById('mat-l-obs').value.trim();
   if(obsLivre) linhas.push(obsLivre);
@@ -3582,6 +3611,7 @@ function openObraEmpreitadaModal(material, presetSub, isUnico){
   setPayPillValue('emp', '');
   document.getElementById('emp-modelo').value = '';
   document.getElementById('emp-contato').value = '';
+  document.getElementById('emp-endereco').value = '';
   document.getElementById('emp-entregue').checked = false;
   document.getElementById('emp-link').value = '';
   resetDropzone('emp-nf');
@@ -3593,7 +3623,7 @@ function openObraEmpreitadaModal(material, presetSub, isUnico){
   const valorLabelEl = document.getElementById('emp-valor-label');
   if(valorLabelEl) valorLabelEl.textContent = isUnico ? 'Valor do serviço (R$)' : 'Valor total do pacote (R$)';
   const descLabelEl = document.getElementById('emp-desc-label');
-  if(descLabelEl) descLabelEl.textContent = isUnico ? 'Descrição / Fornecedor' : 'Descrição / Empreiteiro';
+  if(descLabelEl) descLabelEl.textContent = isUnico ? 'Descrição' : 'Descrição / Empreiteiro';
   // Se veio de uma sub específica (ex: clicou "lançar" dentro de Piso Vinílico), mostra
   // só a fase dela de cara — menos poluído. Se veio do botão geral de Execução de Obra
   // (sem presetSub), mostra tudo de uma vez, como sempre.
@@ -3636,7 +3666,7 @@ function openObraEmpreitadaModalForEdit(g){
   document.getElementById('emp-status').value = g.status||'necessario';
   document.getElementById('emp-btn-confirm').textContent = 'Salvar alterações';
   document.getElementById('emp-valor-label').textContent = empreitadaIsUnico ? 'Valor do serviço (R$)' : 'Valor total do pacote (R$)';
-  document.getElementById('emp-desc-label').textContent = empreitadaIsUnico ? 'Descrição / Fornecedor' : 'Descrição / Empreiteiro';
+  document.getElementById('emp-desc-label').textContent = empreitadaIsUnico ? 'Descrição' : 'Descrição / Empreiteiro';
   const meta = getPacoteMeta(g);
   document.getElementById('emp-data-inicio').value = meta.dataInicio || '';
   document.getElementById('emp-prazo-dias').value = meta.prazoDias || '';
@@ -3648,6 +3678,7 @@ function openObraEmpreitadaModalForEdit(g){
   setPayPillValue('emp', parsedEmp.pagamento);
   document.getElementById('emp-modelo').value = parsedEmp.modelo;
   document.getElementById('emp-contato').value = parsedEmp.contato;
+  document.getElementById('emp-endereco').value = parsedEmp.endereco;
   document.getElementById('emp-entregue').checked = parsedEmp.entregue;
   document.getElementById('emp-link').value = g.link || '';
   resetDropzone('emp-nf');
@@ -4270,12 +4301,14 @@ async function confirmEmpreitada(){
   const pagamento = getPayPillFinalValue('emp');
   const modelo = document.getElementById('emp-modelo').value.trim();
   const contato = document.getElementById('emp-contato').value.trim();
+  const endereco = document.getElementById('emp-endereco').value.trim();
   const entregue = document.getElementById('emp-entregue').checked;
   if(marca) linhas.push('Marca: '+marca);
   if(loja) linhas.push('Loja: '+loja);
   if(pagamento) linhas.push('Pagamento: '+pagamento);
   if(modelo) linhas.push('Modelo/código: '+modelo);
   if(contato) linhas.push('WhatsApp: '+contato);
+  if(endereco) linhas.push('Endereço: '+endereco);
   if(entregue) linhas.push('Entregue: sim');
   const obs = linhas.join(' · ');
   const link = document.getElementById('emp-link').value.trim();
