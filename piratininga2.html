@@ -208,7 +208,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 12JUL26 (versão 55)</div>
+          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 12JUL26 (versão 56)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -7153,12 +7153,12 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
     </td>
     <td style="text-align:right;font-weight:500;font-size:11px;white-space:nowrap;padding:4px">${fmtShort(val)}</td>
     <td style="padding:4px 2px"><div class="qty-wrap"><button class="qty-btn" onclick="changeQty(${g.id},-1)">−</button><input class="qty-input" type="number" min="1" value="${g.quantidade||1}" onchange="setQty(${g.id},this)" onclick="event.stopPropagation()"><button class="qty-btn" onclick="changeQty(${g.id},1)">+</button></div></td>
-    <td style="white-space:nowrap;padding:4px 6px 4px 2px;min-width:90px">
-      <span style="display:inline-block;width:18px;text-align:center">${g.link?`<a href="${g.link}" target="_blank" style="color:#2a78d6;font-size:13px"><i class="ti ti-external-link"></i></a>`:''}</span>
-      <span style="display:inline-block;width:18px;text-align:center">${g.obs?`<span title="${g.obs}" style="color:#e8e7e2;font-size:12px;cursor:default"><i class="ti ti-message-circle"></i></span>`:''}</span>
+    <td width="112" style="white-space:nowrap;padding:4px 10px 4px 2px;width:112px;min-width:112px">
+      <span style="display:inline-block;width:16px;text-align:center">${g.link?`<a href="${g.link}" target="_blank" style="color:#2a78d6;font-size:12px"><i class="ti ti-external-link"></i></a>`:''}</span>
+      <span style="display:inline-block;width:16px;text-align:center">${g.obs?`<span title="${g.obs}" style="color:#e8e7e2;font-size:11px;cursor:default"><i class="ti ti-message-circle"></i></span>`:''}</span>
       ${converterBtn}
-      <button class="edit-btn" style="opacity:1;padding:2px 4px" onclick="openEdit(${g.id})"><i class="ti ti-pencil"></i></button>
-      <button class="del-btn" style="opacity:1;padding:2px 4px" onclick="${delOnclick}"><i class="ti ti-trash"></i></button>
+      <button class="edit-btn" style="opacity:1;padding:2px 3px" onclick="openEdit(${g.id})"><i class="ti ti-pencil"></i></button>
+      <button class="del-btn" style="opacity:1;padding:2px 3px" onclick="${delOnclick}"><i class="ti ti-trash"></i></button>
     </td>
   </tr>`;
 }
