@@ -208,7 +208,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 12JUL26 (versão 54)</div>
+          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 12JUL26 (versão 55)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -912,7 +912,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
       </div>
       <div style="background:#111;border:1px solid #333;border-radius:8px;padding:12px;margin-bottom:14px">
         <div style="font-size:10px;color:#ccc;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Onde isso entra</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px">
           <div class="form-group" style="margin-bottom:0">
             <label>Etapa</label>
             <select id="mat-l-etapa" onchange="onMatEtapaChange()"></select>
@@ -924,6 +924,10 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
           <div class="form-group" id="mat-l-subsub-group" style="margin-bottom:0;display:none">
             <label>Sub da sub-etapa</label>
             <select id="mat-l-subsub"></select>
+          </div>
+          <div class="form-group" id="mat-l-ambiente-group" style="margin-bottom:0;display:none">
+            <label>Ambiente (opcional)</label>
+            <select id="mat-l-ambiente" onchange="onMatAmbienteChange()"></select>
           </div>
         </div>
       </div>
@@ -2831,7 +2835,7 @@ function openMaterialModalForEdit(g){
   etapaSel.innerHTML = todasEtapasParaSelect().map(e=>`<option value="${e.key}">${e.label}</option>`).join('');
   etapaSel.value = g.categoria;
   const subEntry = g.categoria==='obra-bruta' ? SUBCATS['obra-bruta']?.[g.subcategoria] : null;
-  onMatEtapaChange(subEntry?.grupo, g.subcategoria);
+  onMatEtapaChange(subEntry?.grupo, g.subcategoria, g.ambiente);
   document.getElementById('mat-l-btn-confirm').textContent = 'Salvar alterações';
   document.getElementById('material-lancamento-overlay').classList.add('open');
 }
@@ -2852,23 +2856,45 @@ async function converterParaMaterial(id){
   }catch(e){ toast('Erro ao converter: '+e.message,'err'); }
 }
 
-function onMatEtapaChange(presetFase, presetSub){
+function onMatEtapaChange(presetFase, presetSub, presetAmbiente){
   const catKey = document.getElementById('mat-l-etapa').value;
   const isObra = catKey==='obra-bruta';
   const subEl = document.getElementById('mat-l-subetapa');
   const subsubGroup = document.getElementById('mat-l-subsub-group');
+  const ambienteGroup = document.getElementById('mat-l-ambiente-group');
   document.getElementById('mat-l-subetapa-label').textContent = isObra ? 'Sub-etapa (fase)' : 'Sub-etapa';
   if(isObra){
     const fases = [...new Set(Object.values(SUBCATS['obra-bruta']||{}).map(s=>s.grupo).filter(Boolean))];
     subEl.innerHTML = fases.map(f=>`<option value="${f}">${f}</option>`).join('');
     if(presetFase && fases.includes(presetFase)) subEl.value = presetFase;
     subsubGroup.style.display = '';
+    ambienteGroup.style.display = '';
+    populateMatAmbienteSelect(presetAmbiente);
     onMatSubEtapaChange(presetSub);
   } else {
     const subs = SUBCATS[catKey] || {};
     subEl.innerHTML = '<option value="">— nenhuma —</option>' + Object.keys(subs).map(sk=>`<option value="${sk}">${subs[sk].label}</option>`).join('');
     if(presetSub && subs[presetSub]) subEl.value = presetSub;
     subsubGroup.style.display = 'none';
+    ambienteGroup.style.display = 'none';
+  }
+}
+function populateMatAmbienteSelect(presetAmbiente){
+  const ambEl = document.getElementById('mat-l-ambiente');
+  const opcoes = getAmbienteOptions();
+  ambEl.innerHTML = '<option value="">— nenhum —</option>' + opcoes.map(a=>`<option value="${a}">${a}</option>`).join('') + '<option value="__novo__">+ novo ambiente...</option>';
+  if(presetAmbiente && opcoes.includes(presetAmbiente)) ambEl.value = presetAmbiente;
+}
+function onMatAmbienteChange(){
+  const ambEl = document.getElementById('mat-l-ambiente');
+  if(ambEl.value==='__novo__'){
+    const nome = prompt('Nome do novo ambiente:','');
+    if(nome && nome.trim()){
+      saveCustomAmbiente(nome.trim());
+      populateMatAmbienteSelect(nome.trim());
+    } else {
+      ambEl.value = '';
+    }
   }
 }
 function onMatSubEtapaChange(presetSub){
@@ -2926,12 +2952,15 @@ async function confirmMaterialLancamento(){
   const isEditing = !!materialEditingId;
   btn.disabled = true; btn.textContent = 'Salvando...';
   try{
+    const ambienteEl = document.getElementById('mat-l-ambiente');
+    const ambienteVal = (isObra && ambienteEl.value && ambienteEl.value!=='__novo__') ? ambienteEl.value : '';
     const row = {
       descricao: desc, categoria: catKey, subcategoria: subKey||'', valor: val, quantidade:1,
       status: document.getElementById('mat-l-status').value,
       data: document.getElementById('mat-l-data').value,
       obs, link: document.getElementById('mat-l-link').value.trim(),
       tipo_contratacao: 'material',
+      ambiente: ambienteVal,
       data_inicio: entregue ? null : (document.getElementById('mat-l-entrega').value || null),
       prazo_dias: entregue ? null : (document.getElementById('mat-l-prazo').value ? parseInt(document.getElementById('mat-l-prazo').value,10) : null)
     };
