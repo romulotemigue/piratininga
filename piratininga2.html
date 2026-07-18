@@ -4,10 +4,20 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Piratininga — Controle de Gastos</title>
+<script>
+// Aplica o tema salvo (claro/escuro) o quanto antes, antes da página desenhar,
+// pra não dar aquele "flash" do tema errado por uma fração de segundo.
+document.documentElement.setAttribute('data-theme', localStorage.getItem('pirati_theme')||'dark');
+</script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
+/* Tema claro: inverte o brilho mas devolve a matiz original (hue-rotate 180°
+   depois do invert cancela a rotação de matiz que o invert sozinho causa),
+   então verde continua verde, dourado continua dourado etc. — só ficam claros
+   em vez de escuros. Resultado tende a um branco-gelo, não um branco puro. */
+html[data-theme="light"]{filter:invert(1) hue-rotate(180deg)}
 .auth-screen{position:fixed;inset:0;background:#0f0f0f;z-index:9999;display:flex;align-items:center;justify-content:center}
 .auth-box{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:14px;padding:2rem;width:340px;text-align:center}
 .auth-logo{font-size:14px;font-weight:600;color:#e8e7e2;margin-bottom:4px}
@@ -178,6 +188,9 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
 .modal-close:hover{color:#e8e7e2}
 .modal .form-group{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
 .pay-pill{background:#111;border:1px solid #3a3a3a;color:#ccc;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;transition:all .15s}
+.col-quick-add{width:22px;height:22px;border-radius:50%;background:#2e7d32;border:none;color:#fff;font-size:15px;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:transform .15s,background .15s;flex-shrink:0;padding:0}
+.col-quick-add:hover{background:#43a047;transform:scale(1.1)}
+.col-quick-add-lg{width:44px;height:44px;font-size:26px}
 .mat-amb-pill{background:#111;border:1px solid #3a3a3a;color:#999;border-radius:14px;padding:3px 10px;font-size:10.5px;cursor:pointer;transition:all .15s}
 .mat-amb-pill:hover{border-color:#666}
 .mat-amb-pill.active{background:#0d1520;border-color:#42a5f5;color:#8bc9ff;font-weight:600}
@@ -230,9 +243,14 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 18JUL26 (versão 71)</div>
+          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 18JUL26 (versão 72)</div>
         </div>
         <div style="display:flex;gap:4px">
+          <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
+            style="background:none;border:1px solid #2a2a2a;border-radius:5px;color:#e8e7e2;cursor:pointer;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .15s"
+            onmouseover="this.style.borderColor='#555'" onmouseout="this.style.borderColor='#2a2a2a'">
+            <i class="ti ti-sun"></i>
+          </button>
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
             style="background:none;border:1px solid #2a2a2a;border-radius:5px;color:#e8e7e2;cursor:pointer;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .15s"
             onmouseover="if(!this.disabled)this.style.color='#e8e7e2';if(!this.disabled)this.style.borderColor='#555'"
@@ -2999,7 +3017,8 @@ function openMaterialModal(presetCat, presetFase, presetSub){
   document.getElementById('mat-l-marca').value = '';
   document.getElementById('mat-l-loja').value = '';
   document.getElementById('mat-l-data').value = new Date().toISOString().slice(0,10);
-  document.getElementById('mat-l-status').value = 'necessario';
+  document.getElementById('mat-l-status').value = pendingStatusPreset || 'necessario';
+  pendingStatusPreset = null;
   document.getElementById('mat-l-entrega').value = '';
   document.getElementById('mat-l-prazo').value = '';
   document.getElementById('mat-l-entregue').checked = false;
@@ -3555,6 +3574,40 @@ function applyM2(){
 
 // ── TRIAGEM: pacote de empreitada x serviço único ──────────────────
 let pendingTipoContratacao = null; // usado quando vai pro formulário principal (serviço único)
+let pendingStatusPreset = null; // status (pago/necessario/apagar) marcado pelo botão + de uma coluna — cada modal final lê isso e limpa em seguida
+
+// ── Tema claro/escuro ──────────────────────────────────────────
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('pirati_theme', theme);
+  const btn = document.getElementById('theme-toggle-btn');
+  if(btn) btn.innerHTML = theme==='light' ? '<i class="ti ti-moon"></i>' : '<i class="ti ti-sun"></i>';
+}
+function toggleTheme(){
+  const atual = document.documentElement.getAttribute('data-theme') || 'dark';
+  applyTheme(atual==='light' ? 'dark' : 'light');
+}
+// O <head> já aplicou o tema salvo antes da página desenhar (evita flash);
+// aqui só sincroniza o ícone do botão com o que já está de fato aplicado.
+applyTheme(document.documentElement.getAttribute('data-theme') || 'dark');
+
+// Clique no + de uma coluna (Pagos/Necessários/Dispensáveis) dentro de uma etapa/sub —
+// abre o mesmo fluxo de lançamento que o botão "+ lançar em X" de cada página já usa,
+// só que já marcando o status certo de acordo com a coluna clicada.
+function quickAddFromCol(catKeyComposite, status){
+  pendingStatusPreset = status;
+  const parts = (catKeyComposite||'').split('__');
+  const realCat = parts[0];
+  const subKey = parts[1];
+  if(realCat==='obra-bruta'){
+    if(subKey && !subKey.includes(':')) openObraTriagemModal(subKey);
+    else openObraTriagemModal();
+  } else if(subKey && !subKey.includes(':')){
+    openModal(realCat, subKey);
+  } else {
+    openModal(realCat);
+  }
+}
 let obraTriagemPresetSub = null; // guarda qual item foi clicado, se veio de um item específico
 
 // Fases onde faz sentido lançar "apenas o item, sem mão de obra" — comprar uma
@@ -3812,7 +3865,8 @@ function openObraEmpreitadaModal(material, presetSub, isUnico){
   document.getElementById('emp-desc').value = '';
   document.getElementById('emp-valor').value = '';
   document.getElementById('emp-data').value = new Date().toISOString().slice(0,10);
-  document.getElementById('emp-status').value = 'necessario';
+  document.getElementById('emp-status').value = pendingStatusPreset || 'necessario';
+  pendingStatusPreset = null;
   document.getElementById('emp-data-inicio').value = '';
   document.getElementById('emp-prazo-dias').value = '';
   document.getElementById('emp-prazo-preview').style.display = 'none';
@@ -4706,8 +4760,9 @@ function openModal(cat, subcat){
       } else if(curCat==='compra-imovel'){
         statusEl.innerHTML = '<option value="pago">Pago</option><option value="necessario">A pagar</option>';
       } else {
-        statusEl.innerHTML = '<option value="pago">Pago</option><option value="necessario">Necessário</option><option value="apagar">Dispensável</option>';
+        statusEl.innerHTML = `<option value="pago">${getColLabel('pago')}</option><option value="necessario">${getColLabel('necessario')}</option><option value="apagar">${getColLabel('apagar')}</option>`;
       }
+      if(pendingStatusPreset){ statusEl.value = pendingStatusPreset; pendingStatusPreset = null; }
     }
   }, 0);
   document.getElementById('modal-overlay').classList.add('open');
@@ -7074,15 +7129,15 @@ function renderFaseGroup(catKey, gName){
         <span class="cat-stat-value" style="color:${info.color}">${fmt(total)}</span>
       </div>
       <div class="cat-stat">
-        <span class="cat-stat-label">Pago</span>
+        <span class="cat-stat-label">${getColLabel('pago')}</span>
         <span class="cat-stat-value" style="color:#4caf50">${fmt(pago)}</span>
       </div>
       <div class="cat-stat">
-        <span class="cat-stat-label">Necessários</span>
+        <span class="cat-stat-label">${getColLabel('necessario')}</span>
         <span class="cat-stat-value" style="color:#42a5f5">${fmt(necessario)}</span>
       </div>
       <div class="cat-stat">
-        <span class="cat-stat-label">Dispensáveis</span>
+        <span class="cat-stat-label">${getColLabel('apagar')}</span>
         <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px">
@@ -7100,7 +7155,7 @@ function renderFaseGroup(catKey, gName){
         </button>
       </div>
     </div>
-    ${renderColGrid(lista, catKey+'__grupo:'+encodeURIComponent(gName), 'ambiente', skList)}
+    ${renderColGrid(lista, catKey+'__grupo:'+encodeURIComponent(gName), 'ambiente', skList, gName)}
   `;
 }
 
@@ -7129,15 +7184,15 @@ function renderSubgrupoGroup(catKey, gName, sgName){
         <span class="cat-stat-value" style="color:${info.color}">${fmt(total)}</span>
       </div>
       <div class="cat-stat">
-        <span class="cat-stat-label">Pago</span>
+        <span class="cat-stat-label">${getColLabel('pago')}</span>
         <span class="cat-stat-value" style="color:#4caf50">${fmt(pago)}</span>
       </div>
       <div class="cat-stat">
-        <span class="cat-stat-label">Necessários</span>
+        <span class="cat-stat-label">${getColLabel('necessario')}</span>
         <span class="cat-stat-value" style="color:#42a5f5">${fmt(necessario)}</span>
       </div>
       <div class="cat-stat">
-        <span class="cat-stat-label">Dispensáveis</span>
+        <span class="cat-stat-label">${getColLabel('apagar')}</span>
         <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px">
@@ -7155,7 +7210,7 @@ function renderSubgrupoGroup(catKey, gName, sgName){
         </button>
       </div>
     </div>
-    ${renderColGrid(lista, catKey+'__subgrupo:'+encodeURIComponent(gName)+'|'+encodeURIComponent(sgName), 'ambiente', skList)}
+    ${renderColGrid(lista, catKey+'__subgrupo:'+encodeURIComponent(gName)+'|'+encodeURIComponent(sgName), 'ambiente', skList, sgName)}
   `;
 }
 
@@ -7187,15 +7242,15 @@ function renderSubCat(page){
         <span class="cat-stat-value" style="color:${info.color}">${fmt(total)}</span>
       </div>
       <div class="cat-stat">
-        <span class="cat-stat-label">Pago</span>
+        <span class="cat-stat-label">${getColLabel('pago')}</span>
         <span class="cat-stat-value" style="color:#4caf50">${fmt(pago)}</span>
       </div>
       <div class="cat-stat">
-        <span class="cat-stat-label">Necessários</span>
+        <span class="cat-stat-label">${getColLabel('necessario')}</span>
         <span class="cat-stat-value" style="color:#42a5f5">${fmt(necessario)}</span>
       </div>
       <div class="cat-stat">
-        <span class="cat-stat-label">Dispensáveis</span>
+        <span class="cat-stat-label">${getColLabel('apagar')}</span>
         <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px">
@@ -7213,7 +7268,7 @@ function renderSubCat(page){
         </button>
       </div>
     </div>
-    ${catKey==='obra-bruta' ? renderColGrid(lista, catKey, 'ambiente', [subKey]) : renderColGrid(lista, catKey)}
+    ${catKey==='obra-bruta' ? renderColGrid(lista, catKey, 'ambiente', [subKey], subLabel) : renderColGrid(lista, catKey, null, null, subLabel)}
   `;
 }
 
@@ -7359,7 +7414,7 @@ function renderObraBrutaSteps(){
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;align-items:start">${stepsHtml}</div>
       <div style="font-size:10px;color:#e8e7e2;margin-top:10px">Clique no item pra lançar um gasto nele diretamente, ou no cabeçalho da fase pra ver tudo junto.</div>
     ` : `
-      ${renderColGrid(lista, cat, 'ambiente')}
+      ${renderColGrid(lista, cat, 'ambiente', null, info.label)}
       <div style="font-size:10px;color:#e8e7e2;margin-top:10px">Agrupado pelo ambiente de cada lançamento. Arraste um item entre as colunas pra mudar o status.</div>
     `}
   `;
@@ -7531,7 +7586,7 @@ function renderCat(cat){
       <div style="position:relative;height:160px"><canvas id="catChart"></canvas></div>
     </div>`:''}
 
-    ${renderColGrid(lista, cat)}
+    ${renderColGrid(lista, cat, null, null, info.label)}
   `;
 
   if(months.length>=2){
@@ -7587,7 +7642,7 @@ async function deleteAllInCol(status, catKey){
 
 // ── COLUMN ORDER & GRID ──────────────────────────────────────────
 let COL_LABELS_CUSTOM = JSON.parse(localStorage.getItem('col_labels_custom')||'{}');
-const COL_DEFAULT_LABELS = { pago:'Pago', necessario:'Necessários', apagar:'Dispensáveis' };
+const COL_DEFAULT_LABELS = { pago:'Pagos', necessario:'Necessários', apagar:'Dispensáveis' };
 function getColLabel(status){ return COL_LABELS_CUSTOM[status] || COL_DEFAULT_LABELS[status] || status; }
 function setColLabel(status, label){
   COL_LABELS_CUSTOM[status] = label;
@@ -7604,9 +7659,9 @@ function renameStatusLabel(status){
 // Atualiza os textos dos <option> de status nos formulários padrão de lançamento
 // (não mexe nos rótulos especiais de Venda/Compra do Imóvel, tipo "Recebido"/"A receber")
 function refreshStatusOptionLabels(){
-  document.querySelectorAll('#f-status option[value="pago"], #e-status option[value="pago"], #sl-status option[value="pago"]').forEach(el=>{ el.textContent = getColLabel('pago'); });
-  document.querySelectorAll('#f-status option[value="necessario"], #e-status option[value="necessario"], #sl-status option[value="necessario"]').forEach(el=>{ el.textContent = getColLabel('necessario'); });
-  document.querySelectorAll('#f-status option[value="apagar"], #e-status option[value="apagar"], #sl-status option[value="apagar"]').forEach(el=>{ el.textContent = getColLabel('apagar'); });
+  document.querySelectorAll('#f-status option[value="pago"], #e-status option[value="pago"], #sl-status option[value="pago"], #mat-l-status option[value="pago"], #emp-status option[value="pago"]').forEach(el=>{ el.textContent = getColLabel('pago'); });
+  document.querySelectorAll('#f-status option[value="necessario"], #e-status option[value="necessario"], #sl-status option[value="necessario"], #mat-l-status option[value="necessario"], #emp-status option[value="necessario"]').forEach(el=>{ el.textContent = getColLabel('necessario'); });
+  document.querySelectorAll('#f-status option[value="apagar"], #e-status option[value="apagar"], #sl-status option[value="apagar"], #mat-l-status option[value="apagar"], #emp-status option[value="apagar"]').forEach(el=>{ el.textContent = getColLabel('apagar'); });
 }
 const COL_DEFS = {
   pago:      {color:'#4caf50', icon:'ti-circle-check'},
@@ -7623,7 +7678,7 @@ function saveColOrder(contextKey, order){
   localStorage.setItem('col_order_'+(contextKey||'default'), JSON.stringify(order));
 }
 
-function renderColGrid(lista, catKey, groupBy, relevantSubs){
+function renderColGrid(lista, catKey, groupBy, relevantSubs, placeLabel){
   const order = getColOrder(catKey||'default');
 
   const BG = {pago:'#0d1a0d', necessario:'#0d1520', apagar:'#1a1500'};
@@ -7643,7 +7698,7 @@ function renderColGrid(lista, catKey, groupBy, relevantSubs){
       onDragOver="onColCardOver(event);onDropZoneOver(event)"
       onDragLeave="onColCardLeave(event);onDropZoneLeave(event)"
       onDrop="onColCardDrop(event,'${catKey||''}');onDropZoneDrop(event)">
-      <div style="padding:10px 14px;background:${headBg};border-bottom:1px solid ${border};display:flex;align-items:center;gap:6px">
+      <div style="padding:10px 14px;background:${headBg};border-bottom:1px solid ${border};display:flex;align-items:center;gap:6px;position:sticky;top:0;z-index:2">
         <span class="col-drag-handle" draggable="true" title="Arrastar coluna"
           style="color:#e8e7e2;cursor:grab;font-size:13px;user-select:none;transition:color .15s"
           onmouseover="this.style.color='#666'" onmouseout="this.style.color='#333'"
@@ -7651,8 +7706,10 @@ function renderColGrid(lista, catKey, groupBy, relevantSubs){
           ondragend="onColDragEnd(event)">⠿</span>
         <i class="ti ${def.icon}" style="font-size:13px;color:${def.color}"></i>
         <span style="font-size:10px;font-weight:600;color:${def.color};text-transform:uppercase;letter-spacing:.08em">${getColLabel(status)}</span>
+        <button onclick="quickAddFromCol('${catKey||''}','${status}')" title="Lançar em ${(placeLabel||'').replace(/"/g,'&quot;')}"
+          class="col-quick-add" style="margin-left:auto">+</button>
         <button onclick="openBulkModal('${status}','${catKey||''}')" title="Mover em massa"
-          style="margin-left:auto;background:none;border:none;color:#e8e7e2;cursor:pointer;font-size:14px;padding:2px 4px;border-radius:4px;transition:color .15s"
+          style="background:none;border:none;color:#e8e7e2;cursor:pointer;font-size:14px;padding:2px 4px;border-radius:4px;transition:color .15s"
           onmouseover="this.style.color='${def.color}'" onmouseout="this.style.color='#444'">
           <i class="ti ti-arrows-transfer-down"></i>
         </button>
@@ -7669,7 +7726,7 @@ function renderColGrid(lista, catKey, groupBy, relevantSubs){
           <th style="padding:6px 4px;color:#e8e7e2;font-weight:500;font-size:10px;border-bottom:1px solid ${border}">Qtd</th>
           <th style="padding:6px 4px;border-bottom:1px solid ${border}"></th>
         </tr></thead>
-        <tbody>${renderRowsFiltered(lista,status,catKey,border,groupBy,relevantSubs)}</tbody>
+        <tbody>${renderRowsFiltered(lista,status,catKey,border,groupBy,relevantSubs,placeLabel)}</tbody>
       </table>
     </div>`;
   }).join('');
@@ -7806,10 +7863,12 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
   </tr>`;
 }
 
-function renderRowsFiltered(list, status, catKey, borderColor, groupBy, relevantSubs){
+function renderRowsFiltered(list, status, catKey, borderColor, groupBy, relevantSubs, placeLabel){
   const filtered = list.filter(g=>g.status===status);
   const rowBorder = borderColor||'#1f1f1f';
-  if(!filtered.length) return `<tr><td colspan="6" style="padding:1.5rem;text-align:center;color:#e8e7e2;font-size:12px">Nenhum item</td></tr>`;
+  if(!filtered.length) return `<tr><td colspan="6" style="padding:1.5rem;text-align:center">
+    <button onclick="quickAddFromCol('${catKey||''}','${status}')" title="Lançar em ${(placeLabel||'').replace(/"/g,'&quot;')}" class="col-quick-add col-quick-add-lg">+</button>
+  </td></tr>`;
   const orderKey = 'row_order_'+status+'_'+(catKey||'geral');
   let order = [];
   try{ order = JSON.parse(localStorage.getItem(orderKey)||'[]'); }catch(e){}
