@@ -225,7 +225,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 12JUL26 (versão 64)</div>
+          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 18JUL26 (versão 67)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -1463,9 +1463,11 @@ function miniToggleHtml(ativo, onclickAttr){
   </button>`;
 }
 
-function renderFlatSubcatRow(k, sk, subColor, extraIndent){
+function renderFlatSubcatRow(k, sk, subColor, indentLevel){
   const isObra = k==='obra-bruta';
   const ativo = isObra ? isSubAtivo(k, sk) : true;
+  const lvl = (indentLevel===true) ? 1 : (indentLevel===false ? 0 : (indentLevel||0));
+  const padLeft = (1 + lvl*0.9) + 'rem';
   return `
     <div class="subcat-row" id="subcat-row-${k}-${sk}" draggable="true" style="${ativo?'':'opacity:.4'}"
       ondragstart="subDragStart('${k}','${sk}',event)"
@@ -1473,7 +1475,7 @@ function renderFlatSubcatRow(k, sk, subColor, extraIndent){
       ondragleave="subDragLeave('${k}','${sk}',event)"
       ondrop="subDragDrop('${k}','${sk}',event)"
       ondragend="subDragEnd(event)">
-      <span style="color:#e8e7e2;cursor:grab;font-size:11px;padding:0 4px 0 ${extraIndent?'1.9rem':'1rem'};user-select:none" title="Arrastar">⠿</span>
+      <span style="color:#e8e7e2;cursor:grab;font-size:11px;padding:0 4px 0 ${padLeft};user-select:none" title="Arrastar">⠿</span>
       ${isObra ? miniToggleHtml(ativo, `toggleSubAtivo('${k}','${sk}',event)`) : ''}
       <div class="nav-item" style="padding-left:0;font-size:11px;color:#ccc;flex:1;border-left:2px solid #2a2a2a;padding-left:8px;margin:2px 0 2px ${isObra?'6px':'0'};border-radius:0" onclick="navigate('${k}__${sk}')" id="nav-${k}__${sk}"
         onmouseover="this.style.borderColor='${subColor}';this.style.color='#fff'"
@@ -1550,9 +1552,56 @@ function buildSubcatRowsHtml(k){
         ${miniToggleHtml(faseAtiva, `toggleFaseAtivo('${k}',${JSON.stringify(skListJson).replace(/"/g,'&quot;')},event)`)}
         <button class="subcat-dots-btn" style="background:none;border:none;color:#e8e7e2;cursor:pointer;padding:4px 6px;font-size:13px;flex-shrink:0;opacity:1" onclick="toggleFaseMenu('${k}','${gNameEsc}',event)"><i class="ti ti-dots-vertical"></i></button>
       </div>`;
-    const itemRows = items.map(e=>renderFlatSubcatRow(k, e.sk, subColor, true)).join('');
+    const itemRows = renderSubgroupedOrFlatRows(k, items, subColor, groupKey, expandedSub);
     return groupRow + `<div id="subgrp-${safeId}" style="overflow:hidden;max-height:${isOpen?'none':'0'}">${itemRows}</div>`;
   }).join('');
+}
+
+// Renderiza os itens de UMA fase — se algum item tiver 'subgrupo' definido
+// (ex.: "Preparação", "Desmontagem" dentro de "Demolição"), cria um nível
+// extra colapsável entre a fase e os itens. Fases que ainda não foram
+// refinadas com subgrupos continuam exatamente como antes (lista plana).
+function renderSubgroupedOrFlatRows(k, items, subColor, groupKey, expandedSub){
+  const hasSubgrupos = items.some(e=>e.subgrupo);
+  if(!hasSubgrupos) return items.map(e=>renderFlatSubcatRow(k, e.sk, subColor, 1)).join('');
+  const subgroups = {};
+  items.forEach(e=>{
+    const sgName = e.subgrupo || '';
+    (subgroups[sgName]=subgroups[sgName]||[]).push(e);
+  });
+  const sgNames = Object.keys(subgroups); // 'items' já vem ordenado por 'ordem', então a ordem de inserção aqui já é a certa
+  return sgNames.map(sgName=>{
+    if(!sgName) return subgroups[sgName].map(e=>renderFlatSubcatRow(k, e.sk, subColor, 1)).join('');
+    const sgKey = groupKey+'__sub__'+sgName;
+    const sgSafeId = subGroupSafeId(sgKey);
+    const sgOpen = !!expandedSub[sgKey];
+    const sgNameEsc = sgName.replace(/'/g,"\\'");
+    const sgAtivo = subgroups[sgName].some(e=>isSubAtivo(k, e.sk));
+    const header = `
+      <div style="display:flex;align-items:center;gap:5px;padding:4px 6px 4px 1.6rem;user-select:none;${sgAtivo?'':'opacity:.4'}">
+        <button onclick="toggleSubSubGroup('${k}','${sgKey.replace(/'/g,"\\'")}',event)" title="Expandir/recolher" style="background:none;border:none;cursor:pointer;padding:2px 4px;flex-shrink:0">
+          <span id="chev-sub-${sgSafeId}" style="color:#999;font-size:8px;transition:transform .15s;transform:rotate(${sgOpen?90:0}deg);display:inline-block">▶</span>
+        </button>
+        <span style="font-size:9.5px;color:#999;text-transform:uppercase;letter-spacing:.05em;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sgName}</span>
+        <span style="font-size:9px;color:#777;background:#1a1a1a;border-radius:8px;padding:1px 5px;flex-shrink:0">${subgroups[sgName].length}</span>
+      </div>`;
+    const rows = subgroups[sgName].map(e=>renderFlatSubcatRow(k, e.sk, subColor, 2)).join('');
+    return header + `<div id="subsubgrp-${sgSafeId}" style="overflow:hidden;max-height:${sgOpen?'none':'0'}">${rows}</div>`;
+  }).join('');
+}
+
+// Expande/recolhe UM subgrupo específico dentro de uma fase (ex.: "Preparação"
+// dentro de "Demolição"). Usa a mesma chave composta pra guardar o estado.
+function toggleSubSubGroup(k, sgKey, e){
+  if(e) e.stopPropagation();
+  const expandedSub = getExpandedSub();
+  expandedSub[sgKey] = !expandedSub[sgKey];
+  localStorage.setItem('pirati_expanded_sub', JSON.stringify(expandedSub));
+  const safeId = subGroupSafeId(sgKey);
+  const chev = document.getElementById('chev-sub-'+safeId);
+  const container = document.getElementById('subsubgrp-'+safeId);
+  if(chev) chev.style.transform = 'rotate('+(expandedSub[sgKey]?90:0)+'deg)';
+  if(container) container.style.maxHeight = expandedSub[sgKey] ? '900px' : '0';
 }
 
 function toggleExpand(k, e){
@@ -2670,8 +2719,39 @@ function restoreOrphanSubcats(){
 
 function ensureObraBrutaPhases(){
   try{
+    // Cada fase tem OU 'itens' (lista plana de nomes — formato antigo, ainda
+    // usado pelas fases que não foram refinadas) OU 'subgrupos' (lista de
+    // {nome, itens:[{label, de?}]} — formato novo, com um nível a mais).
+    // 'de' é opcional: quando um item é RENOMEADO, colocar o nome antigo em
+    // 'de' faz o identificador interno (slug) continuar sendo calculado a
+    // partir do nome antigo — ou seja, lançamentos já salvos continuam
+    // linkados automaticamente ao item, mesmo com o nome novo na tela. Só o
+    // texto exibido muda; o "endereço" por baixo dos panos é preservado.
     const FASES = [
-      {fase:'Demolição', itens:['Retirada de revestimentos (piso)','Retirada de revestimentos (parede)','Remoção de louças e metais','Remoção de portas e esquadrias','Demolição de paredes','Remoção de bancadas','Descarte de entulho']},
+      {fase:'Demolição', subgrupos:[
+        {nome:'Preparação', itens:[
+          {label:'Remover marcenaria existente'},
+          {label:'Remover aparelhos'},
+          {label:'Remover portas e esquadrias', de:'Remoção de portas e esquadrias'}
+        ]},
+        {nome:'Desmontagem', itens:[
+          {label:'Remover louças e metais', de:'Remoção de louças e metais'},
+          {label:'Remover bancadas', de:'Remoção de bancadas'},
+          {label:'Remover forro'}
+        ]},
+        {nome:'Acabamentos', itens:[
+          {label:'Remover revestimentos (paredes)', de:'Retirada de revestimentos (parede)'},
+          {label:'Remover revestimentos (pisos)', de:'Retirada de revestimentos (piso)'}
+        ]},
+        {nome:'Demolição', itens:[
+          {label:'Demolir paredes', de:'Demolição de paredes'},
+          {label:'Remover instalações antigas (elétrica, hidráulica e gás)'}
+        ]},
+        {nome:'Finalização', itens:[
+          {label:'Descartar entulho', de:'Descarte de entulho'},
+          {label:'Realizar limpeza'}
+        ]}
+      ]},
       {fase:'Alvenaria', itens:['Construção de novas paredes','Fechamento de vãos','Abertura de nichos','Vergas e contravergas','Regularizações']},
       {fase:'Hidráulica', itens:['Água fria','Água quente','Esgoto','Gás','Drenos de ar-condicionado']},
       {fase:'Elétrica', itens:['Novos circuitos','Quadro elétrico','Tomadas','Interruptores','Iluminação','Rede','Internet','Infraestrutura para automação']},
@@ -2711,16 +2791,26 @@ function ensureObraBrutaPhases(){
       if(SUBCATS['obra-bruta'][k].auto) delete SUBCATS['obra-bruta'][k];
     });
 
+    const slugify = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+
+    let totalEsperado = 0;
     FASES.forEach((f,fi)=>{
-      f.itens.forEach((itemLabel,ii)=>{
-        const slug = (f.fase+'-'+itemLabel).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
-        const ordemPadrao = fi*100+ii;
-        SUBCATS['obra-bruta'][slug] = {
-          label:itemLabel, grupo:f.fase, auto:true,
-          ordem: ordemCustomizada[slug]!=null ? ordemCustomizada[slug] : ordemPadrao,
-          ordemCustom: ordemCustomizada[slug]!=null ? ordemCustomizada[slug] : undefined,
-          ativo: ativoCustomizado[slug]===false ? false : undefined
-        };
+      // Normaliza pra sempre trabalhar com uma lista de subgrupos — fases
+      // ainda no formato antigo (só 'itens') viram um único subgrupo sem nome.
+      const subgruposNorm = f.subgrupos || [{nome:null, itens:(f.itens||[]).map(t=>({label:t}))}];
+      subgruposNorm.forEach((sg, si)=>{
+        sg.itens.forEach((item, ii)=>{
+          totalEsperado++;
+          const slugSeed = item.de || item.label; // preserva o slug antigo se foi renomeado
+          const slug = slugify(f.fase+'-'+slugSeed);
+          const ordemPadrao = fi*1000 + si*100 + ii;
+          SUBCATS['obra-bruta'][slug] = {
+            label:item.label, grupo:f.fase, subgrupo: sg.nome || undefined, auto:true,
+            ordem: ordemCustomizada[slug]!=null ? ordemCustomizada[slug] : ordemPadrao,
+            ordemCustom: ordemCustomizada[slug]!=null ? ordemCustomizada[slug] : undefined,
+            ativo: ativoCustomizado[slug]===false ? false : undefined
+          };
+        });
       });
     });
 
@@ -2744,7 +2834,7 @@ function ensureObraBrutaPhases(){
     const finalEntries = Object.keys(SUBCATS['obra-bruta']).map(k=>({key:k, label:SUBCATS['obra-bruta'][k].label, grupo:SUBCATS['obra-bruta'][k].grupo||'(SEM GRUPO)', ordem:SUBCATS['obra-bruta'][k].ordem}));
     const semGrupo = finalEntries.filter(e=>e.grupo==='(SEM GRUPO)');
     const gruposUnicos = [...new Set(finalEntries.map(e=>e.grupo))];
-    console.log('[piratininga][obra-bruta-debug] Total de entradas:', finalEntries.length, '(esperado: 85)');
+    console.log('[piratininga][obra-bruta-debug] Total de entradas:', finalEntries.length, '(esperado: '+totalEsperado+')');
     console.log('[piratininga][obra-bruta-debug] Entradas SEM grupo (deveria ser 0):', semGrupo.length, semGrupo);
     console.log('[piratininga][obra-bruta-debug] Grupos únicos encontrados (deveria ser 17):', gruposUnicos.length, gruposUnicos);
   }catch(e){ console.warn('Erro ao criar fases da Execução de Obra:', e); }
@@ -3826,7 +3916,7 @@ function getUnidadeParaRi(ri){
   if(map[chave]) return map[chave];
   const entry = SUBCATS['obra-bruta']?.[chave];
   if(entry && entry.grupo==='Pisos e Rodapés' && entry.label==='Rodapés') return 'ml'; // padrão sensato, editável
-  if(entry && entry.label==='Remoção de louças e metais') return 'nenhuma'; // não faz sentido em m²
+  if(entry && entry.label==='Remover louças e metais') return 'nenhuma'; // não faz sentido em m²
   return 'm2';
 }
 function unidadeLabel(unidade){
@@ -3895,32 +3985,81 @@ function renderEmpreitadaServiceGrid(preserveState){
     const items = fases[faseName].subs.sort((a,b)=>(a.ordem??0)-(b.ordem??0));
     const showArea = FASES_COM_METRAGEM.includes(faseName);
     const faseNameEsc = faseName.replace(/'/g,"\\'");
-    const rows = items.map(it=>{
-      const sk = it.sk; // usamos o próprio sk (estável) como chave, em vez de um índice
-      // posicional — assim reordenar os serviços não bagunça o que já foi marcado.
-      empreitadaRowShowArea[sk] = showArea;
-      const labelEsc = it.label.replace(/'/g,"\\'");
-      const isChecked = !!empreitadaCheckedServices[sk];
-      const names = Object.keys(ambienteData[sk]||{});
-      const btnLabel = names.length ? `${names.length} local${names.length>1?'is':''}: ${names.join(', ')}` : 'adicionar local';
-      return `
-      <div draggable="true" ondragstart="empServiceDragStart('${sk}','${faseNameEsc}',event)" ondragover="event.preventDefault()" ondrop="empServiceDrop('${sk}','${faseNameEsc}',event)" style="padding:3px 0">
-        <div style="display:flex;align-items:center;gap:6px">
-          <span style="color:#e8e7e2;cursor:grab;font-size:11px;flex-shrink:0" title="Arrastar pra reordenar">⠿</span>
-          <input type="checkbox" class="emp-sub-check" data-row="${sk}" value="${sk}" ${isChecked?'checked':''} onchange="empreitadaCheckedServices['${sk}']=this.checked;document.getElementById('emp-amb-btn-${sk}').disabled=!this.checked" style="width:auto;flex-shrink:0">
-          <span style="font-size:11px;color:#ccc;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${it.label}">${it.label}</span>
-          <button type="button" onclick="openAmbienteModal('${sk}','${labelEsc}')" id="emp-amb-btn-${sk}" ${isChecked?'':'disabled'}
-            style="width:130px;flex-shrink:0;background:#111;border:1px solid #333;border-radius:4px;padding:3px 5px;color:${names.length?'#e8e7e2':'#666'};font-size:10px;text-align:left;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-            ${btnLabel}
-          </button>
-        </div>
-      </div>`;
-    }).join('');
+    const hasSubgrupos = items.some(it=>it.subgrupo);
+    let rows;
+    if(!hasSubgrupos){
+      rows = items.map(it=>buildEmpRowHtml(it, faseNameEsc, showArea)).join('');
+    } else {
+      const expandedSub = getExpandedSub();
+      const subgroups = {};
+      items.forEach(it=>{
+        const sgName = it.subgrupo || '';
+        (subgroups[sgName]=subgroups[sgName]||[]).push(it);
+      });
+      rows = Object.keys(subgroups).map(sgName=>{
+        if(!sgName) return subgroups[sgName].map(it=>buildEmpRowHtml(it, faseNameEsc, showArea)).join('');
+        const sgKey = empSubgroupKey(faseName, sgName);
+        const safeId = subGroupSafeId(sgKey);
+        const isOpen = expandedSub[sgKey]!==false; // padrão aberto — aqui a pessoa está montando o pacote
+        const sgKeyEsc = sgKey.replace(/'/g,"\\'");
+        const header = `
+          <div style="display:flex;align-items:center;gap:5px;padding:4px 2px;margin-top:4px;user-select:none">
+            <button type="button" onclick="toggleEmpSubgroup('${sgKeyEsc}',event)" title="Expandir/recolher" style="background:none;border:none;cursor:pointer;padding:2px 4px;flex-shrink:0">
+              <span id="chev-emp-${safeId}" style="color:#999;font-size:8px;transition:transform .15s;transform:rotate(${isOpen?90:0}deg);display:inline-block">▶</span>
+            </button>
+            <span style="font-size:9.5px;color:#999;text-transform:uppercase;letter-spacing:.05em;flex:1">${sgName}</span>
+            <span style="font-size:9px;color:#777;background:#1a1a1a;border-radius:8px;padding:1px 5px;flex-shrink:0">${subgroups[sgName].length}</span>
+          </div>`;
+        const inner = subgroups[sgName].map(it=>buildEmpRowHtml(it, faseNameEsc, showArea)).join('');
+        return header + `<div id="empsubgrp-${safeId}" style="overflow:hidden;max-height:${isOpen?'none':'0'}">${inner}</div>`;
+      }).join('');
+    }
     return `<div style="background:#0e0e0e;border:1px solid #2a2a2a;border-radius:8px;padding:10px 12px">
       <div style="font-size:11px;font-weight:700;color:#e8b544;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #2a2a2a">${fi+1}. ${faseName}</div>
       ${rows}
     </div>`;
   }).join('');
+}
+
+// Uma linha (checkbox + nome + botão de ambiente) do construtor de pacote —
+// extraído pra função própria pra poder ser chamado tanto na lista plana
+// quanto dentro de um subgrupo colapsável.
+function buildEmpRowHtml(it, faseNameEsc, showArea){
+  const sk = it.sk; // usamos o próprio sk (estável) como chave, em vez de um índice
+  // posicional — assim reordenar os serviços não bagunça o que já foi marcado.
+  empreitadaRowShowArea[sk] = showArea;
+  const labelEsc = it.label.replace(/'/g,"\\'");
+  const isChecked = !!empreitadaCheckedServices[sk];
+  const names = Object.keys(ambienteData[sk]||{});
+  const btnLabel = names.length ? `${names.length} local${names.length>1?'is':''}: ${names.join(', ')}` : 'adicionar local';
+  return `
+  <div draggable="true" ondragstart="empServiceDragStart('${sk}','${faseNameEsc}',event)" ondragover="event.preventDefault()" ondrop="empServiceDrop('${sk}','${faseNameEsc}',event)" style="padding:3px 0">
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="color:#e8e7e2;cursor:grab;font-size:11px;flex-shrink:0" title="Arrastar pra reordenar">⠿</span>
+      <input type="checkbox" class="emp-sub-check" data-row="${sk}" value="${sk}" ${isChecked?'checked':''} onchange="empreitadaCheckedServices['${sk}']=this.checked;document.getElementById('emp-amb-btn-${sk}').disabled=!this.checked" style="width:auto;flex-shrink:0">
+      <span style="font-size:11px;color:#ccc;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${it.label}">${it.label}</span>
+      <button type="button" onclick="openAmbienteModal('${sk}','${labelEsc}')" id="emp-amb-btn-${sk}" ${isChecked?'':'disabled'}
+        style="width:130px;flex-shrink:0;background:#111;border:1px solid #333;border-radius:4px;padding:3px 5px;color:${names.length?'#e8e7e2':'#666'};font-size:10px;text-align:left;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+        ${btnLabel}
+      </button>
+    </div>
+  </div>`;
+}
+
+function empSubgroupKey(faseName, sgName){ return 'emp__obra-bruta__grp__'+faseName+'__sub__'+sgName; }
+
+// Expande/recolhe um subgrupo dentro do construtor de pacote (empreitada).
+function toggleEmpSubgroup(sgKey, e){
+  if(e) e.stopPropagation();
+  const expandedSub = getExpandedSub();
+  expandedSub[sgKey] = !(expandedSub[sgKey]!==false);
+  localStorage.setItem('pirati_expanded_sub', JSON.stringify(expandedSub));
+  const safeId = subGroupSafeId(sgKey);
+  const chev = document.getElementById('chev-emp-'+safeId);
+  const container = document.getElementById('empsubgrp-'+safeId);
+  const nowOpen = expandedSub[sgKey]!==false;
+  if(chev) chev.style.transform = 'rotate('+(nowOpen?90:0)+'deg)';
+  if(container) container.style.maxHeight = nowOpen ? 'none' : '0';
 }
 
 // Reordena os serviços DENTRO da mesma fase, por arrastar-e-soltar. Como a
@@ -3999,7 +4138,7 @@ const ITENS_LOUCAS = ['Vaso sanitário','Cuba/pia','Bidê','Banheira'];
 const ITENS_METAIS = ['Torneira','Registro','Chuveiro/ducha','Sifão','Válvula de descarga'];
 // Serviços que não fazem sentido escolher ambiente — cobrem a obra toda de uma
 // vez (ex: descarte de entulho). Pra esses, a janela vira só valor + observação.
-const SUBS_SEM_AMBIENTE = ['Descarte de entulho'];
+const SUBS_SEM_AMBIENTE = ['Descartar entulho'];
 const CHAVE_GERAL = '(Geral)';
 function isSubSemAmbiente(ri){
   const chave = getUnidadeChaveParaRi(ri);
@@ -4009,7 +4148,7 @@ function isSubSemAmbiente(ri){
 function isRemocaoLoucasMetais(ri){
   const chave = getUnidadeChaveParaRi(ri);
   const entry = SUBCATS['obra-bruta']?.[chave];
-  return !!(entry && entry.label==='Remoção de louças e metais');
+  return !!(entry && entry.label==='Remover louças e metais');
 }
 function toggleAmbienteItem(ri, ambName, itemName, checked){
   const data = getAmbienteDataForRow(ri);
@@ -7499,11 +7638,14 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
   const pacoteBadge = isPacote ? `<span onclick="event.stopPropagation();openPacoteModal(${g.id})" title="Ver todos os serviços deste ${badgeLabel} (${materialLabelStr})" style="cursor:pointer;color:${badgeColor};font-size:10px;font-weight:700;background:${badgeBg};border:1px solid ${badgeBorder};border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;line-height:1.4;width:88px;flex-shrink:0;box-sizing:border-box">${badgeIcon} ${badgeLabel}</span>` : '';
   const prazoBadgeRow = isPacote ? prazoBadgeHtml(getPacoteMeta(g)) : '';
   const materiaisBadgeRow = isPacote ? materiaisBadgeHtml(g) : '';
-  // 3 linhas fixas: 1) nome, 2) selos (pacote/serviço + dias restantes + materiais,
-  // com largura padronizada pra alinhar mesmo quando o ícone muda de tamanho
-  // com/sem material), 3) sub-etapa em azul embaixo de tudo.
-  const badgeLineHtml = isPacote
-    ? `<div style="display:flex;align-items:center;gap:4px;margin-top:2px;flex-wrap:nowrap;overflow-x:auto">${pacoteBadge}${prazoBadgeRow}${materiaisBadgeRow}</div>`
+  // 4 linhas fixas quando é pacote: 1) nome, 2) tipo de serviço + material (fixo,
+  // sem quebra — são os selos mais importantes), 3) dias restantes (menos
+  // importante, isolado numa linha própria logo abaixo), 4) sub-etapa em azul.
+  const mainBadgeRowHtml = isPacote
+    ? `<div style="display:flex;align-items:center;gap:4px;margin-top:2px;flex-wrap:nowrap">${pacoteBadge}${materiaisBadgeRow}</div>`
+    : '';
+  const prazoLineHtml = (isPacote && prazoBadgeRow)
+    ? `<div style="margin-top:2px">${prazoBadgeRow}</div>`
     : '';
   const subLabelLineHtml = subLabel
     ? `<div style="margin-top:2px">${canNavSub
@@ -7525,7 +7667,8 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
     <td style="width:32px;vertical-align:middle;padding:4px">${fmtDate(g.data)}</td>
     <td style="font-size:12px;padding:4px">
       <div style="line-height:1.5">${g.descricao||''}</div>
-      ${badgeLineHtml}
+      ${mainBadgeRowHtml}
+      ${prazoLineHtml}
       ${subLabelLineHtml}
     </td>
     <td style="text-align:right;font-weight:500;font-size:11px;white-space:nowrap;padding:4px">${fmtShort(val)}</td>
