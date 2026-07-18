@@ -178,8 +178,13 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
 .modal-close:hover{color:#e8e7e2}
 .modal .form-group{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
 .pay-pill{background:#111;border:1px solid #3a3a3a;color:#ccc;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;transition:all .15s}
+.mat-amb-pill{background:#111;border:1px solid #3a3a3a;color:#999;border-radius:14px;padding:3px 10px;font-size:10.5px;cursor:pointer;transition:all .15s}
+.mat-amb-pill:hover{border-color:#666}
+.mat-amb-pill.active{background:#0d1520;border-color:#42a5f5;color:#8bc9ff;font-weight:600}
 .invest-card{background:#111;border:1px solid #3a3a3a;border-radius:6px;padding:6px 10px;cursor:pointer;transition:all .15s;flex:1;text-align:left}
 .invest-card:hover{border-color:#666}
+.invest-card-sm{padding:6px 10px;flex:none;width:100%;box-sizing:border-box}
+.invest-card-sm .invest-title{font-size:10.5px}
 .invest-card .invest-title{font-size:11px;font-weight:700;color:#e8e7e2}
 .invest-card .invest-desc{font-size:9px;color:#999;margin-top:1px;display:block;line-height:1.3}
 .invest-card.active[data-inv="perpetuo"]{background:#0d1a10;border-color:#2e5a34}
@@ -225,7 +230,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 18JUL26 (versão 70)</div>
+          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 18JUL26 (versão 71)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -938,29 +943,32 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         </label>
         <div id="mat-l-prazo-preview" style="display:none;font-size:11px;color:#ccc;padding-bottom:9px"></div>
       </div>
-      <div id="mat-l-invest-wrap"></div>
-      <div class="form-group" style="margin-bottom:14px">
-        <label>Observação</label>
-        <textarea id="mat-l-obs" rows="2" placeholder="Alguma nota importante..." style="width:100%;box-sizing:border-box;background:#111;border:1px solid #333;border-radius:8px;padding:10px 12px;color:#e8e7e2;font-size:13px;resize:vertical"></textarea>
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:14px;margin-bottom:14px;align-items:start">
+        <div id="mat-l-invest-wrap"></div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Observação</label>
+          <textarea id="mat-l-obs" rows="5" placeholder="Alguma nota importante..." style="width:100%;box-sizing:border-box;background:#111;border:1px solid #333;border-radius:8px;padding:10px 12px;color:#e8e7e2;font-size:13px;resize:vertical"></textarea>
+        </div>
       </div>
       <div style="background:#111;border:1px solid #333;border-radius:8px;padding:12px;margin-bottom:14px">
         <div style="font-size:10px;color:#ccc;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Onde isso entra</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:auto;gap:14px 20px">
           <div class="form-group" style="margin-bottom:0">
             <label>Etapa</label>
             <select id="mat-l-etapa" onchange="onMatEtapaChange()"></select>
-          </div>
-          <div class="form-group" style="margin-bottom:0">
-            <label id="mat-l-subetapa-label">Sub-etapa</label>
-            <select id="mat-l-subetapa" onchange="onMatSubEtapaChange()"></select>
           </div>
           <div class="form-group" id="mat-l-subsub-group" style="margin-bottom:0;display:none">
             <label>Sub da sub-etapa</label>
             <select id="mat-l-subsub"></select>
           </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label id="mat-l-subetapa-label">Sub-etapa</label>
+            <select id="mat-l-subetapa" onchange="onMatSubEtapaChange()"></select>
+          </div>
           <div class="form-group" id="mat-l-ambiente-group" style="margin-bottom:0;display:none">
-            <label>Ambiente (opcional)</label>
-            <select id="mat-l-ambiente" onchange="onMatAmbienteChange()"></select>
+            <label>Ambiente(s) (opcional)</label>
+            <div id="mat-l-ambiente-list" style="display:flex;flex-wrap:wrap;gap:5px;max-height:74px;overflow-y:auto;background:#0a0a0a;border:1px solid #333;border-radius:8px;padding:6px"></div>
+            <button type="button" onclick="addMatAmbienteCustom()" style="margin-top:5px;background:none;border:1px dashed #444;color:#999;border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer">+ novo ambiente</button>
           </div>
         </div>
       </div>
@@ -1520,7 +1528,7 @@ function renderFlatSubcatRow(k, sk, subColor, indentLevel){
         onmouseout="this.style.borderColor='#2a2a2a';this.style.color='#ccc'">
         ${SUBCATS[k][sk].label}
       </div>
-      <button class="subcat-dots-btn" title="Lançar direto em ${(SUBCATS[k][sk].label||'').replace(/"/g,'&quot;')}" style="background:none;border:none;color:#ccc;cursor:pointer;padding:4px 4px;font-size:14px;transition:opacity .15s" onclick="event.stopPropagation();${isObra?`openObraTriagemModal('${sk}')`:`openModalSubCat('${k}','${sk}')`}"><i class="ti ti-plus"></i></button>
+      <button class="subcat-dots-btn" title="Lançar direto em ${(SUBCATS[k][sk].label||'').replace(/"/g,'&quot;')}" style="background:none;border:none;color:#999;cursor:pointer;padding:4px 4px;font-size:14px;transition:color .15s;opacity:1!important" onclick="event.stopPropagation();${isObra?`openObraTriagemModal('${sk}')`:`openModalSubCat('${k}','${sk}')`}" onmouseover="this.style.color='${subColor}'" onmouseout="this.style.color='#999'"><i class="ti ti-plus"></i></button>
       <button class="subcat-dots-btn" style="background:none;border:none;color:#ccc;cursor:pointer;padding:4px 6px;font-size:13px;transition:opacity .15s" onclick="toggleSubCatMenu('${k}','${sk}',event)"><i class="ti ti-dots-vertical"></i></button>
     </div>`;
 }
@@ -1621,7 +1629,7 @@ function renderSubgroupedOrFlatRows(k, items, subColor, groupKey, expandedSub, g
         <button onclick="toggleSubSubGroup('${k}','${sgKey.replace(/'/g,"\\'")}',event)" title="Expandir/recolher" style="background:none;border:none;cursor:pointer;padding:2px 4px;flex-shrink:0">
           <span id="chev-sub-${sgSafeId}" style="color:#999;font-size:8px;transition:transform .15s;transform:rotate(${sgOpen?90:0}deg);display:inline-block">▶</span>
         </button>
-        <span onclick="handleNavSubGroupClick('${k}','${gName.replace(/'/g,"\\'")}','${sgName.replace(/'/g,"\\'")}',event)" id="nav-${subGroupPageKey(k,gName,sgName)}" title="Clique pra ver o geral deste subgrupo — clique 2x pra expandir/recolher" style="cursor:pointer;font-size:9.5px;color:#999;text-transform:uppercase;letter-spacing:.05em;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onmouseover="this.style.color='#e8e7e2'" onmouseout="this.style.color='#999'">${sgName}</span>
+        <span class="nav-item" onclick="handleNavSubGroupClick('${k}','${gName.replace(/'/g,"\\'")}','${sgName.replace(/'/g,"\\'")}',event)" id="nav-${subGroupPageKey(k,gName,sgName)}" title="Clique pra ver o geral deste subgrupo — clique 2x pra expandir/recolher" style="padding:0;cursor:pointer;font-size:9.5px;color:#999;text-transform:uppercase;letter-spacing:.05em;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onmouseover="this.style.color='#e8e7e2'" onmouseout="this.style.color='#999'">${sgName}</span>
         <span style="font-size:9px;color:#777;background:#1a1a1a;border-radius:8px;padding:1px 5px;flex-shrink:0">${subgroups[sgName].length}</span>
       </div>`;
     const rows = subgroups[sgName].map(e=>renderFlatSubcatRow(k, e.sk, subColor, 2)).join('');
@@ -3108,7 +3116,7 @@ function onMatEtapaChange(presetFase, presetSub, presetAmbiente){
     if(presetFase && fases.includes(presetFase)) subEl.value = presetFase;
     subsubGroup.style.display = '';
     ambienteGroup.style.display = '';
-    populateMatAmbienteSelect(presetAmbiente);
+    populateMatAmbienteChecklist(presetAmbiente);
     onMatSubEtapaChange(presetSub);
   } else {
     const subs = SUBCATS[catKey] || {};
@@ -3118,23 +3126,28 @@ function onMatEtapaChange(presetFase, presetSub, presetAmbiente){
     ambienteGroup.style.display = 'none';
   }
 }
-function populateMatAmbienteSelect(presetAmbiente){
-  const ambEl = document.getElementById('mat-l-ambiente');
+// Ambiente(s) do material — várias "pílulas" clicáveis (multi-seleção, ao
+// contrário do payment/investimento que são de escolha única), porque um
+// material às vezes se aplica a mais de um ambiente ao mesmo tempo.
+function populateMatAmbienteChecklist(presetAmbiente){
+  const wrap = document.getElementById('mat-l-ambiente-list');
   const opcoes = getAmbienteOptions();
-  ambEl.innerHTML = '<option value="">— nenhum —</option>' + opcoes.map(a=>`<option value="${a}">${a}</option>`).join('') + '<option value="__novo__">+ novo ambiente...</option>';
-  if(presetAmbiente && opcoes.includes(presetAmbiente)) ambEl.value = presetAmbiente;
+  const presetList = (presetAmbiente||'').split(MAT_AMB_SEP).map(s=>s.trim()).filter(Boolean);
+  wrap.innerHTML = opcoes.map(a=>{
+    const isChecked = presetList.some(p=>p.toLowerCase()===a.toLowerCase());
+    return `<button type="button" class="mat-amb-pill${isChecked?' active':''}" data-amb="${a.replace(/"/g,'&quot;')}" onclick="this.classList.toggle('active')">${a}</button>`;
+  }).join('');
 }
-function onMatAmbienteChange(){
-  const ambEl = document.getElementById('mat-l-ambiente');
-  if(ambEl.value==='__novo__'){
-    const nome = prompt('Nome do novo ambiente:','');
-    if(nome && nome.trim()){
-      saveCustomAmbiente(nome.trim());
-      populateMatAmbienteSelect(nome.trim());
-    } else {
-      ambEl.value = '';
-    }
-  }
+const MAT_AMB_SEP = ' + '; // separador usado quando mais de um ambiente é escolhido
+function getMatAmbientesSelecionados(){
+  return [...document.querySelectorAll('#mat-l-ambiente-list .mat-amb-pill.active')].map(b=>b.dataset.amb);
+}
+function addMatAmbienteCustom(){
+  const nome = prompt('Nome do novo ambiente:','');
+  if(!nome || !nome.trim()) return;
+  saveCustomAmbiente(nome.trim());
+  const jaMarcados = getMatAmbientesSelecionados();
+  populateMatAmbienteChecklist([...jaMarcados, nome.trim()].join(MAT_AMB_SEP));
 }
 function onMatSubEtapaChange(presetSub){
   const catKey = document.getElementById('mat-l-etapa').value;
@@ -3150,18 +3163,15 @@ function onMatSubEtapaChange(presetSub){
 function investimentoPickerHtml(prefix){
   return `<div class="form-group" style="margin-bottom:14px">
     <label>Investimento</label>
-    <div style="display:flex;gap:8px">
-      <button type="button" class="invest-card" data-inv="perpetuo" onclick="selectInvestimento(this,'${prefix}')">
+    <div style="display:flex;flex-direction:column;gap:5px">
+      <button type="button" class="invest-card invest-card-sm" data-inv="perpetuo" title="Fica junto com o imóvel, mesmo se vender" onclick="selectInvestimento(this,'${prefix}')">
         <span class="invest-title">Perpétuo</span>
-        <span class="invest-desc">Fica junto com o imóvel, mesmo se vender</span>
       </button>
-      <button type="button" class="invest-card" data-inv="transferivel" onclick="selectInvestimento(this,'${prefix}')">
+      <button type="button" class="invest-card invest-card-sm" data-inv="transferivel" title="Você leva pra próxima casa, se vender" onclick="selectInvestimento(this,'${prefix}')">
         <span class="invest-title">Transferível</span>
-        <span class="invest-desc">Você leva pra próxima casa, se vender</span>
       </button>
-      <button type="button" class="invest-card" data-inv="pessoal" onclick="selectInvestimento(this,'${prefix}')">
+      <button type="button" class="invest-card invest-card-sm" data-inv="pessoal" title="Não tem a ver com o imóvel" onclick="selectInvestimento(this,'${prefix}')">
         <span class="invest-title">Pessoal</span>
-        <span class="invest-desc">Não tem a ver com o imóvel</span>
       </button>
     </div>
     <input type="hidden" id="${prefix}-investimento">
@@ -3318,8 +3328,8 @@ async function confirmMaterialLancamento(){
   const isEditing = !!materialEditingId;
   btn.disabled = true; btn.textContent = 'Salvando...';
   try{
-    const ambienteEl = document.getElementById('mat-l-ambiente');
-    const ambienteVal = (isObra && ambienteEl.value && ambienteEl.value!=='__novo__') ? ambienteEl.value : '';
+    const ambientesSel = isObra ? getMatAmbientesSelecionados() : [];
+    const ambienteVal = ambientesSel.join(MAT_AMB_SEP);
     const row = {
       descricao: desc, categoria: catKey, subcategoria: subKey||'', valor: val, quantidade:1,
       status: document.getElementById('mat-l-status').value,
@@ -3921,7 +3931,8 @@ function openObraEmpreitadaModalForEdit(g){
 
 function getAmbienteOptions(){
   const padrao = ['Cozinha','Banheiro Social','Suíte','Banheiro da Suíte','Quarto','Sala','Área de Serviço','Sacada','Escritório','Hall de Entrada','Área Externa'];
-  const usados = [...new Set(gastos.filter(g=>g.categoria==='obra-bruta' && g.ambiente).map(g=>g.ambiente))];
+  const usadosBrutos = gastos.filter(g=>g.categoria==='obra-bruta' && g.ambiente).map(g=>g.ambiente);
+  const usados = [...new Set(usadosBrutos.flatMap(a=>a.split(MAT_AMB_SEP).map(s=>s.trim()).filter(Boolean)))];
   const combinados = [...padrao];
   usados.forEach(u=>{ if(!combinados.some(c=>c.toLowerCase()===u.toLowerCase())) combinados.push(u); });
   getCustomAmbientes().forEach(u=>{ if(!combinados.some(c=>c.toLowerCase()===u.toLowerCase())) combinados.push(u); });
