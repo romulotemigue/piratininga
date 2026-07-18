@@ -225,7 +225,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 18JUL26 (versão 68)</div>
+          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 18JUL26 (versão 70)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -776,11 +776,11 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div style="font-size:11px;color:#42a5f5;margin-top:2px">sem material (só mão de obra)</div>
       </button>
       <div id="obra-triagem-item-wrap" style="display:none;grid-column:1/-1">
-        <button onclick="chooseObraTipo('item','sem-mao-de-obra')" style="width:100%;box-sizing:border-box;background:#1a0d20;border:2px solid #b565d8;border-radius:10px;padding:16px 14px;cursor:pointer;text-align:left;transition:background .15s;display:flex;align-items:center;gap:12px" onmouseover="this.style.background='#2a1030'" onmouseout="this.style.background='#1a0d20'">
-          <div style="font-size:24px">🏷️</div>
+        <button onclick="chooseObraMaterial()" style="width:100%;box-sizing:border-box;background:#1a0d20;border:2px solid #b565d8;border-radius:10px;padding:16px 14px;cursor:pointer;text-align:left;transition:background .15s;display:flex;align-items:center;gap:12px" onmouseover="this.style.background='#2a1030'" onmouseout="this.style.background='#1a0d20'">
+          <div style="font-size:24px">🧱</div>
           <div>
-            <div style="font-size:13px;font-weight:700;color:#c77dea">Apenas item (sem mão de obra)</div>
-            <div style="font-size:11px;color:#c77dea;margin-top:2px">só a compra do item — sem instalação nem prestação de serviço</div>
+            <div style="font-size:13px;font-weight:700;color:#c77dea">Material</div>
+            <div style="font-size:11px;color:#c77dea;margin-top:2px">só a compra do produto — sem instalação nem prestação de serviço</div>
           </div>
         </button>
       </div>
@@ -1520,6 +1520,7 @@ function renderFlatSubcatRow(k, sk, subColor, indentLevel){
         onmouseout="this.style.borderColor='#2a2a2a';this.style.color='#ccc'">
         ${SUBCATS[k][sk].label}
       </div>
+      <button class="subcat-dots-btn" title="Lançar direto em ${(SUBCATS[k][sk].label||'').replace(/"/g,'&quot;')}" style="background:none;border:none;color:#ccc;cursor:pointer;padding:4px 4px;font-size:14px;transition:opacity .15s" onclick="event.stopPropagation();${isObra?`openObraTriagemModal('${sk}')`:`openModalSubCat('${k}','${sk}')`}"><i class="ti ti-plus"></i></button>
       <button class="subcat-dots-btn" style="background:none;border:none;color:#ccc;cursor:pointer;padding:4px 6px;font-size:13px;transition:opacity .15s" onclick="toggleSubCatMenu('${k}','${sk}',event)"><i class="ti ti-dots-vertical"></i></button>
     </div>`;
 }
@@ -1620,7 +1621,7 @@ function renderSubgroupedOrFlatRows(k, items, subColor, groupKey, expandedSub, g
         <button onclick="toggleSubSubGroup('${k}','${sgKey.replace(/'/g,"\\'")}',event)" title="Expandir/recolher" style="background:none;border:none;cursor:pointer;padding:2px 4px;flex-shrink:0">
           <span id="chev-sub-${sgSafeId}" style="color:#999;font-size:8px;transition:transform .15s;transform:rotate(${sgOpen?90:0}deg);display:inline-block">▶</span>
         </button>
-        <span onclick="handleNavSubGroupClick('${k}',${JSON.stringify(gName)},${JSON.stringify(sgName)},event)" id="nav-${subGroupPageKey(k,gName,sgName)}" title="Clique pra ver o geral deste subgrupo — clique 2x pra expandir/recolher" style="cursor:pointer;font-size:9.5px;color:#999;text-transform:uppercase;letter-spacing:.05em;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onmouseover="this.style.color='#e8e7e2'" onmouseout="this.style.color='#999'">${sgName}</span>
+        <span onclick="handleNavSubGroupClick('${k}','${gName.replace(/'/g,"\\'")}','${sgName.replace(/'/g,"\\'")}',event)" id="nav-${subGroupPageKey(k,gName,sgName)}" title="Clique pra ver o geral deste subgrupo — clique 2x pra expandir/recolher" style="cursor:pointer;font-size:9.5px;color:#999;text-transform:uppercase;letter-spacing:.05em;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onmouseover="this.style.color='#e8e7e2'" onmouseout="this.style.color='#999'">${sgName}</span>
         <span style="font-size:9px;color:#777;background:#1a1a1a;border-radius:8px;padding:1px 5px;flex-shrink:0">${subgroups[sgName].length}</span>
       </div>`;
     const rows = subgroups[sgName].map(e=>renderFlatSubcatRow(k, e.sk, subColor, 2)).join('');
@@ -3562,6 +3563,17 @@ function chooseObraTipo(tipo, material){
   closeObraTriagemModal();
   pendingTipoContratacao = material;
   openObraEmpreitadaModal(material, obraTriagemPresetSub, tipo==='unico' || tipo==='item');
+}
+
+// Opção "Material" da triagem — em vez de criar um pacote/serviço com um único
+// item (o antigo "apenas item"), abre direto o popup de material de sempre,
+// já com a fase/sub certa preenchida. Um só caminho pra "só comprei o produto,
+// sem mão de obra", em vez de dois sistemas fazendo a mesma coisa.
+function chooseObraMaterial(){
+  closeObraTriagemModal();
+  const sub = obraTriagemPresetSub;
+  const fase = sub ? (SUBCATS['obra-bruta']?.[sub]?.grupo || null) : null;
+  openMaterialModal('obra-bruta', fase, sub);
 }
 
 // Simplificado de volta: sempre array puro de serviços/ambientes. Data de início
