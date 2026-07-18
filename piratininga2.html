@@ -30,17 +30,17 @@ document.documentElement.setAttribute('data-theme', localStorage.getItem('pirati
   --c-material-bg:#1a0d20; --c-material-bg2:#150d1a; --c-pink-bg:#1a0d14; --c-red-bg:#1a0d0d;
 }
 html[data-theme="light"]{
-  --c-bg0:#eef1f4; --c-bg0b:#ecf0f3; --c-bg0c:#e9edf0; --c-bg0d:#e7ebee;
-  --c-panel:#ffffff; --c-panel2:#f4f7f8; --c-panel3:#eef1f3; --c-panel4:#eceef1; --c-panel5:#ebeef0;
-  --c-panel6:#e7eaed; --c-panel7:#e5e8eb; --c-panel8:#e2e5e8;
-  --c-border:#d6dbdf; --c-border2:#ccd2d7; --c-border3:#c2c9cf;
-  --c-faint:#9aa2a9; --c-faint2:#8b939b; --c-faint3:#7c848d; --c-faint4:#767f87;
-  --c-muted:#6c757d; --c-muted2:#626b73; --c-muted3:#575f68; --c-muted4:#4d565e;
-  --c-secondary:#3c434a; --c-primary:#1a1d20;
-  --c-apagar-bg:#fdf3d8; --c-apagar-bg2:#fbeec1; --c-apagar-bg3:#f8e6ae; --c-apagar-strong:#8a6d1f;
-  --c-necessario-bg:#dcecfd; --c-necessario-border:#b8d6f1; --c-necessario-border2:#9bc5eb;
-  --c-pago-bg:#dff3e0; --c-pago-bg2:#d6f0d9; --c-pago-border:#b8e2ba; --c-pago-border2:#9dd2a2;
-  --c-material-bg:#f4e6fb; --c-material-bg2:#f1e6f7; --c-pink-bg:#fbe3ee; --c-red-bg:#fbe0e0;
+  --c-bg0:#e4e0d6; --c-bg0b:#e2ded4; --c-bg0c:#e0dcd1; --c-bg0d:#ded9ce;
+  --c-panel:#ece8de; --c-panel2:#e9e5da; --c-panel3:#e6e2d7; --c-panel4:#e3dfd4; --c-panel5:#e1ddd1;
+  --c-panel6:#dbd6ca; --c-panel7:#d8d3c6; --c-panel8:#d5cfc2;
+  --c-border:#c7c0b0; --c-border2:#bbb3a1; --c-border3:#afa692;
+  --c-faint:#8f8676; --c-faint2:#837a6b; --c-faint3:#776e60; --c-faint4:#6f665a;
+  --c-muted:#665e52; --c-muted2:#5c5548; --c-muted3:#524b40; --c-muted4:#48423a;
+  --c-secondary:#3a352c; --c-primary:#211d16;
+  --c-apagar-bg:#ecdfae; --c-apagar-bg2:#e8d89a; --c-apagar-bg3:#e3d183; --c-apagar-strong:#8a6d1f;
+  --c-necessario-bg:#cfd9dd; --c-necessario-border:#b6c4ca; --c-necessario-border2:#9db0b8;
+  --c-pago-bg:#d3ddc9; --c-pago-bg2:#cbd7c0; --c-pago-border:#b9c9ac; --c-pago-border2:#a2b993;
+  --c-material-bg:#ded2df; --c-material-bg2:#dacfdb; --c-pink-bg:#e6d3d9; --c-red-bg:#e6d2ce;
 }
 .auth-screen{position:fixed;inset:0;background:var(--c-bg0d);z-index:9999;display:flex;align-items:center;justify-content:center}
 .auth-box{background:var(--c-panel3);border:1px solid var(--c-border);border-radius:14px;padding:2rem;width:340px;text-align:center}
@@ -267,7 +267,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:var(--c-primary);margin-top:2px">atualizado em 18JUL26 (versão 77)</div>
+          <div id="build-marker" style="font-size:9px;color:var(--c-primary);margin-top:2px">atualizado em 18JUL26 (versão 78)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
