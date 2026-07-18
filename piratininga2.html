@@ -225,7 +225,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 18JUL26 (versão 67)</div>
+          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 18JUL26 (versão 68)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -1412,6 +1412,44 @@ function handleNavGroupClick(k, gName, e){
   }
 }
 
+// Mesma ideia do handleNavGroupClick, um nível abaixo: clique único navega pra
+// uma página com o geral daquele SUBGRUPO (ex.: "Preparação" dentro de
+// "Demolição"); um 2º clique dentro de 500ms expande/recolhe o subgrupo —
+// assim não precisa clicar bem em cima da setinha pra abrir.
+function subGroupPageKey(k, gName, sgName){ return k+'__subgrupo:'+encodeURIComponent(gName)+'|'+encodeURIComponent(sgName); }
+
+let lastNavSubGroupClickInfo = {key:null, time:0};
+function handleNavSubGroupClick(k, gName, sgName, e){
+  if(e) e.stopPropagation();
+  const uniqueKey = k+'|'+gName+'|'+sgName;
+  navigate(subGroupPageKey(k, gName, sgName));
+  const now = Date.now();
+  if(lastNavSubGroupClickInfo.key === uniqueKey && (now - lastNavSubGroupClickInfo.time) < 500){
+    toggleSubSubGroup(k, k+'__grp__'+gName+'__sub__'+sgName, e);
+    lastNavSubGroupClickInfo = {key:null, time:0};
+  } else {
+    lastNavSubGroupClickInfo = {key: uniqueKey, time: now};
+  }
+}
+
+// Expande/recolhe TODOS os subgrupos de UMA fase de uma vez (botão ao lado
+// da fase, só aparece quando essa fase tem subgrupos) — mesma ideia do botão
+// "expandir/recolher todas as fases" que já existe no topo de Execução de Obra.
+function toggleAllSubgroupsInFase(k, gName, e){
+  if(e) e.stopPropagation();
+  const skKeys = Object.keys(SUBCATS[k]||{});
+  const sgNames = [...new Set(skKeys.filter(sk=>SUBCATS[k][sk].grupo===gName).map(sk=>SUBCATS[k][sk].subgrupo).filter(Boolean))];
+  if(!sgNames.length) return;
+  const expandedSub = getExpandedSub();
+  const groupKey = k+'__grp__'+gName;
+  const allOpen = sgNames.every(sg=>expandedSub[groupKey+'__sub__'+sg]);
+  const newState = !allOpen;
+  sgNames.forEach(sg=>{ expandedSub[groupKey+'__sub__'+sg] = newState; });
+  localStorage.setItem('pirati_expanded_sub', JSON.stringify(expandedSub));
+  const list = document.getElementById('subcat-list-'+k);
+  if(list) list.innerHTML = buildSubcatRowsHtml(k);
+}
+
 // Solta a etapa "nas entrelinhas" entre duas subs (dentro de uma fase já
 // aberta) → vira subs novas bem naquela posição exata dentro da fase.
 async function insertEtapaAsNewSubsAt(srcKey, refSk, position){
@@ -1549,10 +1587,11 @@ function buildSubcatRowsHtml(k){
           <span style="font-size:11px;color:#e8e7e2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${gName}</span>
         </span>
         <span style="font-size:9px;color:#aaa;background:#1a1a1a;border-radius:8px;padding:1px 6px;flex-shrink:0">${items.length}</span>
+        ${items.some(e=>e.subgrupo) ? `<button onclick="toggleAllSubgroupsInFase('${k}','${gNameEsc}',event)" title="Expandir/recolher todos os subgrupos desta fase" style="background:none;border:none;color:#e8e7e2;cursor:pointer;font-size:12px;padding:0 4px;line-height:1;flex-shrink:0" onmouseover="this.style.color='${subColor}'" onmouseout="this.style.color='#e8e7e2'"><i class="ti ti-chevrons-down"></i></button>` : ''}
         ${miniToggleHtml(faseAtiva, `toggleFaseAtivo('${k}',${JSON.stringify(skListJson).replace(/"/g,'&quot;')},event)`)}
         <button class="subcat-dots-btn" style="background:none;border:none;color:#e8e7e2;cursor:pointer;padding:4px 6px;font-size:13px;flex-shrink:0;opacity:1" onclick="toggleFaseMenu('${k}','${gNameEsc}',event)"><i class="ti ti-dots-vertical"></i></button>
       </div>`;
-    const itemRows = renderSubgroupedOrFlatRows(k, items, subColor, groupKey, expandedSub);
+    const itemRows = renderSubgroupedOrFlatRows(k, items, subColor, groupKey, expandedSub, gName);
     return groupRow + `<div id="subgrp-${safeId}" style="overflow:hidden;max-height:${isOpen?'none':'0'}">${itemRows}</div>`;
   }).join('');
 }
@@ -1561,7 +1600,7 @@ function buildSubcatRowsHtml(k){
 // (ex.: "Preparação", "Desmontagem" dentro de "Demolição"), cria um nível
 // extra colapsável entre a fase e os itens. Fases que ainda não foram
 // refinadas com subgrupos continuam exatamente como antes (lista plana).
-function renderSubgroupedOrFlatRows(k, items, subColor, groupKey, expandedSub){
+function renderSubgroupedOrFlatRows(k, items, subColor, groupKey, expandedSub, gName){
   const hasSubgrupos = items.some(e=>e.subgrupo);
   if(!hasSubgrupos) return items.map(e=>renderFlatSubcatRow(k, e.sk, subColor, 1)).join('');
   const subgroups = {};
@@ -1575,14 +1614,13 @@ function renderSubgroupedOrFlatRows(k, items, subColor, groupKey, expandedSub){
     const sgKey = groupKey+'__sub__'+sgName;
     const sgSafeId = subGroupSafeId(sgKey);
     const sgOpen = !!expandedSub[sgKey];
-    const sgNameEsc = sgName.replace(/'/g,"\\'");
     const sgAtivo = subgroups[sgName].some(e=>isSubAtivo(k, e.sk));
     const header = `
       <div style="display:flex;align-items:center;gap:5px;padding:4px 6px 4px 1.6rem;user-select:none;${sgAtivo?'':'opacity:.4'}">
         <button onclick="toggleSubSubGroup('${k}','${sgKey.replace(/'/g,"\\'")}',event)" title="Expandir/recolher" style="background:none;border:none;cursor:pointer;padding:2px 4px;flex-shrink:0">
           <span id="chev-sub-${sgSafeId}" style="color:#999;font-size:8px;transition:transform .15s;transform:rotate(${sgOpen?90:0}deg);display:inline-block">▶</span>
         </button>
-        <span style="font-size:9.5px;color:#999;text-transform:uppercase;letter-spacing:.05em;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sgName}</span>
+        <span onclick="handleNavSubGroupClick('${k}',${JSON.stringify(gName)},${JSON.stringify(sgName)},event)" id="nav-${subGroupPageKey(k,gName,sgName)}" title="Clique pra ver o geral deste subgrupo — clique 2x pra expandir/recolher" style="cursor:pointer;font-size:9.5px;color:#999;text-transform:uppercase;letter-spacing:.05em;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onmouseover="this.style.color='#e8e7e2'" onmouseout="this.style.color='#999'">${sgName}</span>
         <span style="font-size:9px;color:#777;background:#1a1a1a;border-radius:8px;padding:1px 5px;flex-shrink:0">${subgroups[sgName].length}</span>
       </div>`;
     const rows = subgroups[sgName].map(e=>renderFlatSubcatRow(k, e.sk, subColor, 2)).join('');
@@ -4949,6 +4987,9 @@ function navigate(page, skipHistory){
     if(subKey.startsWith('grupo:')){
       const gName = decodeURIComponent(subKey.slice(6));
       document.getElementById('topbar-title').textContent = (info?.label||catKey) + ' › ' + gName;
+    } else if(subKey.startsWith('subgrupo:')){
+      const [gNameEnc, sgNameEnc] = subKey.slice(9).split('|');
+      document.getElementById('topbar-title').textContent = (info?.label||catKey) + ' › ' + decodeURIComponent(gNameEnc) + ' › ' + decodeURIComponent(sgNameEnc);
     } else {
       document.getElementById('topbar-title').textContent = (info?.label||catKey) + ' › ' + (SUBCATS[catKey]?.[subKey]?.label||'');
     }
@@ -4991,6 +5032,10 @@ function render(){
   else if(currentPage.includes('__')){
     const [catKey, subKey] = currentPage.split('__');
     if(subKey.startsWith('grupo:')) renderFaseGroup(catKey, decodeURIComponent(subKey.slice(6)));
+    else if(subKey.startsWith('subgrupo:')){
+      const [gNameEnc, sgNameEnc] = subKey.slice(9).split('|');
+      renderSubgrupoGroup(catKey, decodeURIComponent(gNameEnc), decodeURIComponent(sgNameEnc));
+    }
     else if(IMOVEL_CATS[catKey]) renderImovelCat(catKey, subKey);
     else renderSubCat(currentPage);
   }
@@ -7033,6 +7078,61 @@ function renderFaseGroup(catKey, gName){
       </div>
     </div>
     ${renderColGrid(lista, catKey+'__grupo:'+encodeURIComponent(gName), 'ambiente', skList)}
+  `;
+}
+
+function renderSubgrupoGroup(catKey, gName, sgName){
+  const info = CATS[catKey] || IMOVEL_CATS[catKey];
+  if(!info){ navigate('geral'); return; }
+  const skList = Object.keys(SUBCATS[catKey]||{}).filter(sk=>SUBCATS[catKey][sk].grupo===gName && SUBCATS[catKey][sk].subgrupo===sgName);
+  const catAliasKeys = catKeysFor(catKey);
+  const lista = gastos.filter(g=>{
+    if(!catAliasKeys.includes(g.categoria)) return false;
+    if(skList.includes(g.subcategoria)) return true;
+    if(g.pacote_subs) return parsePacoteSubs(g.pacote_subs).some(p=>skList.includes(p.sub));
+    return false;
+  });
+  const getValG = g => gastoValor(g);
+  const total = lista.filter(g=>g.status!=='cancel').reduce((s,g)=>s+getValG(g),0);
+  const pago  = lista.filter(g=>g.status==='pago').reduce((s,g)=>s+getValG(g),0);
+  const necessario = lista.filter(g=>g.status==='necessario').reduce((s,g)=>s+getValG(g),0);
+  const dispensavel = lista.filter(g=>g.status==='apagar').reduce((s,g)=>s+getValG(g),0);
+
+  document.getElementById('content').innerHTML = `
+    ${renderContextBars(catKey, null)}
+    <div class="cat-total-card" style="border-left:3px solid ${info.color}">
+      <div class="cat-stat">
+        <span class="cat-stat-label">Total</span>
+        <span class="cat-stat-value" style="color:${info.color}">${fmt(total)}</span>
+      </div>
+      <div class="cat-stat">
+        <span class="cat-stat-label">Pago</span>
+        <span class="cat-stat-value" style="color:#4caf50">${fmt(pago)}</span>
+      </div>
+      <div class="cat-stat">
+        <span class="cat-stat-label">Necessários</span>
+        <span class="cat-stat-value" style="color:#42a5f5">${fmt(necessario)}</span>
+      </div>
+      <div class="cat-stat">
+        <span class="cat-stat-label">Dispensáveis</span>
+        <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <button onclick="openMaterialModal('${catKey}','${gName.replace(/'/g,"\\'")}',null)"
+          style="background:transparent;border:1px solid #c77dea;color:#c77dea;padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
+          onmouseover="this.style.background='#c77dea';this.style.color='#111'"
+          onmouseout="this.style.background='transparent';this.style.color='#c77dea'">
+          🧱 + material
+        </button>
+        <button onclick="openObraTriagemModal()"
+          style="background:transparent;border:1px solid ${info.color};color:${info.color};padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
+          onmouseover="this.style.background='${info.color}';this.style.color='#111'"
+          onmouseout="this.style.background='transparent';this.style.color='${info.color}'">
+          + lançar em ${sgName}
+        </button>
+      </div>
+    </div>
+    ${renderColGrid(lista, catKey+'__subgrupo:'+encodeURIComponent(gName)+'|'+encodeURIComponent(sgName), 'ambiente', skList)}
   `;
 }
 
