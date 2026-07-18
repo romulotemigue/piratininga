@@ -178,10 +178,10 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
 .modal-close:hover{color:#e8e7e2}
 .modal .form-group{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
 .pay-pill{background:#111;border:1px solid #3a3a3a;color:#ccc;border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;transition:all .15s}
-.invest-card{background:#111;border:1px solid #3a3a3a;border-radius:8px;padding:10px 12px;cursor:pointer;transition:all .15s;flex:1;text-align:left}
+.invest-card{background:#111;border:1px solid #3a3a3a;border-radius:6px;padding:6px 10px;cursor:pointer;transition:all .15s;flex:1;text-align:left}
 .invest-card:hover{border-color:#666}
-.invest-card .invest-title{font-size:12px;font-weight:700;color:#e8e7e2}
-.invest-card .invest-desc{font-size:10px;color:#999;margin-top:2px;display:block}
+.invest-card .invest-title{font-size:11px;font-weight:700;color:#e8e7e2}
+.invest-card .invest-desc{font-size:9px;color:#999;margin-top:1px;display:block;line-height:1.3}
 .invest-card.active[data-inv="perpetuo"]{background:#0d1a10;border-color:#2e5a34}
 .invest-card.active[data-inv="perpetuo"] .invest-title{color:#4caf50}
 .invest-card.active[data-inv="transferivel"]{background:#0d1520;border-color:#2d5a8a}
@@ -225,7 +225,7 @@ tr.row-drag-over td{background:#222;border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 12JUL26 (versão 63)</div>
+          <div id="build-marker" style="font-size:9px;color:#e8e7e2;margin-top:2px">atualizado em 12JUL26 (versão 64)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="btn-undo" onclick="historyUndo()" title="Desfazer" disabled
@@ -7499,12 +7499,11 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
   const pacoteBadge = isPacote ? `<span onclick="event.stopPropagation();openPacoteModal(${g.id})" title="Ver todos os serviços deste ${badgeLabel} (${materialLabelStr})" style="cursor:pointer;color:${badgeColor};font-size:10px;font-weight:700;background:${badgeBg};border:1px solid ${badgeBorder};border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;line-height:1.4;width:88px;flex-shrink:0;box-sizing:border-box">${badgeIcon} ${badgeLabel}</span>` : '';
   const prazoBadgeRow = isPacote ? prazoBadgeHtml(getPacoteMeta(g)) : '';
   const materiaisBadgeRow = isPacote ? materiaisBadgeHtml(g) : '';
-  const investBadgeRow = investimentoBadgeHtml(g);
   // 3 linhas fixas: 1) nome, 2) selos (pacote/serviço + dias restantes + materiais,
   // com largura padronizada pra alinhar mesmo quando o ícone muda de tamanho
   // com/sem material), 3) sub-etapa em azul embaixo de tudo.
-  const badgeLineHtml = (isPacote || investBadgeRow)
-    ? `<div style="display:flex;align-items:center;gap:4px;margin-top:2px;flex-wrap:nowrap;overflow-x:auto">${pacoteBadge}${prazoBadgeRow}${materiaisBadgeRow}${investBadgeRow}</div>`
+  const badgeLineHtml = isPacote
+    ? `<div style="display:flex;align-items:center;gap:4px;margin-top:2px;flex-wrap:nowrap;overflow-x:auto">${pacoteBadge}${prazoBadgeRow}${materiaisBadgeRow}</div>`
     : '';
   const subLabelLineHtml = subLabel
     ? `<div style="margin-top:2px">${canNavSub
