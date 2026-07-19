@@ -267,7 +267,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:9px;color:var(--c-primary);margin-top:2px">atualizado em 18JUL26 (versão 80)</div>
+          <div id="build-marker" style="font-size:9px;color:var(--c-primary);margin-top:2px">atualizado em 18JUL26 (versão 81)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1189,7 +1189,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
       <button type="button" id="emp-materiais-btn" onclick="openMateriaisModal('pending')" style="background:var(--c-panel2);border:1px solid var(--c-border3);color:var(--c-muted4);border-radius:6px;padding:7px 14px;font-size:12px;cursor:pointer">🧱 Adicionar material</button>
     </div>
     <div style="font-size:11px;color:var(--c-primary);margin-bottom:8px">Marque os serviços cobertos por esse pacote e, se quiser, escreva o ambiente de cada um:</div>
-    <div id="emp-service-grid" style="overflow-y:auto;flex:1;display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:12px;align-content:start;padding-bottom:8px"></div>
+    <div id="emp-service-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:12px;align-content:start;padding-bottom:8px"></div>
     <button class="btn-confirm" id="emp-btn-confirm" onclick="confirmEmpreitada()" style="margin-top:14px">Confirmar pacote</button>
   </div>
 </div>
