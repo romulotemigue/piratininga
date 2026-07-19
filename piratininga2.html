@@ -286,7 +286,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 18JUL26 (versão 82)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 18JUL26 (versão 83)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1101,6 +1101,38 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
       <h3 style="margin:0" id="empreitada-title">📦 Novo pacote de empreitada</h3>
       <button onclick="closeObraEmpreitadaModal()" style="background:none;border:none;color:var(--c-primary);font-size:21px;cursor:pointer;line-height:1">&times;</button>
     </div>
+    <div id="emp-extra-info-group" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
+        <div class="form-group" style="margin-bottom:0">
+          <label>Loja / Fornecedor</label>
+          <input type="text" id="emp-loja" placeholder="Ex: Leroy Merlin">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Marca</label>
+          <input type="text" id="emp-marca" placeholder="Ex: Ikea">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Modelo/código do produto</label>
+          <input type="text" id="emp-modelo" placeholder="Ex: mod. X200">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+        <div class="form-group" style="margin-bottom:0">
+          <label>WhatsApp da loja/vendedor</label>
+          <div style="display:flex;gap:6px">
+            <input type="text" id="emp-contato" placeholder="Ex: (11) 91234-5678" style="flex:1">
+            <button type="button" onclick="abrirWhatsAppEmp()" title="Abrir no WhatsApp" style="background:var(--c-pago-bg2);border:1px solid var(--c-pago-border2);color:#4caf50;border-radius:8px;padding:0 12px;cursor:pointer;font-size:17px;flex-shrink:0"><i class="ti ti-brand-whatsapp"></i></button>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Endereço da loja</label>
+          <div style="display:flex;gap:6px">
+            <input type="text" id="emp-endereco" placeholder="Ex: Av. Brasil, 123 - Santos/SP" style="flex:1">
+            <button type="button" onclick="abrirMapsEmp()" title="Abrir no Google Maps" style="background:var(--c-necessario-bg);border:1px solid var(--c-necessario-border2);color:#42a5f5;border-radius:8px;padding:0 12px;cursor:pointer;font-size:17px;flex-shrink:0"><i class="ti ti-map-pin"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="modal-row" style="margin-bottom:14px">
       <div class="form-group" style="margin-bottom:0">
         <label id="emp-desc-label">Descrição</label>
@@ -1125,63 +1157,44 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         </select>
       </div>
     </div>
-    <div class="modal-row" style="margin-bottom:14px">
-      <div class="form-group" style="margin-bottom:0">
-        <label>Data de início do serviço (opcional)</label>
-        <input type="date" id="emp-data-inicio" onchange="updateEmpPrazoPreview()">
-      </div>
-      <div class="form-group" style="margin-bottom:0">
-        <label>Prazo estimado (dias corridos)</label>
-        <input type="text" inputmode="numeric" id="emp-prazo-dias" placeholder="Ex: 15" oninput="this.value=this.value.replace(/[^0-9]/g,'');updateEmpPrazoPreview()">
+    <div id="emp-extra-info-group-2" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:14px;align-items:end;margin-bottom:2px">
+        <div class="form-group" style="margin-bottom:0">
+          <label>Data de início do serviço (opcional)</label>
+          <input type="date" id="emp-data-inicio" onchange="updateEmpPrazoPreview()">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Prazo estimado (dias corridos)</label>
+          <input type="text" inputmode="numeric" id="emp-prazo-dias" placeholder="Ex: 15" oninput="this.value=this.value.replace(/[^0-9]/g,'');updateEmpPrazoPreview()">
+        </div>
+        <div class="form-group" style="margin-bottom:0;width:170px">
+          <label>Entrega</label>
+          <button type="button" id="emp-entregue-btn" onclick="toggleEmpEntregue()" title="Marcar como já entregue/recebido"
+            style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--c-panel);border:1px solid var(--c-border2);color:var(--c-faint3);border-radius:8px;padding:0 12px;height:38px;cursor:pointer;font-size:13px;transition:all .15s">
+            <i class="ti ti-truck-delivery"></i><span id="emp-entregue-label">Ainda não chegou</span>
+          </button>
+          <input type="checkbox" id="emp-entregue" style="display:none">
+        </div>
       </div>
     </div>
-    <div id="emp-prazo-preview" style="display:none;font-size:12px;color:var(--c-primary);margin:-8px 0 14px"></div>
-    <div id="emp-extra-info-group" style="display:none">
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
-        <div class="form-group" style="margin-bottom:0">
-          <label>Marca</label>
-          <input type="text" id="emp-marca" placeholder="Ex: Ikea">
+    <div id="emp-prazo-preview" style="display:none;font-size:12px;color:var(--c-primary);margin:2px 0 14px"></div>
+    <div id="emp-extra-info-group-3" style="display:none">
+      <div class="form-group" style="margin-bottom:14px">
+        <label>Forma de pagamento</label>
+        <div id="emp-pagamento-pills" style="display:flex;gap:6px;flex-wrap:wrap">
+          <button type="button" class="pay-pill" data-val="Pix" onclick="selectPayPill(this,'emp')">Pix</button>
+          <button type="button" class="pay-pill" data-val="Débito" onclick="selectPayPill(this,'emp')">Débito</button>
+          <button type="button" class="pay-pill" data-val="Crédito" onclick="selectPayPill(this,'emp')">Crédito</button>
         </div>
-        <div class="form-group" style="margin-bottom:0">
-          <label>Loja / Fornecedor</label>
-          <input type="text" id="emp-loja" placeholder="Ex: Leroy Merlin">
-        </div>
-        <div class="form-group" style="margin-bottom:0">
-          <label>Forma de pagamento</label>
-          <div id="emp-pagamento-pills" style="display:flex;gap:6px;flex-wrap:wrap">
-            <button type="button" class="pay-pill" data-val="Pix" onclick="selectPayPill(this,'emp')">Pix</button>
-            <button type="button" class="pay-pill" data-val="Débito" onclick="selectPayPill(this,'emp')">Débito</button>
-            <button type="button" class="pay-pill" data-val="Crédito" onclick="selectPayPill(this,'emp')">Crédito</button>
-          </div>
-          <input type="text" id="emp-parcelas" placeholder="Quantas parcelas? (ex: 3)" style="display:none;margin-top:6px" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
-          <input type="hidden" id="emp-pagamento">
-        </div>
+        <input type="text" id="emp-parcelas" placeholder="Quantas parcelas? (ex: 3)" style="display:none;margin-top:6px;max-width:260px" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+        <input type="hidden" id="emp-pagamento">
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
-        <div class="form-group" style="margin-bottom:0">
-          <label>Modelo/código do produto</label>
-          <input type="text" id="emp-modelo" placeholder="Ex: mod. X200">
-        </div>
-        <div class="form-group" style="margin-bottom:0">
-          <label>WhatsApp da loja/vendedor</label>
-          <div style="display:flex;gap:6px">
-            <input type="text" id="emp-contato" placeholder="Ex: (11) 91234-5678" style="flex:1">
-            <button type="button" onclick="abrirWhatsAppEmp()" title="Abrir no WhatsApp" style="background:var(--c-pago-bg2);border:1px solid var(--c-pago-border2);color:#4caf50;border-radius:8px;padding:0 12px;cursor:pointer;font-size:17px;flex-shrink:0"><i class="ti ti-brand-whatsapp"></i></button>
-          </div>
-        </div>
-        <div class="form-group" style="margin-bottom:0">
-          <label>Endereço da loja</label>
-          <div style="display:flex;gap:6px">
-            <input type="text" id="emp-endereco" placeholder="Ex: Av. Brasil, 123 - Santos/SP" style="flex:1">
-            <button type="button" onclick="abrirMapsEmp()" title="Abrir no Google Maps" style="background:var(--c-necessario-bg);border:1px solid var(--c-necessario-border2);color:#42a5f5;border-radius:8px;padding:0 12px;cursor:pointer;font-size:17px;flex-shrink:0"><i class="ti ti-map-pin"></i></button>
-          </div>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--c-secondary);cursor:pointer">
-          <input type="checkbox" id="emp-entregue" style="width:auto"> Já foi entregue
-        </label>
-      </div>
+    </div>
+    <div id="emp-invest-wrap"></div>
+    <div style="margin:-6px 0 14px">
+      <button type="button" id="emp-materiais-btn" onclick="openMateriaisModal('pending')" style="background:var(--c-panel2);border:1px solid var(--c-border3);color:var(--c-muted4);border-radius:6px;padding:7px 14px;font-size:13px;cursor:pointer">🧱 Adicionar material</button>
+    </div>
+    <div id="emp-extra-info-group-4" style="display:none">
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
         <div class="form-group" style="margin-bottom:0">
           <label>Link do site onde comprou</label>
@@ -1202,10 +1215,6 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
           <input type="file" id="emp-comprovante" style="display:none" onchange="updateDropzoneLabel('emp-comprovante')">
         </div>
       </div>
-    </div>
-    <div id="emp-invest-wrap"></div>
-    <div style="margin:-6px 0 14px">
-      <button type="button" id="emp-materiais-btn" onclick="openMateriaisModal('pending')" style="background:var(--c-panel2);border:1px solid var(--c-border3);color:var(--c-muted4);border-radius:6px;padding:7px 14px;font-size:13px;cursor:pointer">🧱 Adicionar material</button>
     </div>
     <div style="font-size:12px;color:var(--c-primary);margin-bottom:8px">Marque os serviços cobertos por esse pacote e, se quiser, escreva o ambiente de cada um:</div>
     <div id="emp-service-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:12px;align-content:start;padding-bottom:8px"></div>
@@ -3717,6 +3726,30 @@ function updateEmpPrazoPreview(){
   el.textContent = `Previsão de término: ${fmtDateTxt(info.fim.toISOString().slice(0,10))}`;
 }
 
+// Botão "Já foi entregue" — visualmente igual ao mesmo estilo de botão do
+// WhatsApp/Maps, mas de duas cores (cinza = ainda não, teal = já chegou).
+function toggleEmpEntregue(){
+  const cb = document.getElementById('emp-entregue');
+  cb.checked = !cb.checked;
+  updateEmpEntregueBtnStyle();
+}
+function updateEmpEntregueBtnStyle(){
+  const checked = document.getElementById('emp-entregue').checked;
+  const btn = document.getElementById('emp-entregue-btn');
+  const label = document.getElementById('emp-entregue-label');
+  if(checked){
+    btn.style.background = '#0d2a2c';
+    btn.style.borderColor = '#1f6b70';
+    btn.style.color = '#26c6da';
+    label.textContent = 'Já foi entregue';
+  } else {
+    btn.style.background = 'var(--c-panel)';
+    btn.style.borderColor = 'var(--c-border2)';
+    btn.style.color = 'var(--c-faint3)';
+    label.textContent = 'Ainda não chegou';
+  }
+}
+
 function calcPrazoInfo(meta){
   if(!meta || !meta.dataInicio || !meta.prazoDias) return null;
   const dataSoDia = String(meta.dataInicio).slice(0,10);
@@ -3920,10 +3953,14 @@ function openObraEmpreitadaModal(material, presetSub, isUnico){
   document.getElementById('emp-contato').value = '';
   document.getElementById('emp-endereco').value = '';
   document.getElementById('emp-entregue').checked = false;
+  updateEmpEntregueBtnStyle();
   document.getElementById('emp-link').value = '';
   resetDropzone('emp-nf');
   resetDropzone('emp-comprovante');
   document.getElementById('emp-extra-info-group').style.display = '';
+  document.getElementById('emp-extra-info-group-2').style.display = '';
+  document.getElementById('emp-extra-info-group-3').style.display = '';
+  document.getElementById('emp-extra-info-group-4').style.display = '';
   document.getElementById('emp-invest-wrap').innerHTML = investimentoPickerHtml('emp');
   pendingMateriais = [];
   updateMateriaisBtnLabel();
@@ -3980,6 +4017,9 @@ function openObraEmpreitadaModalForEdit(g){
   document.getElementById('emp-prazo-dias').value = meta.prazoDias || '';
   updateEmpPrazoPreview();
   document.getElementById('emp-extra-info-group').style.display = '';
+  document.getElementById('emp-extra-info-group-2').style.display = '';
+  document.getElementById('emp-extra-info-group-3').style.display = '';
+  document.getElementById('emp-extra-info-group-4').style.display = '';
   document.getElementById('emp-invest-wrap').innerHTML = investimentoPickerHtml('emp');
   setInvestimentoValue('emp', g.investimento);
   const parsedEmp = parseMaterialObs(g.obs);
@@ -3990,6 +4030,7 @@ function openObraEmpreitadaModalForEdit(g){
   document.getElementById('emp-contato').value = parsedEmp.contato;
   document.getElementById('emp-endereco').value = parsedEmp.endereco;
   document.getElementById('emp-entregue').checked = parsedEmp.entregue;
+  updateEmpEntregueBtnStyle();
   document.getElementById('emp-link').value = g.link || '';
   resetDropzone('emp-nf');
   resetDropzone('emp-comprovante');
@@ -4194,14 +4235,24 @@ function buildEmpRowHtml(it, faseNameEsc, showArea){
   <div draggable="true" ondragstart="empServiceDragStart('${sk}','${faseNameEsc}',event)" ondragover="event.preventDefault()" ondrop="empServiceDrop('${sk}','${faseNameEsc}',event)" style="padding:3px 0">
     <div style="display:flex;align-items:center;gap:6px">
       <span style="color:var(--c-primary);cursor:grab;font-size:12px;flex-shrink:0" title="Arrastar pra reordenar">⠿</span>
-      <input type="checkbox" class="emp-sub-check" data-row="${sk}" value="${sk}" ${isChecked?'checked':''} onchange="empreitadaCheckedServices['${sk}']=this.checked;document.getElementById('emp-amb-btn-${sk}').disabled=!this.checked" style="width:auto;flex-shrink:0">
+      <input type="checkbox" class="emp-sub-check" data-row="${sk}" value="${sk}" ${isChecked?'checked':''} onchange="empreitadaCheckedServices['${sk}']=this.checked;toggleEmpAmbBtnEnabled('${sk}',this.checked)" style="width:auto;flex-shrink:0">
       <span style="font-size:12px;color:var(--c-secondary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${it.label}">${it.label}</span>
       <button type="button" onclick="openAmbienteModal('${sk}','${labelEsc}')" id="emp-amb-btn-${sk}" ${isChecked?'':'disabled'}
-        style="width:130px;flex-shrink:0;background:var(--c-panel);border:1px solid var(--c-border2);border-radius:4px;padding:3px 5px;color:${names.length?'var(--c-primary)':'var(--c-faint3)'};font-size:11px;text-align:left;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+        style="width:130px;flex-shrink:0;background:var(--c-panel);border:1px solid var(--c-border2);border-radius:4px;padding:3px 5px;color:${names.length?'var(--c-primary)':'var(--c-faint3)'};font-size:11px;text-align:left;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:${isChecked?'1':'.55'}">
         ${btnLabel}
       </button>
     </div>
   </div>`;
+}
+// Marca/desmarca um serviço no construtor de pacote — além de habilitar/desabilitar
+// o botão "adicionar local", também corrige a aparência dele (antes ficava
+// parecendo desabilitado mesmo depois de marcado, o que parecia bug).
+function toggleEmpAmbBtnEnabled(sk, enabled){
+  const btn = document.getElementById('emp-amb-btn-'+sk);
+  if(!btn) return;
+  btn.disabled = !enabled;
+  btn.style.opacity = enabled ? '1' : '.55';
+  btn.style.cursor = enabled ? 'pointer' : 'not-allowed';
 }
 
 function empSubgroupKey(faseName, sgName){ return 'emp__obra-bruta__grp__'+faseName+'__sub__'+sgName; }
