@@ -78,15 +78,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .topbar-date{font-size:13px;color:var(--c-primary)}
 .cards-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:1.25rem}
 @media(max-width:700px){.cards-row{grid-template-columns:1fr 1fr}}
-.col-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)}
+.col-grid{grid-template-columns:repeat(auto-fit,minmax(480px,1fr))}
 
 /* ── Telas menores (notebook/iPad/monitor pequeno) ──────────────────
-   As 3 colunas de status (Pagos/Necessários/Dispensáveis) espremidas
-   é o que mais quebra o layout em telas estreitas — cada uma vira sua
-   própria linha, em vez de dividir a largura em 3 e cortar tudo. */
-@media(max-width:1100px){
-  .col-grid{grid-template-columns:1fr}
-}
+   O col-grid acima já se reorganiza sozinho (auto-fit) conforme o espaço
+   disponível de verdade — reage tanto a redimensionar a janela quanto a
+   arrastar a barra lateral, sem precisar de um breakpoint fixo aqui. */
 @media(max-width:900px){
   .sidebar{width:170px;min-width:140px}
   .content{padding:1rem}
@@ -286,7 +283,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 18JUL26 (versão 83)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 18JUL26 (versão 87)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1032,6 +1029,10 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
             <button type="button" onclick="addMatAmbienteCustom()" style="margin-top:5px;background:none;border:1px dashed var(--c-faint);color:var(--c-muted2);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer">+ novo ambiente</button>
           </div>
         </div>
+        <div class="form-group" id="mat-l-linkpacote-group" style="margin-bottom:0;margin-top:14px;display:none">
+          <label>🔗 Vincular a um pacote sem material desta fase (opcional)</label>
+          <select id="mat-l-linkpacote"><option value="">— nenhum —</option></select>
+        </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:8px">
         <div class="form-group" style="margin-bottom:0">
@@ -1102,16 +1103,16 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
       <button onclick="closeObraEmpreitadaModal()" style="background:none;border:none;color:var(--c-primary);font-size:21px;cursor:pointer;line-height:1">&times;</button>
     </div>
     <div id="emp-extra-info-group" style="display:none">
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
+      <div id="emp-fornecedor-row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
         <div class="form-group" style="margin-bottom:0">
-          <label>Loja / Fornecedor</label>
+          <label id="emp-loja-label">Loja / Fornecedor</label>
           <input type="text" id="emp-loja" placeholder="Ex: Leroy Merlin">
         </div>
-        <div class="form-group" style="margin-bottom:0">
+        <div class="form-group" id="emp-marca-wrap" style="margin-bottom:0">
           <label>Marca</label>
           <input type="text" id="emp-marca" placeholder="Ex: Ikea">
         </div>
-        <div class="form-group" style="margin-bottom:0">
+        <div class="form-group" id="emp-modelo-wrap" style="margin-bottom:0">
           <label>Modelo/código do produto</label>
           <input type="text" id="emp-modelo" placeholder="Ex: mod. X200">
         </div>
@@ -1191,12 +1192,12 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
       </div>
     </div>
     <div id="emp-invest-wrap"></div>
-    <div style="margin:-6px 0 14px">
+    <div id="emp-materiais-btn-wrap" style="margin:-6px 0 14px">
       <button type="button" id="emp-materiais-btn" onclick="openMateriaisModal('pending')" style="background:var(--c-panel2);border:1px solid var(--c-border3);color:var(--c-muted4);border-radius:6px;padding:7px 14px;font-size:13px;cursor:pointer">🧱 Adicionar material</button>
     </div>
     <div id="emp-extra-info-group-4" style="display:none">
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
-        <div class="form-group" style="margin-bottom:0">
+      <div id="emp-anexos-row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
+        <div class="form-group" id="emp-link-wrap" style="margin-bottom:0">
           <label>Link do site onde comprou</label>
           <input type="text" id="emp-link" placeholder="https://...">
         </div>
@@ -3084,7 +3085,7 @@ function openMaterialModal(presetCat, presetFase, presetSub){
   resetDropzone('mat-l-nf');
   resetDropzone('mat-l-comprovante');
   matLancamentoPendingAnexos = {nf:null, comprovante:null};
-  document.getElementById('mat-l-invest-wrap').innerHTML = investimentoPickerHtml('mat-l');
+  document.getElementById('mat-l-invest-wrap').innerHTML = investimentoPickerHtml('mat-l', true);
 
   const etapaSel = document.getElementById('mat-l-etapa');
   etapaSel.innerHTML = todasEtapasParaSelect().map(e=>`<option value="${e.key}">${e.label}</option>`).join('');
@@ -3126,7 +3127,7 @@ function parseMaterialObs(obs){
 
 function openMaterialModalForEdit(g){
   materialEditingId = g.id;
-  document.getElementById('mat-l-invest-wrap').innerHTML = investimentoPickerHtml('mat-l');
+  document.getElementById('mat-l-invest-wrap').innerHTML = investimentoPickerHtml('mat-l', true);
   setInvestimentoValue('mat-l', g.investimento);
   const parsed = parseMaterialObs(g.obs);
   document.getElementById('mat-l-desc').value = g.descricao||'';
@@ -3153,7 +3154,7 @@ function openMaterialModalForEdit(g){
   etapaSel.innerHTML = todasEtapasParaSelect().map(e=>`<option value="${e.key}">${e.label}</option>`).join('');
   etapaSel.value = g.categoria;
   const subEntry = g.categoria==='obra-bruta' ? SUBCATS['obra-bruta']?.[g.subcategoria] : null;
-  onMatEtapaChange(subEntry?.grupo, g.subcategoria, g.ambiente);
+  onMatEtapaChange(subEntry?.grupo, g.subcategoria, g.ambiente, g.linked_pacote_id);
   document.getElementById('mat-l-btn-confirm').textContent = 'Salvar alterações';
   document.getElementById('material-lancamento-overlay').classList.add('open');
 }
@@ -3174,7 +3175,7 @@ async function converterParaMaterial(id){
   }catch(e){ toast('Erro ao converter: '+e.message,'err'); }
 }
 
-function onMatEtapaChange(presetFase, presetSub, presetAmbiente){
+function onMatEtapaChange(presetFase, presetSub, presetAmbiente, presetLinkPacote){
   const catKey = document.getElementById('mat-l-etapa').value;
   const isObra = catKey==='obra-bruta';
   const subEl = document.getElementById('mat-l-subetapa');
@@ -3188,13 +3189,14 @@ function onMatEtapaChange(presetFase, presetSub, presetAmbiente){
     subsubGroup.style.display = '';
     ambienteGroup.style.display = '';
     populateMatAmbienteChecklist(presetAmbiente);
-    onMatSubEtapaChange(presetSub);
+    onMatSubEtapaChange(presetSub, presetLinkPacote);
   } else {
     const subs = SUBCATS[catKey] || {};
     subEl.innerHTML = '<option value="">— nenhuma —</option>' + Object.keys(subs).map(sk=>`<option value="${sk}">${subs[sk].label}</option>`).join('');
     if(presetSub && subs[presetSub]) subEl.value = presetSub;
     subsubGroup.style.display = 'none';
     ambienteGroup.style.display = 'none';
+    document.getElementById('mat-l-linkpacote-group').style.display = 'none';
   }
 }
 // Ambiente(s) do material — várias "pílulas" clicáveis (multi-seleção, ao
@@ -3220,7 +3222,7 @@ function addMatAmbienteCustom(){
   const jaMarcados = getMatAmbientesSelecionados();
   populateMatAmbienteChecklist([...jaMarcados, nome.trim()].join(MAT_AMB_SEP));
 }
-function onMatSubEtapaChange(presetSub){
+function onMatSubEtapaChange(presetSub, presetLinkPacote){
   const catKey = document.getElementById('mat-l-etapa').value;
   if(catKey!=='obra-bruta') return;
   const fase = document.getElementById('mat-l-subetapa').value;
@@ -3228,21 +3230,61 @@ function onMatSubEtapaChange(presetSub){
   const subs = Object.keys(SUBCATS['obra-bruta']||{}).filter(k=>SUBCATS['obra-bruta'][k].grupo===fase);
   subsubEl.innerHTML = subs.map(sk=>`<option value="${sk}">${SUBCATS['obra-bruta'][sk].label}</option>`).join('');
   if(presetSub && subs.includes(presetSub)) subsubEl.value = presetSub;
+  populateMatLinkPacoteSelect(presetLinkPacote);
+}
+// Lista pacotes "sem material" da MESMA fase, pra vincular um material comprado
+// separadamente — os dois passam a mostrar o valor somado, mas cada um continua
+// guardando (e mostrando) o próprio valor individual também.
+function populateMatLinkPacoteSelect(presetId){
+  const group = document.getElementById('mat-l-linkpacote-group');
+  const sel = document.getElementById('mat-l-linkpacote');
+  const fase = document.getElementById('mat-l-subetapa').value;
+  const candidatos = gastos.filter(g=>{
+    if(g.categoria!=='obra-bruta') return false;
+    const tipo = (g.tipo_contratacao||'').replace('unico-','');
+    if(tipo!=='sem-material') return false;
+    const subEntry = SUBCATS['obra-bruta']?.[g.subcategoria];
+    return subEntry && subEntry.grupo===fase;
+  });
+  if(!candidatos.length){ group.style.display='none'; sel.innerHTML='<option value="">— nenhum —</option>'; return; }
+  group.style.display = '';
+  sel.innerHTML = '<option value="">— nenhum —</option>' + candidatos.map(g=>`<option value="${g.id}">${(g.descricao||'sem descrição').replace(/</g,'&lt;')} — ${fmtShort(gastoValor(g))}</option>`).join('');
+  if(presetId && candidatos.some(g=>g.id===presetId)) sel.value = presetId;
 }
 // ── Pílulas de forma de pagamento (clicáveis, com parcelas se for crédito) ──
 // ── Seletor "Investimento": Perpétuo / Transferível / Pessoal ──
-function investimentoPickerHtml(prefix){
+function investimentoPickerHtml(prefix, compact){
+  if(compact){
+    return `<div class="form-group" style="margin-bottom:14px">
+      <label>Investimento</label>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <button type="button" class="invest-card invest-card-sm" data-inv="perpetuo" title="Fica junto com o imóvel, mesmo se vender" onclick="selectInvestimento(this,'${prefix}')">
+          <span class="invest-title">Perpétuo</span>
+        </button>
+        <button type="button" class="invest-card invest-card-sm" data-inv="transferivel" title="Você leva pra próxima casa, se vender" onclick="selectInvestimento(this,'${prefix}')">
+          <span class="invest-title">Transferível</span>
+        </button>
+        <button type="button" class="invest-card invest-card-sm" data-inv="pessoal" title="Não tem a ver com o imóvel" onclick="selectInvestimento(this,'${prefix}')">
+          <span class="invest-title">Pessoal</span>
+        </button>
+      </div>
+      <input type="hidden" id="${prefix}-investimento">
+    </div>`;
+  }
   return `<div class="form-group" style="margin-bottom:14px">
     <label>Investimento</label>
-    <div style="display:flex;flex-direction:column;gap:5px">
-      <button type="button" class="invest-card invest-card-sm" data-inv="perpetuo" title="Fica junto com o imóvel, mesmo se vender" onclick="selectInvestimento(this,'${prefix}')">
+    <div style="display:flex;gap:8px">
+      <button type="button" class="invest-card" data-inv="perpetuo" onclick="selectInvestimento(this,'${prefix}')">
         <span class="invest-title">Perpétuo</span>
+        <span class="invest-desc">Fica junto com o imóvel, mesmo se vender</span>
       </button>
-      <button type="button" class="invest-card invest-card-sm" data-inv="transferivel" title="Você leva pra próxima casa, se vender" onclick="selectInvestimento(this,'${prefix}')">
+      <button type="button" class="invest-card" data-inv="transferivel" onclick="selectInvestimento(this,'${prefix}')">
         <span class="invest-title">Transferível</span>
+        <span class="invest-desc">Você leva pra próxima casa, se vender</span>
       </button>
-      <button type="button" class="invest-card invest-card-sm" data-inv="pessoal" title="Não tem a ver com o imóvel" onclick="selectInvestimento(this,'${prefix}')">
+      <button type="button" class="invest-card" data-inv="pessoal" onclick="selectInvestimento(this,'${prefix}')">
         <span class="invest-title">Pessoal</span>
+        <span class="invest-desc">Não tem a ver com o imóvel</span>
       </button>
     </div>
     <input type="hidden" id="${prefix}-investimento">
@@ -3401,6 +3443,8 @@ async function confirmMaterialLancamento(){
   try{
     const ambientesSel = isObra ? getMatAmbientesSelecionados() : [];
     const ambienteVal = ambientesSel.join(MAT_AMB_SEP);
+    const linkPacoteEl = document.getElementById('mat-l-linkpacote');
+    const linkedPacoteId = (isObra && linkPacoteEl.value) ? parseInt(linkPacoteEl.value,10) : null;
     const row = {
       descricao: desc, categoria: catKey, subcategoria: subKey||'', valor: val, quantidade:1,
       status: document.getElementById('mat-l-status').value,
@@ -3408,6 +3452,7 @@ async function confirmMaterialLancamento(){
       obs, link: document.getElementById('mat-l-link').value.trim(),
       tipo_contratacao: 'material',
       ambiente: ambienteVal,
+      linked_pacote_id: linkedPacoteId,
       investimento: document.getElementById('mat-l-investimento')?.value || '',
       data_inicio: entregue ? null : (document.getElementById('mat-l-entrega').value || null),
       prazo_dias: entregue ? null : (document.getElementById('mat-l-prazo').value ? parseInt(document.getElementById('mat-l-prazo').value,10) : null)
@@ -3928,11 +3973,28 @@ let empreitadaLegacySemGrade = null; // {sub,ambiente} de um lançamento antigo 
 let empreitadaIsUnico = false; // true quando veio do fluxo "Serviço único" (mesma grade, só copy diferente)
 let empreitadaFocusFase = null; // se setado, mostra só essa fase inicialmente (menos poluído)
 let empreitadaShowAllFases = true;
+let empreitadaShowOnlySelected = false; // quando true, esconde os serviços que não estão marcados (útil ao editar um pacote já existente)
+
+// Esconde os campos que só fazem sentido quando o pacote/serviço TEM material
+// (Marca, Modelo, Link do site, botão de adicionar material) — num pacote de
+// empreitada sem material, quem presta o serviço é um empreiteiro, não uma
+// loja, então o rótulo também muda pra refletir isso.
+function refreshEmpMaterialFields(){
+  const semMaterial = empreitadaMaterial === 'sem-material';
+  document.getElementById('emp-loja-label').textContent = semMaterial ? 'Empreiteiro / Fornecedor' : 'Loja / Fornecedor';
+  document.getElementById('emp-marca-wrap').style.display = semMaterial ? 'none' : '';
+  document.getElementById('emp-modelo-wrap').style.display = semMaterial ? 'none' : '';
+  document.getElementById('emp-fornecedor-row').style.gridTemplateColumns = semMaterial ? '1fr' : '1fr 1fr 1fr';
+  document.getElementById('emp-link-wrap').style.display = semMaterial ? 'none' : '';
+  document.getElementById('emp-anexos-row').style.gridTemplateColumns = semMaterial ? '1fr 1fr' : '1fr 1fr 1fr';
+  document.getElementById('emp-materiais-btn-wrap').style.display = semMaterial ? 'none' : '';
+}
 function openObraEmpreitadaModal(material, presetSub, isUnico){
   empreitadaEditingId = null;
   empreitadaLegacySemGrade = null;
   empreitadaMaterial = material;
   empreitadaIsUnico = !!isUnico;
+  refreshEmpMaterialFields();
   const isSoItem = material==='sem-mao-de-obra';
   const icon = isSoItem ? '🏷️' : (material==='com-material' ? (isUnico?'🔧🧱':'📦🧱') : (isUnico?'🔧':'📦'));
   const tipoLabel = isSoItem ? 'item' : (isUnico ? 'serviço' : 'pacote de empreitada');
@@ -3975,6 +4037,7 @@ function openObraEmpreitadaModal(material, presetSub, isUnico){
   const presetEntry = presetSub && SUBCATS['obra-bruta']?.[presetSub];
   empreitadaFocusFase = presetEntry ? presetEntry.grupo : null;
   empreitadaShowAllFases = !presetEntry;
+  empreitadaShowOnlySelected = false; // pacote novo — ainda não tem nada marcado, mostra tudo
   renderEmpreitadaServiceGrid();
   if(presetSub){
     const checkEl = document.querySelector(`.emp-sub-check[value="${presetSub}"]`);
@@ -3988,6 +4051,7 @@ function closeObraEmpreitadaModal(){
   empreitadaIsUnico = false;
   empreitadaFocusFase = null;
   empreitadaShowAllFases = true;
+  empreitadaShowOnlySelected = false;
 }
 
 // Abre o mesmo construtor de pacote, mas pré-preenchido com os dados de um
@@ -3998,6 +4062,7 @@ function openObraEmpreitadaModalForEdit(g){
   const tipoRaw = g.tipo_contratacao || 'com-material';
   empreitadaIsUnico = tipoRaw.startsWith('unico-') || !g.pacote_subs;
   empreitadaMaterial = tipoRaw.replace('unico-','') || 'com-material';
+  refreshEmpMaterialFields();
   empreitadaFocusFase = null;
   empreitadaShowAllFases = true; // editando um lançamento existente, mostra tudo (pode abranger várias fases)
   const isSoItem = empreitadaMaterial==='sem-mao-de-obra';
@@ -4064,6 +4129,8 @@ function openObraEmpreitadaModalForEdit(g){
     });
     updateAmbienteBtnLabel(ri);
   });
+  empreitadaShowOnlySelected = true; // editando: mostra só o que já está no pacote por padrão
+  renderEmpreitadaServiceGrid(true);
   document.getElementById('obra-empreitada-overlay').classList.add('open');
 }
 
@@ -4144,6 +4211,14 @@ function hideAllFasesEmpreitada(){
   empreitadaShowAllFases = false;
   renderEmpreitadaServiceGrid(true); // preserva o que já foi marcado/preenchido
 }
+function showAllServicosEmpreitada(){
+  empreitadaShowOnlySelected = false;
+  renderEmpreitadaServiceGrid(true);
+}
+function hideUnselectedServicosEmpreitada(){
+  empreitadaShowOnlySelected = true;
+  renderEmpreitadaServiceGrid(true);
+}
 
 function renderEmpreitadaServiceGrid(preserveState){
   const cat = 'obra-bruta';
@@ -4179,9 +4254,26 @@ function renderEmpreitadaServiceGrid(preserveState){
     </div>`;
   }
 
+  const temAlgoMarcado = Object.values(empreitadaCheckedServices).some(Boolean);
+  if(empreitadaShowOnlySelected){
+    bannerHtml += `
+    <div style="grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;margin-bottom:2px;background:var(--c-panel);border:1px solid var(--c-border2);border-radius:8px">
+      <span style="font-size:13px;color:var(--c-primary)">Mostrando só os serviços que já estão neste pacote.</span>
+      <button type="button" onclick="showAllServicosEmpreitada()" style="background:var(--c-apagar-bg);border:1px solid var(--c-apagar-strong);color:#e8b544;border-radius:6px;padding:6px 12px;font-size:13px;cursor:pointer;flex-shrink:0;white-space:nowrap">+ Mostrar todos os serviços</button>
+    </div>`;
+  } else if(temAlgoMarcado){
+    bannerHtml += `
+    <div style="grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;margin-bottom:2px;background:var(--c-panel);border:1px solid var(--c-border2);border-radius:8px">
+      <span style="font-size:13px;color:var(--c-primary)">Mostrando todos os serviços.</span>
+      <button type="button" onclick="hideUnselectedServicosEmpreitada()" style="background:var(--c-panel3);border:1px solid var(--c-faint);color:var(--c-secondary);border-radius:6px;padding:6px 12px;font-size:13px;cursor:pointer;flex-shrink:0;white-space:nowrap">Recolher — só os do pacote</button>
+    </div>`;
+  }
+
   document.getElementById('emp-service-grid').innerHTML = bannerHtml + faseNomesVisiveis.map((faseName)=>{
     const fi = faseNomes.indexOf(faseName);
-    const items = fases[faseName].subs.sort((a,b)=>(a.ordem??0)-(b.ordem??0));
+    let items = fases[faseName].subs.sort((a,b)=>(a.ordem??0)-(b.ordem??0));
+    if(empreitadaShowOnlySelected) items = items.filter(it=>empreitadaCheckedServices[it.sk]);
+    if(!items.length) return '';
     const showArea = FASES_COM_METRAGEM.includes(faseName);
     const faseNameEsc = faseName.replace(/'/g,"\\'");
     const hasSubgrupos = items.some(it=>it.subgrupo);
@@ -7926,6 +8018,22 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
         ? `<span onclick="event.stopPropagation();navigate('${baseCat}__${effSub}')" title="Ver essa sub-etapa" style="font-size:11px;color:#7aa7d9;cursor:pointer;text-decoration:underline;text-decoration-color:transparent;transition:text-decoration-color .15s" onmouseover="this.style.textDecorationColor='#7aa7d9'" onmouseout="this.style.textDecorationColor='transparent'">${subLabelText}</span>`
         : `<span style="font-size:11px;color:var(--c-primary)">${subLabelText}</span>`}</div>`
     : '';
+  // Link material <-> pacote sem material: cada lado mostra o próprio valor E o
+  // total somado, nunca só a soma (senão perde-se de vista quanto é de cada um).
+  let linkedInfoHtml = '';
+  if(isPacote && badgeMaterial==='sem-material'){
+    const linkedMateriais = gastos.filter(x=>x.linked_pacote_id===g.id);
+    if(linkedMateriais.length){
+      const materiaisTotal = linkedMateriais.reduce((s,x)=>s+gastoValor(x),0);
+      linkedInfoHtml = `<div style="margin-top:2px;font-size:11px;color:#c77dea">🧱 + material vinculado: ${fmtShort(materiaisTotal)} <span style="color:var(--c-muted2)">(serviço ${fmtShort(val)} + material = ${fmtShort(val+materiaisTotal)})</span></div>`;
+    }
+  } else if(g.tipo_contratacao==='material' && g.linked_pacote_id){
+    const pacoteRef = gastos.find(x=>x.id===g.linked_pacote_id);
+    if(pacoteRef){
+      const pacoteVal = gastoValor(pacoteRef);
+      linkedInfoHtml = `<div style="margin-top:2px;font-size:11px;color:#e8b544">🔗 vinculado a <span onclick="event.stopPropagation();openPacoteModal(${pacoteRef.id})" title="Ver esse pacote" style="cursor:pointer;text-decoration:underline;text-decoration-color:transparent" onmouseover="this.style.textDecorationColor='#e8b544'" onmouseout="this.style.textDecorationColor='transparent'">${pacoteRef.descricao||'pacote'}</span> <span style="color:var(--c-muted2)">(material ${fmtShort(val)} + serviço ${fmtShort(pacoteVal)} = ${fmtShort(val+pacoteVal)})</span></div>`;
+    }
+  }
   const ambEsc = (ambienteOverride||'').replace(/'/g,"\\'");
   const subEsc = (effSub||'').replace(/'/g,"\\'");
   const delOnclick = isPacote ? `openPacoteDeleteModal(${g.id},'${subEsc}','${ambEsc}')` : `removeGasto(${g.id})`;
@@ -7943,6 +8051,7 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
       <div style="line-height:1.5">${g.descricao||''}</div>
       ${mainBadgeRowHtml}
       ${prazoLineHtml}
+      ${linkedInfoHtml}
       ${subLabelLineHtml}
     </td>
     <td style="text-align:right;font-weight:500;font-size:12px;white-space:nowrap;padding:4px">${fmtShort(val)}</td>
@@ -8436,6 +8545,40 @@ function closeBulkModal(){
   bulkStatus = null; bulkCatKey = null;
 }
 document.getElementById('modal-bulk-overlay').addEventListener('click',function(e){ if(e.target===this) closeBulkModal(); });
+
+// ── Atalho de teclado: Esc fecha a janela/popup aberta ──────────────
+// Sempre a "de cima" primeiro, quando há mais de uma empilhada (ex.: o popup
+// de ambiente aberto por cima do popup de pacote de empreitada).
+const MODAL_CLOSE_FNS = {
+  'modal-overlay': 'closeModal',
+  'modal-ganho-overlay': 'closeModalGanho',
+  'modal-add-cat-overlay': 'closeModalAddCat',
+  'modal-edit-cat-overlay': 'closeModalEditCat',
+  'modal-edit-overlay': 'closeModalEdit',
+  'modal-add-subcat-overlay': 'closeModalAddSubCat',
+  'modal-edit-subcat-overlay': 'closeModalEditSubCat',
+  'modal-bulk-overlay': 'closeBulkModal',
+  'modal-subcat-launch-overlay': 'closeModalSubCat',
+  'obra-triagem-overlay': 'closeObraTriagemModal',
+  'busca-geral-overlay': 'closeBuscaGeralModal',
+  'merge-choice-overlay': 'closeMergeChoiceModal',
+  'pacote-delete-overlay': 'closePacoteDeleteModal',
+  'material-lancamento-overlay': 'closeMaterialModal',
+  'materiais-modal-overlay': 'closeMateriaisModal',
+  'emp-ambiente-modal-overlay': 'cancelAmbienteModal',
+  'obra-empreitada-overlay': 'closeObraEmpreitadaModal',
+  'status-detail-overlay': 'closeStatusDetailModal',
+};
+document.addEventListener('keydown', function(e){
+  if(e.key !== 'Escape') return;
+  const abertos = Object.keys(MODAL_CLOSE_FNS)
+    .map(id=>document.getElementById(id))
+    .filter(el=>el && el.classList.contains('open'));
+  if(!abertos.length) return;
+  abertos.sort((a,b)=>(parseInt(b.style.zIndex,10)||100)-(parseInt(a.style.zIndex,10)||100));
+  const fnName = MODAL_CLOSE_FNS[abertos[0].id];
+  if(fnName && typeof window[fnName]==='function') window[fnName]();
+});
 
 function buildDestButtons(containerId, excludeStatus, onClickFn){
   const container = document.getElementById(containerId);
