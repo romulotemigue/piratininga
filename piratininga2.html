@@ -301,7 +301,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 99)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 100)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1363,6 +1363,37 @@ function getItensCasaChildren(){
   const all = [...known, ...(utilidadesKey?[utilidadesKey]:[]), ...getItensCasaExtraChildren()].filter(k=>CATS[k] && k!=='itens-casa');
   return [...new Set(all)];
 }
+// Cria, dentro de cada categoria de "Itens para Casa", um sub-item pra cada
+// ambiente selecionado em "Definir Ambientes" — na MESMA ordem de lá, pra não
+// deixar a pessoa perdida. Roda de novo toda vez que os ambientes mudam, ou
+// quando uma categoria nova é criada dentro de Itens para Casa.
+function ensureItensCasaAmbienteSubcats(){
+  const ativos = getAmbientesAtivos();
+  if(!ativos.length) return; // ninguém definido ainda — não mexe nos sub-itens
+  const catalogo = getAmbienteCatalog();
+  const ordemSalva = getAmbienteOrder();
+  const ordenados = ordemSalva.length
+    ? [...ordemSalva.filter(o=>catalogo.some(c=>c.toLowerCase()===o.toLowerCase())), ...catalogo.filter(c=>!ordemSalva.some(o=>o.toLowerCase()===c.toLowerCase()))]
+    : catalogo;
+  const ativosOrdenados = ordenados.filter(o=>ativos.some(a=>a.toLowerCase()===o.toLowerCase()));
+  getItensCasaChildren().forEach(childKey=>{
+    if(!SUBCATS[childKey]) SUBCATS[childKey] = {};
+    ativosOrdenados.forEach((amb, idx)=>{
+      const slug = amb.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+      if(SUBCATS[childKey][slug]){
+        SUBCATS[childKey][slug].label = amb;
+        SUBCATS[childKey][slug].ordem = idx;
+      } else {
+        SUBCATS[childKey][slug] = {label:amb, ordem:idx, auto:true};
+      }
+    });
+    Object.keys(SUBCATS[childKey]).forEach(sk=>{
+      const entry = SUBCATS[childKey][sk];
+      if(entry.auto && !ativosOrdenados.some(a=>a.toLowerCase()===entry.label.toLowerCase())) delete SUBCATS[childKey][sk];
+    });
+  });
+  saveSubCats();
+}
 function saveCats(){ localStorage.setItem('pirati_cats', JSON.stringify(CATS)); }
 // remove 'obra' if it exists — now it's 'obra-bruta' in IMOVEL_CATS
 if(CATS['obra']){ delete CATS['obra']; saveCats(); }
@@ -1515,12 +1546,36 @@ function renderCatNav(){
     '| pinnedKeys inclui venda-imovel?', pinnedKeys.includes('venda-imovel'),
     '| allKeys inclui venda-imovel?', allKeys.includes('venda-imovel'));
 
+  const filhosItensCasa = getItensCasaChildren().filter(k=>allKeys.includes(k));
+  const representanteItensCasa = filhosItensCasa[0] || null;
+
   list.innerHTML = allKeys.map(k=>{
+    if(filhosItensCasa.includes(k) && k!==representanteItensCasa) return ''; // já aparece dentro do grupo, abaixo
+
+    if(k===representanteItensCasa){
+      const infoGrupo = {label:'Itens para Casa', icon:'🏠', color: (CATS['itens-casa']?.color)||'#f48fb1'};
+      const isOpenGrupo = !!expanded['itens-casa-group'];
+      const etapaNumGrupo = ++imovelCount;
+      const subsGrupo = buildItensCasaChildrenHtml();
+      return `<div class="nav-cat-wrap" id="cat-wrap-itens-casa-group"
+        style="background:${infoGrupo.color}18;border:1px solid ${infoGrupo.color}44;border-left:3px solid ${infoGrupo.color};border-radius:8px;margin:4px 6px;">
+        <div class="nav-item-wrap" id="nav-wrap-itens-casa-group">
+          <span class="nav-drag" style="cursor:default;opacity:.25" title="Esse grupo ainda não é arrastável">⠿</span>
+          <button id="chev-itens-casa-group" style="background:none;border:none;color:var(--c-secondary);cursor:pointer;padding:4px 2px;font-size:12px;transition:transform .2s;transform:rotate(${isOpenGrupo?90:0}deg)" onclick="toggleExpand('itens-casa-group',event)"><i class="ti ti-chevron-right"></i></button>
+          <div class="nav-item" onclick="toggleExpand('itens-casa-group',event)" id="nav-itens-casa-group" style="padding-left:2px;flex:1;display:flex;align-items:center;gap:6px;color:${infoGrupo.color};font-weight:600;font-size:13px">
+            <span style="width:16px;height:16px;border-radius:50%;background:${infoGrupo.color};color:var(--c-panel);font-size:10px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">${etapaNumGrupo}</span>${infoGrupo.icon} ${infoGrupo.label}
+          </div>
+          <button class="nav-dots" onclick="toggleCatMenu('itens-casa',false,true,event)" title="Opções"><i class="ti ti-dots-vertical"></i></button>
+        </div>
+        <div id="subcat-list-itens-casa-group" style="overflow:hidden;max-height:${isOpenGrupo?'none':'0'}">${subsGrupo}</div>
+      </div>`;
+    }
+
     const isImovel = !!IMOVEL_CATS[k];
-    const isPinnedStage = isImovel || k==='itens-casa' || EXTRA_PINNED_STAGES.includes(k);
+    const isPinnedStage = isImovel || EXTRA_PINNED_STAGES.includes(k);
     const info = isImovel ? IMOVEL_CATS[k] : CATS[k];
     if(!info) return '';
-    const hasSubs = k==='itens-casa' ? getItensCasaChildren().length>0 : (SUBCATS[k] && Object.keys(SUBCATS[k]).length>0);
+    const hasSubs = SUBCATS[k] && Object.keys(SUBCATS[k]).length>0;
     const isOpen = !!expanded[k];
     const subColor = info.color||'#e8b544';
     const etapaNum = isPinnedStage ? ++imovelCount : null;
@@ -1528,7 +1583,7 @@ function renderCatNav(){
       console.log('[piratininga][row-debug] k=', k, '| hasSubs=', hasSubs, '| isOpen=', isOpen, '| SUBCATS[k]=', SUBCATS[k]);
     }
 
-    const subs = k==='itens-casa' ? buildItensCasaChildrenHtml() : (hasSubs ? buildSubcatRowsHtml(k) : '');
+    const subs = hasSubs ? buildSubcatRowsHtml(k) : '';
 
     const imovelStyle = isPinnedStage ? `background:${info.color}18;border:1px solid ${info.color}44;border-left:3px solid ${info.color};border-radius:8px;margin:4px 6px;` : '';
     const imovelNavStyle = isPinnedStage ? `color:${info.color};font-weight:600;font-size:13px;` : '';
@@ -2003,6 +2058,7 @@ function addCat(){
     if(!extras.includes(key)) extras.push(key);
     saveItensCasaExtraChildren(extras);
     addingCatParaItensCasa = false;
+    ensureItensCasaAmbienteSubcats();
   }
   closeModalAddCat();
   document.getElementById('nc-nome').value='';
@@ -2819,6 +2875,7 @@ async function loadGastos(){
     removeAutoRestoredRevisarCategories();
     removeCompraImvelDuplicateCategory();
     ensureObraBrutaPhases();
+    ensureItensCasaAmbienteSubcats();
     restoreOrphanSubcats();
     checkPossibleDuplicates();
     renderCatNav();
@@ -4479,6 +4536,8 @@ function toggleAmbienteAtivo(nome){
 function confirmarAmbientesSelecionados(){
   if(ambientesPendentes===null) return;
   saveAmbientesAtivos(ambientesPendentes);
+  ensureItensCasaAmbienteSubcats();
+  renderCatNav();
   toast('Ambientes atualizados!');
   render();
 }
@@ -5802,10 +5861,6 @@ function breadcrumbTitleHtml(parts, color){
   </span>`;
 }
 function navigate(page, skipHistory){
-  if(page==='itens-casa'){
-    const filhos = getItensCasaChildren();
-    if(filhos.length){ navigate(filhos[0], skipHistory); return; }
-  }
   currentPage = page;
   applyContentColor(page);
   if(!skipHistory){
@@ -6051,7 +6106,9 @@ let EXTRA_PINNED_STAGES = ['moveis','obra-bruta','planejados','decoracao','ilumi
 const EXTRA_PINNED_STAGES_DEFAULTS = [...EXTRA_PINNED_STAGES];
 try{
   const customStages = JSON.parse(localStorage.getItem('pirati_custom_stages')||'[]');
-  customStages.forEach(k=>{ if(!EXTRA_PINNED_STAGES.includes(k)) EXTRA_PINNED_STAGES.push(k); });
+  customStages.forEach(k=>{ if(k!=='itens-casa' && !EXTRA_PINNED_STAGES.includes(k)) EXTRA_PINNED_STAGES.push(k); });
+  const idxLixo = EXTRA_PINNED_STAGES.indexOf('itens-casa');
+  if(idxLixo>-1) EXTRA_PINNED_STAGES.splice(idxLixo,1); // limpa resíduo de uma versão anterior com bug
 }catch(e){}
 // Só as chaves criadas dinamicamente (via "arrastar fase pra fora") precisam ser
 // persistidas — as da lista padrão já são recriadas sozinhas a cada load.
@@ -6066,19 +6123,8 @@ function getPinnedStageKeys(){
     const legacyImovelOrder = JSON.parse(localStorage.getItem('imovel_order')||'null');
     saved = legacyImovelOrder ? [...legacyImovelOrder] : [...Object.keys(IMOVEL_CATS)];
   }
-  const order = saved.filter(k=>allPinned.includes(k));
+  const order = saved.filter(k=>allPinned.includes(k) && k!=='itens-casa');
   allPinned.forEach(k=>{ if(!order.includes(k)) order.push(k); });
-  // "Itens para Casa" reúne Cama/Mesa/Banho, Decoração, Móveis e Utilidades
-  // Domésticas num único item numerado — saem da lista principal e viram
-  // sub-itens dentro dele (igual as fases dentro de Execução de Obra).
-  const filhos = getItensCasaChildren().filter(k=>order.includes(k));
-  if(filhos.length){
-    const idxPrimeiro = Math.min(...filhos.map(k=>order.indexOf(k)));
-    const semFilhos = order.filter(k=>!filhos.includes(k));
-    const idxInsercao = semFilhos.filter(k=>order.indexOf(k)<idxPrimeiro).length;
-    semFilhos.splice(idxInsercao, 0, 'itens-casa');
-    return semFilhos;
-  }
   return order;
 }
 function savePinnedStageOrder(order){ localStorage.setItem('pinned_stage_order', JSON.stringify(order)); }
