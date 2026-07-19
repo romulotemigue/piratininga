@@ -301,7 +301,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 95)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 96)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -3976,7 +3976,6 @@ let obraTriagemPresetSub = null; // guarda qual item foi clicado, se veio de um 
 const FASES_ITEM_SEM_MAO_DE_OBRA = ['Iluminação e Acabamentos Elétricos','Louças, Metais e Vidros','Marcenaria e Móveis Planejados'];
 function openObraTriagemModal(presetSub, presetFase){
   obraTriagemPresetSub = presetSub || null;
-  document.getElementById('obra-triagem-item-wrap').style.display = '';
   document.getElementById('obra-triagem-overlay').classList.add('open');
 }
 function closeObraTriagemModal(){
@@ -4105,14 +4104,24 @@ function investimentoBadgeHtml(g){
   return `<span title="Investimento: ${info.label}" style="color:${info.color};font-size:11px;font-weight:700;background:${info.bg};border:1px solid ${info.border};border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;flex-shrink:0">${info.label}</span>`;
 }
 function materiaisBadgeHtml(g){
-  const lista = getMateriais(g);
-  const total = materiaisTotal(lista);
-  if(lista.length){
-    // JÁ TEM material: selo sólido, colorido, mostrando quantos itens — bem diferente do estado vazio
-    return `<span onclick="event.stopPropagation();openMateriaisModal('gasto',${g.id})" title="Ver/editar materiais (${lista.length} item(ns), ${fmt(total)})" style="cursor:pointer;color:#8bc9ff;font-size:11px;font-weight:700;background:var(--c-necessario-bg);border:1px solid var(--c-necessario-border2);border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:3px;flex-shrink:0;width:90px;box-sizing:border-box">🧱 ${lista.length} ${lista.length>1?'itens':'item'}</span>`;
+  const vinculados = gastos.filter(x=>x.linked_pacote_id===g.id);
+  if(vinculados.length){
+    const total = vinculados.reduce((s,x)=>s+gastoValor(x),0);
+    return `<span onclick="event.stopPropagation();abrirVincularMaterial(${g.id})" title="Ver/adicionar material vinculado (${vinculados.length} item(ns), ${fmt(total)})" style="cursor:pointer;color:#8bc9ff;font-size:11px;font-weight:700;background:var(--c-necessario-bg);border:1px solid var(--c-necessario-border2);border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:3px;flex-shrink:0;width:100px;box-sizing:border-box">🔗 ${vinculados.length} ${vinculados.length>1?'materiais':'material'}</span>`;
   }
-  // AINDA NÃO TEM: botão tracejado e apagado, convidando a adicionar
-  return `<span onclick="event.stopPropagation();openMateriaisModal('gasto',${g.id})" title="Adicionar material comprado pra este serviço" style="cursor:pointer;color:var(--c-primary);font-size:11px;font-weight:600;background:transparent;border:1px dashed var(--c-faint);border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:3px;flex-shrink:0;width:90px;box-sizing:border-box">🧱 + material</span>`;
+  // AINDA NÃO TEM: convida a vincular um material — abre direto o popup de
+  // material de sempre, já com o vínculo com ESTE pacote preenchido (não
+  // precisa escolher de novo na hora que a janela abrir).
+  return `<span onclick="event.stopPropagation();abrirVincularMaterial(${g.id})" title="Vincular um material a este pacote" style="cursor:pointer;color:var(--c-primary);font-size:11px;font-weight:600;background:transparent;border:1px dashed var(--c-faint);border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:3px;flex-shrink:0;width:100px;box-sizing:border-box">⬅ Vincular</span>`;
+}
+// Abre o popup rico de material (o mesmo de sempre) já vinculado a ESTE
+// pacote específico, sem precisar escolher de novo na janela.
+function abrirVincularMaterial(gastoId){
+  const g = gastos.find(x=>x.id===gastoId);
+  if(!g) return;
+  const subEntry = SUBCATS['obra-bruta']?.[g.subcategoria];
+  const fase = subEntry?.grupo || null;
+  openMaterialModal('obra-bruta', fase, g.subcategoria, gastoId);
 }
 
 // Estado da janela de materiais — funciona tanto pra um gasto já salvo (edita
@@ -8203,10 +8212,10 @@ function openPacoteModal(gastoId){
   const meta = getPacoteMeta(g);
   const prazoBadge = prazoBadgeHtml(meta);
   const prazoLine = meta.dataInicio ? `<div style="font-size:12px;color:var(--c-primary);margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b>Início:</b> ${fmtDateTxt(meta.dataInicio)} ${meta.prazoDias?` &nbsp;·&nbsp; <b>Prazo:</b> ${meta.prazoDias} dias`:''} ${prazoBadge}</div>` : '';
-  const materiaisLista = getMateriais(g);
+  const materiaisVinculados = gastos.filter(x=>x.linked_pacote_id===g.id);
   const materiaisLine = `<div style="font-size:12px;color:var(--c-primary);margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-    <b>Materiais:</b> ${materiaisLista.length ? `${materiaisLista.length} item(ns) · ${fmt(materiaisTotal(materiaisLista))}` : 'nenhum ainda'}
-    <button onclick="openMateriaisModal('gasto',${g.id})" style="background:var(--c-panel2);border:1px solid var(--c-border3);color:var(--c-muted4);border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer">🧱 ${materiaisLista.length?'ver/editar':'+ adicionar'}</button>
+    <b>Material vinculado:</b> ${materiaisVinculados.length ? `${materiaisVinculados.length} item(ns) · ${fmt(materiaisVinculados.reduce((s,x)=>s+gastoValor(x),0))}` : 'nenhum ainda'}
+    <button onclick="abrirVincularMaterial(${g.id})" style="background:var(--c-panel2);border:1px solid var(--c-border3);color:var(--c-muted4);border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer">🔗 ${materiaisVinculados.length?'ver/adicionar':'+ vincular'}</button>
   </div>`;
   const infoRow = `<tr><td colspan="6" style="padding:12px;border-top:1px solid var(--c-border)">
     <div style="font-size:12px;color:var(--c-primary);display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b>Data:</b> ${fmtDate(g.data)} &nbsp;·&nbsp; <b>Status:</b> ${getColLabel(g.status)} ${tipoTag}</div>
@@ -8545,7 +8554,7 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
   // sem quebra — são os selos mais importantes), 3) dias restantes (menos
   // importante, isolado numa linha própria logo abaixo), 4) sub-etapa em azul.
   const mainBadgeRowHtml = isPacote
-    ? `<div style="display:flex;align-items:center;gap:4px;margin-top:2px;flex-wrap:nowrap">${pacoteBadge}${materiaisBadgeRow}</div>`
+    ? `<div style="display:flex;align-items:center;gap:4px;margin-top:2px;flex-wrap:nowrap">${materiaisBadgeRow}${pacoteBadge}</div>`
     : '';
   const prazoLineHtml = (isPacote && prazoBadgeRow)
     ? `<div style="margin-top:2px">${prazoBadgeRow}</div>`
