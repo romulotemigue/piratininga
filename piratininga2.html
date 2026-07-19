@@ -301,7 +301,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 100)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 101)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -927,19 +927,25 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
 </div>
 
 <div class="modal-overlay" id="mat-entry-choice-overlay" onclick="if(event.target===this) closeMaterialEntryChoice()">
-  <div class="modal" style="max-width:420px;width:92vw">
+  <div class="modal" style="max-width:460px;width:92vw">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
       <h3 style="margin:0;font-size:16px">🧱 Lançar material</h3>
       <button onclick="closeMaterialEntryChoice()" style="background:none;border:none;color:var(--c-primary);font-size:21px;cursor:pointer">×</button>
     </div>
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <button type="button" onclick="chooseMaterialEntryTipo('unico')" style="text-align:left;background:var(--c-panel);border:1px solid var(--c-border2);border-radius:8px;padding:14px;cursor:pointer">
-        <div style="font-weight:700;color:var(--c-primary);font-size:14px">Material (1 item)</div>
-        <div style="font-size:12px;color:var(--c-muted2);margin-top:2px">Comprou um produto específico, de uma vez</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <button type="button" onclick="chooseMaterialEntryTipo('unico')" style="text-align:left;background:var(--c-material-bg);border:2px solid #b565d8;border-radius:10px;padding:16px;cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:14px" onmouseover="this.style.background='#2a1030'" onmouseout="this.style.background='var(--c-material-bg)'">
+        <div style="font-size:28px">🧱</div>
+        <div>
+          <div style="font-weight:700;color:#c77dea;font-size:14px">Material (1 item)</div>
+          <div style="font-size:12px;color:#c77dea;margin-top:2px;opacity:.85">Comprou um produto específico, de uma vez</div>
+        </div>
       </button>
-      <button type="button" onclick="chooseMaterialEntryTipo('lote')" style="text-align:left;background:var(--c-panel);border:1px solid var(--c-border2);border-radius:8px;padding:14px;cursor:pointer">
-        <div style="font-weight:700;color:var(--c-primary);font-size:14px">Compra em lote</div>
-        <div style="font-size:12px;color:var(--c-muted2);margin-top:2px">Vários itens de uma vez, na mesma loja (ex: fomos na Leroy Merlin e compramos 8 coisas)</div>
+      <button type="button" onclick="chooseMaterialEntryTipo('lote')" style="text-align:left;background:var(--c-apagar-bg2);border:2px solid #e8b544;border-radius:10px;padding:16px;cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:14px" onmouseover="this.style.background='#251f00'" onmouseout="this.style.background='var(--c-apagar-bg2)'">
+        <div style="font-size:28px">🧱🧱</div>
+        <div>
+          <div style="font-weight:700;color:#e8b544;font-size:14px">Compra em lote</div>
+          <div style="font-size:12px;color:#e8b544;margin-top:2px;opacity:.85">Vários itens de uma vez, na mesma loja (ex: fomos na Leroy Merlin e compramos 8 coisas)</div>
+        </div>
       </button>
     </div>
   </div>
@@ -4320,11 +4326,6 @@ function updateEmpMaterialInclusoBtnStyle(){
 function toggleEmpMaterialIncluso(){
   empreitadaMaterial = empreitadaMaterial==='com-material' ? 'sem-material' : 'com-material';
   refreshEmpMaterialFields();
-  const titleEl = document.getElementById('empreitada-title');
-  if(titleEl && titleEl.textContent.includes('—')){
-    const prefixo = titleEl.textContent.split('—')[0].trim();
-    titleEl.textContent = `${prefixo} — ${empreitadaMaterial==='com-material'?'com material':'sem material'}`;
-  }
 }
 // Vincula um material a ESTE pacote específico — só funciona depois de salvo
 // (precisa de um id pra vincular), já que um pacote novo ainda não tem um.
@@ -4345,7 +4346,7 @@ function openObraEmpreitadaModal(material, presetSub, isUnico){
   const icon = isSoItem ? '🏷️' : (material==='com-material' ? (isUnico?'🔧🧱':'📦🧱') : (isUnico?'🔧':'📦'));
   const tipoLabel = isSoItem ? 'item' : (isUnico ? 'serviço' : 'pacote de empreitada');
   const materialLabel = isSoItem ? 'sem mão de obra' : (material==='com-material'?'com material':'sem material');
-  document.getElementById('empreitada-title').textContent = icon+' Novo '+tipoLabel+' — '+materialLabel;
+  document.getElementById('empreitada-title').textContent = icon+' Novo '+tipoLabel;
   document.getElementById('emp-desc').value = '';
   document.getElementById('emp-valor').value = '';
   document.getElementById('emp-data').value = new Date().toISOString().slice(0,10);
@@ -4415,7 +4416,7 @@ function openObraEmpreitadaModalForEdit(g){
   const tipoLabel = isSoItem ? 'item' : (empreitadaIsUnico ? 'serviço' : 'pacote de empreitada');
   const icon = isSoItem ? '🏷️' : (empreitadaMaterial==='com-material' ? (empreitadaIsUnico?'🔧🧱':'📦🧱') : (empreitadaIsUnico?'🔧':'📦'));
   const materialLabel = isSoItem ? 'sem mão de obra' : (empreitadaMaterial==='com-material'?'com material':'sem material');
-  document.getElementById('empreitada-title').textContent = icon+' Editar '+tipoLabel+' — '+materialLabel;
+  document.getElementById('empreitada-title').textContent = icon+' Editar '+tipoLabel;
   document.getElementById('emp-desc').value = g.descricao||'';
   document.getElementById('emp-valor').value = g.valor ? fmtInput(g.valor) : '';
   document.getElementById('emp-data').value = g.data||new Date().toISOString().slice(0,10);
