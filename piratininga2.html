@@ -301,7 +301,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 96)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 97)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1199,20 +1199,20 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
       <h3 style="margin:0" id="empreitada-title">📦 Novo pacote de empreitada</h3>
       <button onclick="closeObraEmpreitadaModal()" style="background:none;border:none;color:var(--c-primary);font-size:21px;cursor:pointer;line-height:1">&times;</button>
     </div>
+    <div style="display:flex;gap:10px;margin-bottom:16px">
+      <button type="button" id="emp-vincular-material-btn" onclick="abrirVincularMaterialEmp()" title="Vincular um material comprado à parte a este pacote"
+        style="flex:1;background:linear-gradient(135deg,#7d4a94,#c77dea);border:none;color:#fff;font-weight:700;border-radius:10px;padding:12px 16px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 0 14px rgba(199,125,234,.35);transition:transform .15s"
+        onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">🔗 Vincular material</button>
+      <button type="button" id="emp-material-incluso-btn" onclick="toggleEmpMaterialIncluso()" title="Esse serviço já vem com o material incluso?"
+        style="flex:1;background:var(--c-panel);border:2px solid var(--c-border2);color:var(--c-faint3);font-weight:700;border-radius:10px;padding:12px 16px;cursor:pointer;font-size:13px;transition:all .15s">🧱 Material incluso com mão de obra</button>
+    </div>
     <div id="emp-extra-info-group" style="display:none">
-      <div id="emp-fornecedor-row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
+      <div id="emp-fornecedor-row" style="margin-bottom:14px">
         <div class="form-group" style="margin-bottom:0">
           <label id="emp-loja-label">Loja / Fornecedor</label>
           <input type="text" id="emp-loja" placeholder="Ex: Leroy Merlin">
         </div>
-        <div class="form-group" id="emp-marca-wrap" style="margin-bottom:0">
-          <label>Marca</label>
-          <input type="text" id="emp-marca" placeholder="Ex: Ikea">
-        </div>
-        <div class="form-group" id="emp-modelo-wrap" style="margin-bottom:0">
-          <label>Modelo/código do produto</label>
-          <input type="text" id="emp-modelo" placeholder="Ex: mod. X200">
-        </div>
+        <input type="hidden" id="emp-marca"><input type="hidden" id="emp-modelo"><input type="hidden" id="emp-link">
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
         <div class="form-group" style="margin-bottom:0">
@@ -1289,15 +1289,8 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
       </div>
     </div>
     <div id="emp-invest-wrap"></div>
-    <div id="emp-materiais-btn-wrap" style="margin:-6px 0 14px">
-      <button type="button" id="emp-materiais-btn" onclick="openMateriaisModal('pending')" style="background:var(--c-panel2);border:1px solid var(--c-border3);color:var(--c-muted4);border-radius:6px;padding:7px 14px;font-size:13px;cursor:pointer">🧱 Adicionar material</button>
-    </div>
     <div id="emp-extra-info-group-4" style="display:none">
-      <div id="emp-anexos-row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
-        <div class="form-group" id="emp-link-wrap" style="margin-bottom:0">
-          <label>Link do site onde comprou</label>
-          <input type="text" id="emp-link" placeholder="https://...">
-        </div>
+      <div id="emp-anexos-row" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
         <div class="form-group" style="margin-bottom:0">
           <label>📄 Nota fiscal</label>
           <div class="dropzone" id="dz-emp-nf" onclick="document.getElementById('emp-nf').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDropzoneFile(event,'emp-nf')">
@@ -4246,19 +4239,38 @@ let empreitadaFocusFase = null; // se setado, mostra só essa fase inicialmente 
 let empreitadaShowAllFases = true;
 let empreitadaShowOnlySelected = false; // quando true, esconde os serviços que não estão marcados (útil ao editar um pacote já existente)
 
-// Esconde os campos que só fazem sentido quando o pacote/serviço TEM material
-// (Marca, Modelo, Link do site, botão de adicionar material) — num pacote de
-// empreitada sem material, quem presta o serviço é um empreiteiro, não uma
-// loja, então o rótulo também muda pra refletir isso.
+// Atualiza o rótulo do fornecedor (Loja vs Empreiteiro) e a aparência do botão
+// de alternar "material incluso" — o formulário em si agora é sempre o mesmo,
+// sem esconder campo nenhum, pra não ficar diferente entre os dois tipos.
 function refreshEmpMaterialFields(){
   const semMaterial = empreitadaMaterial === 'sem-material';
   document.getElementById('emp-loja-label').textContent = semMaterial ? 'Empreiteiro / Fornecedor' : 'Loja / Fornecedor';
-  document.getElementById('emp-marca-wrap').style.display = semMaterial ? 'none' : '';
-  document.getElementById('emp-modelo-wrap').style.display = semMaterial ? 'none' : '';
-  document.getElementById('emp-fornecedor-row').style.gridTemplateColumns = semMaterial ? '1fr' : '1fr 1fr 1fr';
-  document.getElementById('emp-link-wrap').style.display = semMaterial ? 'none' : '';
-  document.getElementById('emp-anexos-row').style.gridTemplateColumns = semMaterial ? '1fr 1fr' : '1fr 1fr 1fr';
-  document.getElementById('emp-materiais-btn-wrap').style.display = semMaterial ? 'none' : '';
+  updateEmpMaterialInclusoBtnStyle();
+}
+function updateEmpMaterialInclusoBtnStyle(){
+  const btn = document.getElementById('emp-material-incluso-btn');
+  if(!btn) return;
+  const ativo = empreitadaMaterial === 'com-material';
+  btn.style.background = ativo ? 'linear-gradient(135deg,#8a6d1f,#e8b544)' : 'var(--c-panel)';
+  btn.style.borderColor = ativo ? '#e8b544' : 'var(--c-border2)';
+  btn.style.color = ativo ? '#1a1400' : 'var(--c-faint3)';
+}
+// Alterna se o serviço já vem com material incluso ou não — sem precisar
+// reabrir a triagem, é só clicar. Atualiza o título e o rótulo também.
+function toggleEmpMaterialIncluso(){
+  empreitadaMaterial = empreitadaMaterial==='com-material' ? 'sem-material' : 'com-material';
+  refreshEmpMaterialFields();
+  const titleEl = document.getElementById('empreitada-title');
+  if(titleEl && titleEl.textContent.includes('—')){
+    const prefixo = titleEl.textContent.split('—')[0].trim();
+    titleEl.textContent = `${prefixo} — ${empreitadaMaterial==='com-material'?'com material':'sem material'}`;
+  }
+}
+// Vincula um material a ESTE pacote específico — só funciona depois de salvo
+// (precisa de um id pra vincular), já que um pacote novo ainda não tem um.
+function abrirVincularMaterialEmp(){
+  if(!empreitadaEditingId){ toast('Salve o pacote primeiro pra poder vincular um material a ele.','err'); return; }
+  abrirVincularMaterial(empreitadaEditingId);
 }
 function openObraEmpreitadaModal(material, presetSub, isUnico){
   empreitadaEditingId = null;
