@@ -283,7 +283,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 18JUL26 (versão 88)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 18JUL26 (versão 89)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -918,6 +918,69 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
   </div>
 </div>
 
+<div class="modal-overlay" id="mat-entry-choice-overlay" onclick="if(event.target===this) closeMaterialEntryChoice()">
+  <div class="modal" style="max-width:420px;width:92vw">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <h3 style="margin:0;font-size:16px">🧱 Lançar material</h3>
+      <button onclick="closeMaterialEntryChoice()" style="background:none;border:none;color:var(--c-primary);font-size:21px;cursor:pointer">×</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button type="button" onclick="chooseMaterialEntryTipo('unico')" style="text-align:left;background:var(--c-panel);border:1px solid var(--c-border2);border-radius:8px;padding:14px;cursor:pointer">
+        <div style="font-weight:700;color:var(--c-primary);font-size:14px">Material (1 item)</div>
+        <div style="font-size:12px;color:var(--c-muted2);margin-top:2px">Comprou um produto específico, de uma vez</div>
+      </button>
+      <button type="button" onclick="chooseMaterialEntryTipo('lote')" style="text-align:left;background:var(--c-panel);border:1px solid var(--c-border2);border-radius:8px;padding:14px;cursor:pointer">
+        <div style="font-weight:700;color:var(--c-primary);font-size:14px">Compra em lote</div>
+        <div style="font-size:12px;color:var(--c-muted2);margin-top:2px">Vários itens de uma vez, na mesma loja (ex: fomos na Leroy Merlin e compramos 8 coisas)</div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="mat-bulk-overlay" onclick="if(event.target===this) closeMaterialBulkModal()">
+  <div class="modal" style="max-width:760px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <h3 style="margin:0;font-size:16px">🧱 Compra em lote — vários materiais de uma vez</h3>
+      <button onclick="closeMaterialBulkModal()" style="background:none;border:none;color:var(--c-primary);font-size:21px;cursor:pointer">×</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
+      <div class="form-group" style="margin-bottom:0">
+        <label>Loja / Fornecedor</label>
+        <input type="text" id="mbulk-loja" placeholder="Ex: Leroy Merlin">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>Data da compra</label>
+        <input type="date" id="mbulk-data">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>Status</label>
+        <select id="mbulk-status"><option value="necessario">Necessário</option><option value="pago">Pago</option><option value="apagar">Dispensável</option></select>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      <div class="form-group" style="margin-bottom:0">
+        <label>Fase (Execução de Obra)</label>
+        <select id="mbulk-fase" onchange="refreshMbulkSubOptions()"></select>
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>Forma de pagamento</label>
+        <div id="mbulk-pagamento-pills" style="display:flex;gap:6px;flex-wrap:wrap">
+          <button type="button" class="pay-pill" data-val="Pix" onclick="selectPayPill(this,'mbulk')">Pix</button>
+          <button type="button" class="pay-pill" data-val="Débito" onclick="selectPayPill(this,'mbulk')">Débito</button>
+          <button type="button" class="pay-pill" data-val="Crédito" onclick="selectPayPill(this,'mbulk')">Crédito</button>
+        </div>
+        <input type="hidden" id="mbulk-pagamento">
+        <input type="text" id="mbulk-parcelas" style="display:none">
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--c-primary);margin-bottom:8px">Itens comprados:</div>
+    <div id="mbulk-itens" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
+    <button type="button" onclick="addMbulkItemRow()" style="background:none;border:1px dashed var(--c-faint);color:var(--c-muted2);border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer;margin-bottom:14px">+ item</button>
+    <div style="text-align:right;font-size:13px;color:var(--c-primary);margin-bottom:10px">Total: <b id="mbulk-total">R$ 0,00</b></div>
+    <button class="btn-confirm" onclick="confirmMaterialBulk()">Confirmar compra em lote</button>
+  </div>
+</div>
+
 <div class="modal-overlay" id="mat-link-picker-overlay" onclick="if(event.target===this) closeMaterialLinkPicker()">
   <div class="modal" style="max-width:480px;width:92vw">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
@@ -1040,9 +1103,9 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
             <button type="button" onclick="addMatAmbienteCustom()" style="margin-top:5px;background:none;border:1px dashed var(--c-faint);color:var(--c-muted2);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer">+ novo ambiente</button>
           </div>
         </div>
-        <div class="form-group" id="mat-l-linkpacote-group" style="margin-bottom:0;margin-top:14px;display:none">
-          <label>🔗 Vincular a um pacote sem material desta fase (opcional)</label>
-          <select id="mat-l-linkpacote"><option value="">— nenhum —</option></select>
+        <div class="form-group" id="mat-l-linkpacote-group" style="margin-bottom:0;margin-top:14px;display:none;background:var(--c-material-bg2);border:1px solid #7d4a94;border-radius:8px;padding:10px 12px">
+          <label style="color:#c77dea;display:flex;align-items:center;gap:6px;font-weight:700">🔗 Vincular a um pacote sem material desta fase (opcional)</label>
+          <select id="mat-l-linkpacote" style="border-color:#7d4a94"><option value="">— nenhum —</option></select>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:8px">
@@ -1652,7 +1715,15 @@ function buildSubcatRowsHtml(k){
     return oa-ob;
   });
   const expandedSub = getExpandedSub();
-  return groupNames.map((gName,gIdx)=>{
+  const definirAmbientesRow = k==='obra-bruta' ? `
+    <div class="nav-item-wrap">
+      <div class="nav-item" onclick="navigate('definir-ambientes')" id="nav-definir-ambientes" style="display:flex;align-items:center;gap:8px;padding:6px 1.25rem 6px 1.6rem">
+        <span style="font-family:'Arial Black',sans-serif;font-size:12px;font-weight:900;color:var(--c-faint2);opacity:.9">0.</span>
+        <i class="ti ti-home-2" style="font-size:13px;color:var(--c-faint2)"></i>
+        <span style="font-size:12px;color:var(--c-secondary)">Definir Ambientes</span>
+      </div>
+    </div>` : '';
+  return definirAmbientesRow + groupNames.map((gName,gIdx)=>{
     if(!gName) return groups[gName].map(e=>renderFlatSubcatRow(k, e.sk, subColor, false)).join('');
     const items = groups[gName].sort((a,b)=>(a.ordem??0)-(b.ordem??0));
     const groupKey = k+'__grp__'+gName;
@@ -1930,7 +2001,7 @@ function deleteCat(k){
 let gastos = [];
 let orcamento = parseFloat(localStorage.getItem('pirati_orc')||'80000');
 let currentPage = 'geral';
-let barChart, pieChart, catChart;
+let barChart, pieChart, catChart, ambienteChart;
 
 function maskMoney(el){
   let v = el.value.replace(/\D/g,'');
@@ -3073,6 +3144,104 @@ function todasEtapasParaSelect(){
 }
 
 let materialEditingId = null;
+// Primeira tela ao lançar material: 1 item de cada vez, ou compra em lote
+// (vários itens da mesma loja, numa tacada só).
+let materialEntryArgs = null;
+function openMaterialEntryChoice(presetCat, presetFase, presetSub){
+  materialEntryArgs = {cat: presetCat, fase: presetFase, sub: presetSub};
+  document.getElementById('mat-entry-choice-overlay').classList.add('open');
+}
+function closeMaterialEntryChoice(){
+  document.getElementById('mat-entry-choice-overlay').classList.remove('open');
+}
+function chooseMaterialEntryTipo(tipo){
+  closeMaterialEntryChoice();
+  const a = materialEntryArgs || {};
+  if(tipo==='unico') openMaterialLinkPicker(a.cat, a.fase, a.sub);
+  else openMaterialBulkModal(a.fase);
+}
+
+// ── Compra em lote ──────────────────────────────────────────────
+let mbulkItemCount = 0;
+function openMaterialBulkModal(presetFase){
+  document.getElementById('mbulk-loja').value = '';
+  document.getElementById('mbulk-data').value = new Date().toISOString().slice(0,10);
+  document.getElementById('mbulk-status').value = pendingStatusPreset || 'necessario';
+  pendingStatusPreset = null;
+  setPayPillValue('mbulk', '');
+  const faseSel = document.getElementById('mbulk-fase');
+  const fases = [...new Set(Object.values(SUBCATS['obra-bruta']||{}).map(s=>s.grupo).filter(Boolean))];
+  faseSel.innerHTML = fases.map(f=>`<option value="${f}">${f}</option>`).join('');
+  if(presetFase && fases.includes(presetFase)) faseSel.value = presetFase;
+  refreshMbulkSubOptions();
+  document.getElementById('mbulk-itens').innerHTML = '';
+  mbulkItemCount = 0;
+  addMbulkItemRow();
+  addMbulkItemRow();
+  document.getElementById('mat-bulk-overlay').classList.add('open');
+}
+function closeMaterialBulkModal(){
+  document.getElementById('mat-bulk-overlay').classList.remove('open');
+}
+function refreshMbulkSubOptions(){
+  const fase = document.getElementById('mbulk-fase').value;
+  const subs = Object.keys(SUBCATS['obra-bruta']||{}).filter(k=>SUBCATS['obra-bruta'][k].grupo===fase);
+  document.querySelectorAll('.mbulk-sub-select').forEach(sel=>{
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">— sub-etapa (opcional) —</option>' + subs.map(sk=>`<option value="${sk}">${SUBCATS['obra-bruta'][sk].label}</option>`).join('');
+    if(subs.includes(cur)) sel.value = cur;
+  });
+}
+function addMbulkItemRow(){
+  mbulkItemCount++;
+  const id = 'mbulk-item-'+mbulkItemCount;
+  const fase = document.getElementById('mbulk-fase').value;
+  const subs = Object.keys(SUBCATS['obra-bruta']||{}).filter(k=>SUBCATS['obra-bruta'][k].grupo===fase);
+  const row = document.createElement('div');
+  row.id = id;
+  row.innerHTML = `
+    <div style="display:grid;grid-template-columns:2fr 1fr 1.4fr auto;gap:8px;align-items:center">
+      <input type="text" placeholder="Descrição do item" class="mbulk-desc">
+      <input type="text" placeholder="Valor (R$)" class="mbulk-valor" inputmode="numeric" oninput="maskMoney(this);updateMbulkTotal()">
+      <select class="mbulk-sub-select"><option value="">— sub-etapa (opcional) —</option>${subs.map(sk=>`<option value="${sk}">${SUBCATS['obra-bruta'][sk].label}</option>`).join('')}</select>
+      <button type="button" onclick="document.getElementById('${id}').remove();updateMbulkTotal()" style="background:none;border:none;color:#ef5350;cursor:pointer;font-size:16px"><i class="ti ti-trash"></i></button>
+    </div>`;
+  document.getElementById('mbulk-itens').appendChild(row);
+}
+function updateMbulkTotal(){
+  let total = 0;
+  document.querySelectorAll('.mbulk-valor').forEach(el=>{ total += parseMoney(el.value); });
+  document.getElementById('mbulk-total').textContent = fmt(total);
+}
+async function confirmMaterialBulk(){
+  const loja = document.getElementById('mbulk-loja').value.trim();
+  const data = document.getElementById('mbulk-data').value;
+  const status = document.getElementById('mbulk-status').value;
+  const rowsEl = [...document.querySelectorAll('#mbulk-itens > div')];
+  const itens = rowsEl.map(row=>({
+    desc: row.querySelector('.mbulk-desc').value.trim(),
+    valor: parseMoney(row.querySelector('.mbulk-valor').value),
+    sub: row.querySelector('.mbulk-sub-select').value
+  })).filter(it=>it.desc && it.valor>0);
+  if(!itens.length){ toast('Adicione pelo menos um item com descrição e valor.','err'); return; }
+  if(!data){ toast('Preencha a data da compra.','err'); return; }
+  const obsBase = loja ? `Loja: ${loja}` : '';
+  const novasLinhas = itens.map(it=>({
+    descricao: it.desc, categoria:'obra-bruta', subcategoria: it.sub||'', valor: it.valor, quantidade:1,
+    status, data, obs: obsBase, link:'', tipo_contratacao:'material', ambiente:'',
+    investimento:'', data_inicio:null, prazo_dias:null
+  }));
+  try{
+    await sbInsert(novasLinhas);
+    toast(`${novasLinhas.length} materiais lançados com sucesso!`);
+    closeMaterialBulkModal();
+    await loadGastos();
+    render();
+  }catch(e){
+    toast('Erro ao salvar: '+e.message,'err');
+  }
+}
+
 // Antes de abrir o popup de material, pergunta se ele é pra um pacote sem
 // material que já existe (nessa mesma fase) — assim a pessoa já vincula na
 // hora, sem precisar caçar o dropdown lá dentro. Se não tiver nenhum pacote
@@ -3080,7 +3249,7 @@ let materialEditingId = null;
 let materialLinkPickerArgs = null;
 function openMaterialLinkPicker(presetCat, presetFase, presetSub){
   const cat = presetCat || 'obra-bruta';
-  if(cat!=='obra-bruta' || !presetFase){
+  if(cat!=='obra-bruta'){
     openMaterialModal(presetCat, presetFase, presetSub);
     return;
   }
@@ -3088,6 +3257,7 @@ function openMaterialLinkPicker(presetCat, presetFase, presetSub){
     if(g.categoria!=='obra-bruta') return false;
     const tipo = (g.tipo_contratacao||'').replace('unico-','');
     if(tipo!=='sem-material') return false;
+    if(!presetFase) return true; // sem fase conhecida ainda — mostra os candidatos de toda a obra
     const subEntry = SUBCATS['obra-bruta']?.[g.subcategoria];
     return subEntry && subEntry.grupo===presetFase;
   });
@@ -3783,7 +3953,7 @@ function chooseObraMaterial(){
   closeObraTriagemModal();
   const sub = obraTriagemPresetSub;
   const fase = sub ? (SUBCATS['obra-bruta']?.[sub]?.grupo || null) : null;
-  openMaterialLinkPicker('obra-bruta', fase, sub);
+  openMaterialEntryChoice('obra-bruta', fase, sub);
 }
 
 // Simplificado de volta: sempre array puro de serviços/ambientes. Data de início
@@ -4191,16 +4361,139 @@ function getAmbienteOptions(){
   const combinados = [...padrao];
   usados.forEach(u=>{ if(!combinados.some(c=>c.toLowerCase()===u.toLowerCase())) combinados.push(u); });
   getCustomAmbientes().forEach(u=>{ if(!combinados.some(c=>c.toLowerCase()===u.toLowerCase())) combinados.push(u); });
+  // Se a pessoa já definiu quais ambientes existem de verdade no imóvel dela
+  // (etapa "0. Definir Ambientes"), as listas só mostram esses — mais os que
+  // já foram usados em lançamentos antigos, pra não sumir nada do histórico.
+  const ativos = getAmbientesAtivos();
+  let combinadosFiltrados = combinados;
+  if(ativos.length){
+    combinadosFiltrados = combinados.filter(c=>
+      ativos.some(a=>a.toLowerCase()===c.toLowerCase()) || usados.some(u=>u.toLowerCase()===c.toLowerCase())
+    );
+  }
   const ordem = getAmbienteOrder();
   if(ordem.length){
-    const ordenados = ordem.filter(o=>combinados.some(c=>c.toLowerCase()===o.toLowerCase()));
-    const restantes = combinados.filter(c=>!ordem.some(o=>o.toLowerCase()===c.toLowerCase()));
+    const ordenados = ordem.filter(o=>combinadosFiltrados.some(c=>c.toLowerCase()===o.toLowerCase()));
+    const restantes = combinadosFiltrados.filter(c=>!ordem.some(o=>o.toLowerCase()===c.toLowerCase()));
     return [...ordenados, ...restantes];
   }
-  return combinados;
+  return combinadosFiltrados;
 }
 function getAmbienteOrder(){ try{ return JSON.parse(localStorage.getItem('pirati_ambiente_order')||'[]'); }catch(e){ return []; } }
 function saveAmbienteOrder(arr){ localStorage.setItem('pirati_ambiente_order', JSON.stringify(arr)); }
+
+// ── "0. Definir Ambientes" — marca quais ambientes existem de verdade no
+// imóvel, pra filtrar as listas de ambiente em toda a Execução de Obra. ──
+function getAmbientesAtivos(){ try{ return JSON.parse(localStorage.getItem('pirati_ambientes_ativos')||'[]'); }catch(e){ return []; } }
+function saveAmbientesAtivos(arr){ localStorage.setItem('pirati_ambientes_ativos', JSON.stringify(arr)); }
+function toggleAmbienteAtivo(nome){
+  let ativos = getAmbientesAtivos();
+  if(ativos.some(a=>a.toLowerCase()===nome.toLowerCase())){
+    ativos = ativos.filter(a=>a.toLowerCase()!==nome.toLowerCase());
+  } else {
+    ativos.push(nome);
+  }
+  saveAmbientesAtivos(ativos);
+  renderDefinirAmbientes();
+}
+function addAmbienteNovoDefinir(){
+  const nome = prompt('Nome do novo ambiente:','');
+  if(!nome || !nome.trim()) return;
+  saveCustomAmbiente(nome.trim());
+  const ativos = getAmbientesAtivos();
+  if(!ativos.some(a=>a.toLowerCase()===nome.trim().toLowerCase())) ativos.push(nome.trim());
+  saveAmbientesAtivos(ativos);
+  renderDefinirAmbientes();
+}
+// Soma quanto já foi gasto por ambiente (Execução de Obra). Um lançamento com
+// mais de um ambiente tem o valor dividido igualmente entre eles, pra não
+// contar o mesmo dinheiro mais de uma vez na soma total.
+function computeGastoPorAmbiente(){
+  const somas = {};
+  gastos.filter(g=>g.categoria==='obra-bruta' && g.status!=='cancel').forEach(g=>{
+    const val = gastoValor(g);
+    let ambientesGasto = [];
+    if(g.ambiente) ambientesGasto = g.ambiente.split(MAT_AMB_SEP).map(s=>s.trim()).filter(Boolean);
+    else if(g.pacote_subs){
+      const parsed = parsePacoteSubs(g.pacote_subs);
+      ambientesGasto = [...new Set(parsed.map(p=>p.ambiente).filter(Boolean))];
+    }
+    if(!ambientesGasto.length) return;
+    const parte = val / ambientesGasto.length;
+    ambientesGasto.forEach(a=>{ somas[a] = (somas[a]||0) + parte; });
+  });
+  return somas;
+}
+// Desenha o gráfico de barras "gasto por ambiente" no canvas indicado —
+// usado tanto na Visão Geral quanto na tela de Definir Ambientes.
+function renderGastoPorAmbienteChart(canvasId){
+  const canvas = document.getElementById(canvasId);
+  if(!canvas) return null;
+  const somas = computeGastoPorAmbiente();
+  const entries = Object.entries(somas).sort((a,b)=>b[1]-a[1]);
+  if(!entries.length) return null;
+  return new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: entries.map(e=>e[0]),
+      datasets: [{ data: entries.map(e=>e[1]), backgroundColor: '#e8b544', borderRadius: 4 }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c=>fmt(c.parsed.x) } } },
+      scales: {
+        x: { ticks: { color: 'var(--c-secondary)', callback: v=>fmtShort(v) }, grid: { color: 'var(--c-border)' } },
+        y: { ticks: { color: 'var(--c-primary)' }, grid: { display: false } }
+      }
+    }
+  });
+}
+function setAmbienteMetragem(nome, valor){
+  const m = getAmbientesMetragem();
+  const num = parseFloat(String(valor).replace(',','.'));
+  if(valor==='' || isNaN(num)) delete m[nome];
+  else m[nome] = num;
+  localStorage.setItem('pirati_ambientes_metragem', JSON.stringify(m));
+}
+function renderDefinirAmbientes(){
+  const padrao = ['Cozinha','Banheiro Social','Suíte','Banheiro da Suíte','Quarto','Sala','Área de Serviço','Sacada','Escritório','Hall de Entrada','Área Externa'];
+  const todos = [...padrao];
+  getCustomAmbientes().forEach(c=>{ if(!todos.some(t=>t.toLowerCase()===c.toLowerCase())) todos.push(c); });
+  const ativos = getAmbientesAtivos();
+  const metragens = getAmbientesMetragem();
+  document.getElementById('content').innerHTML = `
+    <div class="card" style="margin-bottom:1rem">
+      <div style="font-size:13px;color:var(--c-secondary);margin-bottom:14px;line-height:1.5">
+        Marque os ambientes que existem de verdade no seu imóvel. Eles passam a ser as únicas opções nas listas de ambiente da Execução de Obra — assim, numa kitnet sem quarto, por exemplo, "Quarto" nem aparece pra escolher depois. Esqueceu algum? É só voltar aqui e adicionar quando quiser.
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+        ${todos.map(nome=>{
+          const ativo = ativos.some(a=>a.toLowerCase()===nome.toLowerCase());
+          const nomeEsc = nome.replace(/'/g,"\\'");
+          const pill = `<button type="button" onclick="toggleAmbienteAtivo('${nomeEsc}')" style="background:${ativo?'var(--c-pago-bg)':'var(--c-panel)'};border:1px solid ${ativo?'var(--c-pago-border2)':'var(--c-border2)'};color:${ativo?'#4caf50':'var(--c-secondary)'};border-radius:20px;padding:8px 16px;font-size:13px;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px">${ativo?'✓ ':''}${nome}</button>`;
+          if(!ativo) return pill;
+          const metragem = metragens[nome] ?? '';
+          const metragemInput = `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--c-panel);border:1px solid var(--c-border2);border-radius:20px;padding:4px 10px 4px 12px">
+            <input type="text" inputmode="decimal" value="${metragem}" placeholder="m²" data-ambiente="${nomeEsc}" onchange="setAmbienteMetragem('${nomeEsc}',this.value)" style="width:48px;background:none;border:none;color:var(--c-primary);font-size:12px;padding:0;text-align:right">
+            <span style="font-size:11px;color:var(--c-muted2)">m²</span>
+          </span>`;
+          return `<span style="display:inline-flex;align-items:center;gap:4px">${pill}${metragemInput}</span>`;
+        }).join('')}
+      </div>
+      <button type="button" onclick="addAmbienteNovoDefinir()" style="background:none;border:1px dashed var(--c-faint);color:var(--c-muted2);border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer">+ novo ambiente</button>
+    </div>
+    <div style="font-size:11px;color:var(--c-faint3)">${ativos.length} ambiente${ativos.length!==1?'s':''} marcado${ativos.length!==1?'s':''}${!ativos.length ? ' — nenhum marcado ainda, então por enquanto todas as opções continuam aparecendo nas listas' : ''}</div>
+    <div class="chart-card" style="margin-top:1rem">
+      <div class="chart-title">Gasto por ambiente</div>
+      <div style="position:relative;height:260px"><canvas id="ambienteChartDefinir"></canvas></div>
+      <div id="ambienteChartDefinirVazio" style="display:none;font-size:12px;color:var(--c-faint3);text-align:center;padding:1rem">Ainda não há lançamentos com ambiente definido pra mostrar aqui.</div>
+    </div>
+  `;
+  ambienteChart = renderGastoPorAmbienteChart('ambienteChartDefinir');
+  if(!ambienteChart) document.getElementById('ambienteChartDefinirVazio').style.display = '';
+}
 
 // Fases cujos serviços tipicamente são medidos por metro quadrado — só nessas
 // mostramos os campos de metragem/valor por m²/tipo de revestimento. As demais
@@ -5324,7 +5617,7 @@ function navigate(page, skipHistory){
     render();
     return;
   }
-  const fixedTitles={geral:'Visão Geral',ganhos:'Aportes','venda-imovel':'Venda do Imóvel','compra-imovel':'Compra do Imóvel','projeto-arq':'Projeto de Arquitetura','obra-bruta':'Execução de Obra'};
+  const fixedTitles={geral:'Visão Geral',ganhos:'Aportes','venda-imovel':'Venda do Imóvel','compra-imovel':'Compra do Imóvel','projeto-arq':'Projeto de Arquitetura','obra-bruta':'Execução de Obra','definir-ambientes':'Definir Ambientes'};
   const rawTitle = fixedTitles[page] || (CATS[page]?.label) || page;
   const num = getEtapaNum(page);
   const titleEl = document.getElementById('topbar-title');
@@ -5346,8 +5639,8 @@ window.addEventListener('popstate', (e)=>{
 
 function render(){
   // Always destroy charts before rendering
-  [barChart, pieChart, catChart].forEach(c=>{ try{ if(c) c.destroy(); }catch(e){} });
-  barChart=null; pieChart=null; catChart=null;
+  [barChart, pieChart, catChart, ambienteChart].forEach(c=>{ try{ if(c) c.destroy(); }catch(e){} });
+  barChart=null; pieChart=null; catChart=null; ambienteChart=null;
   if(currentPage==='geral') renderGeral();
   else if(currentPage==='ganhos') renderGanhos();
   else if(currentPage==='diagnostico') renderDiagnostico();
@@ -5365,6 +5658,7 @@ function render(){
     else renderSubCat(currentPage);
   }
   else if(currentPage==='obra-bruta') renderObraBrutaSteps();
+  else if(currentPage==='definir-ambientes') renderDefinirAmbientes();
   else renderCat(currentPage);
 }
 
@@ -6614,7 +6908,7 @@ function buildInvestPieChart(){
 }
 
 // ── CARDS DA VISÃO GERAL: arrastar, renomear, ocultar ──────────────
-const GERAL_CARD_ORDER_DEFAULT = ['saldo-real','ja-pago','necessarios','dispensaveis','aportes','investimento','venda-imovel','compra-imovel','reforma'];
+const GERAL_CARD_ORDER_DEFAULT = ['saldo-real','ja-pago','necessarios','dispensaveis','aportes','investimento','venda-imovel','compra-imovel','reforma','gasto-ambiente'];
 function getGeralCardOrder(){
   const saved = JSON.parse(localStorage.getItem('geral_card_order')||'null') || [];
   const order = saved.filter(id=>GERAL_CARD_ORDER_DEFAULT.includes(id));
@@ -6953,6 +7247,13 @@ function renderGeral(){
       </div>
     </div>`;
 
+  const htmlGastoAmbiente = `
+    <div class="card" style="border-left:3px solid #e8b544;background:var(--c-panel3);height:100%">
+      <div class="card-label"><i class="ti ti-chart-bar" style="font-size:14px;color:#e8b544"></i> ${gcTitles['gasto-ambiente']||'Gasto por Ambiente'}</div>
+      <div style="position:relative;height:240px;margin-top:10px"><canvas id="ambienteChartGeral"></canvas></div>
+      <div id="ambienteChartGeralVazio" style="display:none;font-size:12px;color:var(--c-faint3);text-align:center;padding:1rem">Ainda não há lançamentos com ambiente definido pra mostrar aqui.</div>
+    </div>`;
+
   const CARD_REGISTRY = {
     'saldo-real':    { html: htmlSaldoReal,    edit:`renameGeralCardTitle('saldo-real', '${gcTitles['saldo-real']||'Saldo Real'}')`, span:2 },
     'ja-pago':       { html: htmlJaPago,       edit:`renameStatusLabel('pago')`, span:2 },
@@ -6963,6 +7264,7 @@ function renderGeral(){
     'venda-imovel':  { html: htmlVenda,        edit:`openEditImovelCat('venda-imovel')`, span:5 },
     'compra-imovel': { html: htmlCompra,       edit:`openEditImovelCat('compra-imovel')`, span:5 },
     'reforma':       { html: htmlReforma,      edit:`renameGeralCardTitle('reforma', '${gcTitles['reforma']||'REFORMA: TOTAL GASTO'}')`, span:10 },
+    'gasto-ambiente':{ html: htmlGastoAmbiente,edit:`renameGeralCardTitle('gasto-ambiente', '${gcTitles['gasto-ambiente']||'Gasto por Ambiente'}')`, span:10 },
   };
 
   const hiddenCards = getHiddenGeralCards();
@@ -6981,6 +7283,8 @@ function renderGeral(){
 
   buildReformaPieChart();
   buildInvestPieChart();
+  ambienteChart = renderGastoPorAmbienteChart('ambienteChartGeral');
+  if(!ambienteChart){ const v = document.getElementById('ambienteChartGeralVazio'); if(v) v.style.display = ''; }
 
   function buildCharts(canvasBarId, canvasPieId, barLegendId, pieLegendId, filterStatuses){
     const items = gastos.filter(g=>filterStatuses.includes(g.status)&&isReforma(g));
@@ -7388,7 +7692,7 @@ function renderFaseGroup(catKey, gName){
         <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px">
-        <button onclick="openMaterialLinkPicker('${catKey}','${gName.replace(/'/g,"\\'")}',null)"
+        <button onclick="openMaterialEntryChoice('${catKey}','${gName.replace(/'/g,"\\'")}',null)"
           style="background:transparent;border:1px solid #c77dea;color:#c77dea;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
           onmouseover="this.style.background='#c77dea';this.style.color='var(--c-panel)'"
           onmouseout="this.style.background='transparent';this.style.color='#c77dea'">
@@ -7443,7 +7747,7 @@ function renderSubgrupoGroup(catKey, gName, sgName){
         <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px">
-        <button onclick="openMaterialLinkPicker('${catKey}','${gName.replace(/'/g,"\\'")}',null)"
+        <button onclick="openMaterialEntryChoice('${catKey}','${gName.replace(/'/g,"\\'")}',null)"
           style="background:transparent;border:1px solid #c77dea;color:#c77dea;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
           onmouseover="this.style.background='#c77dea';this.style.color='var(--c-panel)'"
           onmouseout="this.style.background='transparent';this.style.color='#c77dea'">
@@ -7501,7 +7805,7 @@ function renderSubCat(page){
         <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px">
-        <button onclick="openMaterialLinkPicker('${catKey}',${catKey==='obra-bruta' ? `'${(SUBCATS[catKey]?.[subKey]?.grupo||'').replace(/'/g,"\\'")}'` : 'null'},'${subKey}')"
+        <button onclick="openMaterialEntryChoice('${catKey}',${catKey==='obra-bruta' ? `'${(SUBCATS[catKey]?.[subKey]?.grupo||'').replace(/'/g,"\\'")}'` : 'null'},'${subKey}')"
           style="background:transparent;border:1px solid #c77dea;color:#c77dea;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
           onmouseover="this.style.background='#c77dea';this.style.color='var(--c-panel)'"
           onmouseout="this.style.background='transparent';this.style.color='#c77dea'">
@@ -7630,7 +7934,7 @@ function renderObraBrutaSteps(){
         <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px">
-        <button onclick="openMaterialLinkPicker('${cat}',null,null)"
+        <button onclick="openMaterialEntryChoice('${cat}',null,null)"
           style="background:transparent;border:1px solid #c77dea;color:#c77dea;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
           onmouseover="this.style.background='#c77dea';this.style.color='var(--c-panel)'"
           onmouseout="this.style.background='transparent';this.style.color='#c77dea'">
@@ -7812,7 +8116,7 @@ function renderCat(cat){
         <span class="cat-stat-value" style="color:var(--c-primary)">${ativos.length}</span>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px">
-        <button onclick="openMaterialLinkPicker('${cat}',null,null)"
+        <button onclick="openMaterialEntryChoice('${cat}',null,null)"
           style="background:transparent;border:1px solid #c77dea;color:#c77dea;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
           onmouseover="this.style.background='#c77dea';this.style.color='var(--c-panel)'"
           onmouseout="this.style.background='transparent';this.style.color='#c77dea'">
@@ -8625,6 +8929,8 @@ const MODAL_CLOSE_FNS = {
   'merge-choice-overlay': 'closeMergeChoiceModal',
   'pacote-delete-overlay': 'closePacoteDeleteModal',
   'material-lancamento-overlay': 'closeMaterialModal',
+  'mat-entry-choice-overlay': 'closeMaterialEntryChoice',
+  'mat-bulk-overlay': 'closeMaterialBulkModal',
   'mat-link-picker-overlay': 'closeMaterialLinkPicker',
   'materiais-modal-overlay': 'closeMateriaisModal',
   'emp-ambiente-modal-overlay': 'cancelAmbienteModal',
