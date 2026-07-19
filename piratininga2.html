@@ -301,7 +301,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 97)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 98)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1369,6 +1369,22 @@ const DEFAULT_CATS = {
 let _savedCats = localStorage.getItem('pirati_cats');
 let CATS = _savedCats ? JSON.parse(_savedCats) : JSON.parse(JSON.stringify(DEFAULT_CATS));
 if(Object.keys(CATS).length === 0) CATS = JSON.parse(JSON.stringify(DEFAULT_CATS));
+// "Itens para Casa" — etapa-container que reúne Cama/Mesa/Banho, Decoração,
+// Móveis e Utilidades Domésticas (e o que for adicionado depois) como
+// sub-itens dentro dela, igual as fases dentro de Execução de Obra. Ela em
+// si não tem lançamento próprio — é só uma organização visual no menu.
+if(!CATS['itens-casa']) CATS['itens-casa'] = {label:'Itens para Casa', icon:'🏠', color:'#f48fb1', isGroup:true};
+function getItensCasaExtraChildren(){ try{ return JSON.parse(localStorage.getItem('itens_casa_extra_children')||'[]'); }catch(e){ return []; } }
+function saveItensCasaExtraChildren(arr){ localStorage.setItem('itens_casa_extra_children', JSON.stringify(arr)); }
+function getItensCasaChildren(){
+  const known = ['camamesabanho','decoracao','moveis'];
+  const utilidadesKey = Object.keys(CATS).find(k=>{
+    const nl = (CATS[k].label||'').toLowerCase();
+    return nl.includes('utilidades') && (nl.includes('domestic')||nl.includes('domestica'));
+  });
+  const all = [...known, ...(utilidadesKey?[utilidadesKey]:[]), ...getItensCasaExtraChildren()].filter(k=>CATS[k] && k!=='itens-casa');
+  return [...new Set(all)];
+}
 function saveCats(){ localStorage.setItem('pirati_cats', JSON.stringify(CATS)); }
 // remove 'obra' if it exists — now it's 'obra-bruta' in IMOVEL_CATS
 if(CATS['obra']){ delete CATS['obra']; saveCats(); }
@@ -1477,6 +1493,23 @@ function closeStatusDetailModal(){
   document.getElementById('status-detail-overlay').classList.remove('open');
 }
 
+// Filhos de "Itens para Casa" — cada um é uma categoria de verdade (com seus
+// próprios lançamentos), só aparece aninhado visualmente aqui no menu.
+function buildItensCasaChildrenHtml(){
+  return getItensCasaChildren().map(k=>{
+    const info = CATS[k];
+    if(!info) return '';
+    const color = info.color||'#e8b544';
+    return `
+    <div class="nav-item-wrap">
+      <div class="nav-item" onclick="navigate('${k}')" id="nav-${k}" style="display:flex;align-items:center;gap:8px;padding:6px 1.25rem 6px 1.6rem">
+        <span style="width:6px;height:6px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0"></span>
+        <span style="flex:1">${info.icon||''} ${info.label}</span>
+        <button class="nav-dots" onclick="toggleCatMenu('${k}',false,true,event)" title="Opções"><i class="ti ti-dots-vertical"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+}
 function renderCatNav(){
   try{
   const list = document.getElementById('cat-nav-list');
@@ -1506,10 +1539,10 @@ function renderCatNav(){
 
   list.innerHTML = allKeys.map(k=>{
     const isImovel = !!IMOVEL_CATS[k];
-    const isPinnedStage = isImovel || EXTRA_PINNED_STAGES.includes(k);
+    const isPinnedStage = isImovel || k==='itens-casa' || EXTRA_PINNED_STAGES.includes(k);
     const info = isImovel ? IMOVEL_CATS[k] : CATS[k];
     if(!info) return '';
-    const hasSubs = SUBCATS[k] && Object.keys(SUBCATS[k]).length>0;
+    const hasSubs = k==='itens-casa' ? getItensCasaChildren().length>0 : (SUBCATS[k] && Object.keys(SUBCATS[k]).length>0);
     const isOpen = !!expanded[k];
     const subColor = info.color||'#e8b544';
     const etapaNum = isPinnedStage ? ++imovelCount : null;
@@ -1517,7 +1550,7 @@ function renderCatNav(){
       console.log('[piratininga][row-debug] k=', k, '| hasSubs=', hasSubs, '| isOpen=', isOpen, '| SUBCATS[k]=', SUBCATS[k]);
     }
 
-    const subs = hasSubs ? buildSubcatRowsHtml(k) : '';
+    const subs = k==='itens-casa' ? buildItensCasaChildrenHtml() : (hasSubs ? buildSubcatRowsHtml(k) : '');
 
     const imovelStyle = isPinnedStage ? `background:${info.color}18;border:1px solid ${info.color}44;border-left:3px solid ${info.color};border-radius:8px;margin:4px 6px;` : '';
     const imovelNavStyle = isPinnedStage ? `color:${info.color};font-weight:600;font-size:13px;` : '';
@@ -1923,7 +1956,11 @@ function toggleCatMenu(k, isImovel, isPinnedStage, e){
   document.querySelectorAll('.cat-menu,.subcat-menu').forEach(m=>m.classList.remove('open'));
   if(wasOpenForThis) return;
   menu.dataset.forKey = k;
-  menu.innerHTML = isImovel
+  menu.innerHTML = k==='itens-casa'
+    ? `<div class="cat-menu-item" onclick="abrirNovoCartaoItensCasa(event)"><i class="ti ti-plus"></i> Cartão</div>
+       <div class="cat-menu-item" onclick="openEditCat('${k}')"><i class="ti ti-pencil"></i> Renomear</div>
+       <div class="cat-menu-item" onclick="openStageColorPicker('${k}',false,event)"><i class="ti ti-palette"></i> Cor</div>`
+    : isImovel
     ? `<div class="cat-menu-item" onclick="openModalAddSubCat('${k}')"><i class="ti ti-plus"></i> Cartão</div>
        <div class="cat-menu-item" onclick="openEditImovelCat('${k}')"><i class="ti ti-pencil"></i> Renomear</div>
        <div class="cat-menu-item" onclick="openStageColorPicker('${k}',true,event)"><i class="ti ti-palette"></i> Cor</div>
@@ -1966,6 +2003,12 @@ function openModalAddCat(){
 function closeModalAddCat(){ document.getElementById('modal-add-cat-overlay').classList.remove('open'); }
 document.getElementById('modal-add-cat-overlay').addEventListener('click',function(e){ if(e.target===this) closeModalAddCat(); });
 
+let addingCatParaItensCasa = false;
+function abrirNovoCartaoItensCasa(e){
+  if(e) e.stopPropagation();
+  addingCatParaItensCasa = true;
+  openModalAddCat();
+}
 function addCat(){
   const nome  = document.getElementById('nc-nome').value.trim();
   const icon  = document.getElementById('nc-emoji').value||'🏷️';
@@ -1975,6 +2018,14 @@ function addCat(){
   if(CATS[key]){ alert('Já existe uma categoria com esse nome.'); return; }
   CATS[key] = {label:nome, icon, color};
   saveCats();
+  if(addingCatParaItensCasa){
+    if(!EXTRA_PINNED_STAGES.includes(key)) EXTRA_PINNED_STAGES.push(key);
+    saveCustomStages();
+    const extras = getItensCasaExtraChildren();
+    if(!extras.includes(key)) extras.push(key);
+    saveItensCasaExtraChildren(extras);
+    addingCatParaItensCasa = false;
+  }
   closeModalAddCat();
   document.getElementById('nc-nome').value='';
   renderCatNav();
@@ -5796,6 +5847,10 @@ function breadcrumbTitleHtml(parts, color){
   </span>`;
 }
 function navigate(page, skipHistory){
+  if(page==='itens-casa'){
+    const filhos = getItensCasaChildren();
+    if(filhos.length){ navigate(filhos[0], skipHistory); return; }
+  }
   currentPage = page;
   applyContentColor(page);
   if(!skipHistory){
@@ -6058,6 +6113,17 @@ function getPinnedStageKeys(){
   }
   const order = saved.filter(k=>allPinned.includes(k));
   allPinned.forEach(k=>{ if(!order.includes(k)) order.push(k); });
+  // "Itens para Casa" reúne Cama/Mesa/Banho, Decoração, Móveis e Utilidades
+  // Domésticas num único item numerado — saem da lista principal e viram
+  // sub-itens dentro dele (igual as fases dentro de Execução de Obra).
+  const filhos = getItensCasaChildren().filter(k=>order.includes(k));
+  if(filhos.length){
+    const idxPrimeiro = Math.min(...filhos.map(k=>order.indexOf(k)));
+    const semFilhos = order.filter(k=>!filhos.includes(k));
+    const idxInsercao = semFilhos.filter(k=>order.indexOf(k)<idxPrimeiro).length;
+    semFilhos.splice(idxInsercao, 0, 'itens-casa');
+    return semFilhos;
+  }
   return order;
 }
 function savePinnedStageOrder(order){ localStorage.setItem('pinned_stage_order', JSON.stringify(order)); }
