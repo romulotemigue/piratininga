@@ -302,7 +302,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 105)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 106)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1435,6 +1435,7 @@ function ensureItensCasaAmbienteSubcats(){
     : catalogo;
   const ativosOrdenados = ordenados.filter(o=>ativos.some(a=>a.toLowerCase()===o.toLowerCase()));
   const slugify = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+  const migracoes = []; // {childKey, de, para} — lançamentos que precisam trocar de sub-categoria
   getItensCasaChildren().forEach(childKey=>{
     if(!SUBCATS[childKey]) SUBCATS[childKey] = {};
     const slugsCanonicos = new Set();
@@ -1451,19 +1452,45 @@ function ensureItensCasaAmbienteSubcats(){
     });
     // Limpa duplicatas: uma chave antiga (de antes desse recurso existir, ou
     // com um slug ligeiramente diferente) que tem o MESMO nome de um ambiente
-    // ativo, mas não é a chave canônica — só remove se não tiver nenhum
-    // lançamento usando ela, pra nunca perder dado.
+    // ativo, mas não é a chave canônica. Se tiver lançamento usando ela, migra
+    // esse lançamento pra chave certa em vez de simplesmente ignorar — assim
+    // nunca fica duplicado nem perde dado.
     Object.keys(SUBCATS[childKey]).forEach(sk=>{
       if(slugsCanonicos.has(sk)) return;
       const entry = SUBCATS[childKey][sk];
       const label = (entry.label||'').toLowerCase();
-      const temLancamento = gastos.some(g=>g.categoria===childKey && g.subcategoria===sk);
-      const nomeDeAmbienteAtivo = ativosOrdenados.some(a=>a.toLowerCase()===label);
-      if(temLancamento) return; // nunca apaga se tem lançamento
-      if(nomeDeAmbienteAtivo || (entry.auto && !nomeDeAmbienteAtivo)) delete SUBCATS[childKey][sk];
+      const ambienteCorrespondente = ativosOrdenados.find(a=>a.toLowerCase()===label);
+      if(ambienteCorrespondente){
+        const slugCanonico = slugify(ambienteCorrespondente);
+        if(gastos.some(g=>g.categoria===childKey && g.subcategoria===sk)){
+          migracoes.push({childKey, de:sk, para:slugCanonico});
+        }
+        delete SUBCATS[childKey][sk];
+      } else if(entry.auto){
+        const temLancamento = gastos.some(g=>g.categoria===childKey && g.subcategoria===sk);
+        if(!temLancamento) delete SUBCATS[childKey][sk];
+      }
     });
   });
   saveSubCats();
+  if(migracoes.length) migrarSubcategoriasDuplicadasItensCasa(migracoes);
+}
+// Move os lançamentos que ainda apontavam pra uma chave de ambiente duplicada
+// (antiga) pra chave certa — local na hora (a tela já reflete certo) e depois
+// no Supabase, pra ficar salvo de verdade.
+async function migrarSubcategoriasDuplicadasItensCasa(migracoes){
+  for(const m of migracoes){
+    const afetados = gastos.filter(g=>g.categoria===m.childKey && g.subcategoria===m.de);
+    if(!afetados.length) continue;
+    afetados.forEach(g=>{ g.subcategoria = m.para; });
+    try{
+      await fetch(`${SB_URL}/rest/v1/${TABLE}?categoria=eq.${encodeURIComponent(m.childKey)}&subcategoria=eq.${encodeURIComponent(m.de)}`,{
+        method:'PATCH', headers:{...HEADERS}, body: JSON.stringify({subcategoria: m.para})
+      });
+    }catch(e){ console.error('migrarSubcategoriasDuplicadasItensCasa error:', e); }
+  }
+  renderCatNav();
+  if(typeof render==='function') render();
 }
 function saveCats(){ localStorage.setItem('pirati_cats', JSON.stringify(CATS)); }
 // remove 'obra' if it exists — now it's 'obra-bruta' in IMOVEL_CATS
@@ -1645,7 +1672,7 @@ function agruparItensCasaNoDOM(){
     <div class="nav-item-wrap">
       <span class="nav-drag" style="cursor:default;opacity:.25" title="Esse grupo ainda não é arrastável">⠿</span>
       <button id="chev-itens-casa-group" style="background:none;border:none;color:var(--c-secondary);cursor:pointer;padding:4px 2px;font-size:12px;transition:transform .2s;transform:rotate(${isOpen?90:0}deg)" onclick="toggleItensCasaGroup(event)"><i class="ti ti-chevron-right"></i></button>
-      <div class="nav-item" onclick="handleItensCasaGroupClick(event)" id="nav-itens-casa" style="padding-left:2px;flex:1;display:flex;align-items:center;gap:6px;color:${cor};font-weight:600;font-size:13px">
+      <div class="nav-item" onclick="handleItensCasaGroupClick(event)" id="nav-itens-casa" style="padding-left:2px;flex:1;display:flex;align-items:center;gap:6px;color:${cor};font-weight:600;font-size:13px;user-select:none">
         ${numeroGrupo ? `<span style="width:16px;height:16px;border-radius:50%;background:${cor};color:var(--c-panel);font-size:10px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">${numeroGrupo}</span>` : ''}🏠 Itens para Casa
       </div>
       <button class="nav-dots" onclick="toggleCatMenu('itens-casa',false,true,event)" title="Opções"><i class="ti ti-dots-vertical"></i></button>
@@ -1658,6 +1685,13 @@ function agruparItensCasaNoDOM(){
     el.style.margin = '3px 4px';
     wrap.appendChild(el); // reparenta o elemento JÁ renderizado — mantém clique/menu/tudo intacto
   });
+}
+// Tira uma categoria do grupo "Itens para Casa" (caso tenha caído lá sem
+// querer, arrastando por perto) — ela volta a ser uma etapa solta.
+function removerDeItensCasa(chave){
+  const extras = getItensCasaExtraChildren().filter(k=>k!==chave);
+  saveItensCasaExtraChildren(extras);
+  renderCatNav();
 }
 // Soltar uma categoria arrastada em cima da caixinha "Itens para Casa" —
 // adiciona ela na lista de filhos (persistida) e redesenha.
@@ -2151,6 +2185,7 @@ function toggleCatMenu(k, isImovel, isPinnedStage, e){
     : `<div class="cat-menu-item" onclick="openModalAddSubCat('${k}')"><i class="ti ti-plus"></i> Cartão</div>
        <div class="cat-menu-item" onclick="openEditCat('${k}')"><i class="ti ti-pencil"></i> Renomear</div>
        ${isPinnedStage?`<div class="cat-menu-item" onclick="openStageColorPicker('${k}',false,event)"><i class="ti ti-palette"></i> Cor</div>`:''}
+       ${getItensCasaChildren().includes(k)?`<div class="cat-menu-item" onclick="removerDeItensCasa('${k}')"><i class="ti ti-corner-up-left"></i> Tirar de Itens para Casa</div>`:''}
        <div class="cat-menu-item danger" onclick="deleteCat('${k}')"><i class="ti ti-trash"></i> Excluir</div>`;
   const btn = e.currentTarget;
   const rect = btn.getBoundingClientRect();
@@ -4765,6 +4800,7 @@ function renameAmbienteDefinir(nomeAntigo){
   const metr = getAmbientesMetragem();
   if(metr[nomeAntigo]!=null){ metr[novoNome] = metr[nomeAntigo]; delete metr[nomeAntigo]; localStorage.setItem('pirati_ambientes_metragem', JSON.stringify(metr)); }
   ensureItensCasaAmbienteSubcats();
+  renderCatNav();
   renderDefinirAmbientes();
 }
 function deleteAmbienteDefinir(nome){
@@ -4773,6 +4809,7 @@ function deleteAmbienteDefinir(nome){
   saveAmbientesAtivos(getAmbientesAtivos().filter(a=>a.toLowerCase()!==nome.toLowerCase()));
   saveAmbienteOrder(getAmbienteOrder().filter(o=>o.toLowerCase()!==nome.toLowerCase()));
   ensureItensCasaAmbienteSubcats();
+  renderCatNav();
   renderDefinirAmbientes();
 }
 function toggleAmbEditMenu(id, e){
@@ -4825,6 +4862,7 @@ function ambCardDrop(e, nomeAlvo){
   saveAmbienteOrder(ordered);
   ambDragNome = null;
   ensureItensCasaAmbienteSubcats();
+  renderCatNav();
   renderDefinirAmbientes();
 }
 // Soma quanto já foi gasto por ambiente (Execução de Obra). Um lançamento com
