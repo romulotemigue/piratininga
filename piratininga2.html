@@ -301,7 +301,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 102)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 103)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1545,22 +1545,58 @@ function closeStatusDetailModal(){
   document.getElementById('status-detail-overlay').classList.remove('open');
 }
 
-// Filhos de "Itens para Casa" — cada um é uma categoria de verdade (com seus
-// próprios lançamentos), só aparece aninhado visualmente aqui no menu.
-function buildItensCasaChildrenHtml(){
-  return getItensCasaChildren().map(k=>{
-    const info = CATS[k];
-    if(!info) return '';
-    const color = info.color||'#e8b544';
-    return `
+// Agrupa visualmente as categorias de "Itens para Casa" DEPOIS que a barra
+// lateral já foi desenhada — em vez de tentar prever isso durante o desenho
+// (o que já causou bugs de duplicação antes), aqui a gente simplesmente pega
+// os elementos que JÁ EXISTEM na tela (com todo o comportamento de clique,
+// menu, etc. intacto) e move eles pra dentro de uma caixinha "Itens para
+// Casa". Muito mais seguro: se algo der errado aqui, o resto do menu
+// continua funcionando normalmente (só não agrupa).
+function agruparItensCasaNoDOM(){
+  const antigo = document.getElementById('itens-casa-group-wrap');
+  if(antigo) antigo.remove();
+
+  const filhos = getItensCasaChildren();
+  const existentes = filhos.map(k=>document.getElementById('cat-wrap-'+k)).filter(Boolean);
+  if(existentes.length < 1) return;
+
+  const primeiro = existentes[0];
+  const pai = primeiro.parentNode;
+  const proximoIrmao = primeiro.nextSibling;
+
+  const expanded = JSON.parse(localStorage.getItem('pirati_expanded')||'{}');
+  const isOpen = !!expanded['itens-casa-group'];
+  const cor = (CATS['itens-casa']?.color) || '#f48fb1';
+
+  const grupo = document.createElement('div');
+  grupo.id = 'itens-casa-group-wrap';
+  grupo.style.cssText = `background:${cor}18;border:1px solid ${cor}44;border-left:3px solid ${cor};border-radius:8px;margin:4px 6px;overflow:hidden`;
+  grupo.innerHTML = `
     <div class="nav-item-wrap">
-      <div class="nav-item" onclick="navigate('${k}')" id="nav-${k}" style="display:flex;align-items:center;gap:8px;padding:6px 1.25rem 6px 1.6rem">
-        <span style="width:6px;height:6px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0"></span>
-        <span style="flex:1">${info.icon||''} ${info.label}</span>
-        <button class="nav-dots" onclick="toggleCatMenu('${k}',false,true,event)" title="Opções"><i class="ti ti-dots-vertical"></i></button>
-      </div>
-    </div>`;
-  }).join('');
+      <span class="nav-drag" style="cursor:default;opacity:.25" title="Esse grupo ainda não é arrastável">⠿</span>
+      <button id="chev-itens-casa-group" style="background:none;border:none;color:var(--c-secondary);cursor:pointer;padding:4px 2px;font-size:12px;transition:transform .2s;transform:rotate(${isOpen?90:0}deg)" onclick="toggleItensCasaGroup(event)"><i class="ti ti-chevron-right"></i></button>
+      <div class="nav-item" onclick="toggleItensCasaGroup(event)" style="padding-left:2px;flex:1;display:flex;align-items:center;gap:6px;color:${cor};font-weight:600;font-size:13px">🏠 Itens para Casa</div>
+      <button class="nav-dots" onclick="toggleCatMenu('itens-casa',false,true,event)" title="Opções"><i class="ti ti-dots-vertical"></i></button>
+    </div>
+    <div id="itens-casa-children-wrap" style="overflow:hidden;max-height:${isOpen?'none':'0'};padding:0 4px"></div>`;
+
+  pai.insertBefore(grupo, proximoIrmao);
+  const wrap = grupo.querySelector('#itens-casa-children-wrap');
+  existentes.forEach(el=>{
+    el.style.margin = '3px 4px';
+    wrap.appendChild(el); // reparenta o elemento JÁ renderizado — mantém clique/menu/tudo intacto
+  });
+}
+function toggleItensCasaGroup(e){
+  if(e) e.stopPropagation();
+  const expanded = JSON.parse(localStorage.getItem('pirati_expanded')||'{}');
+  expanded['itens-casa-group'] = !expanded['itens-casa-group'];
+  localStorage.setItem('pirati_expanded', JSON.stringify(expanded));
+  const wrap = document.getElementById('itens-casa-children-wrap');
+  const chev = document.getElementById('chev-itens-casa-group');
+  const aberto = expanded['itens-casa-group'];
+  if(wrap) wrap.style.maxHeight = aberto ? 'none' : '0px';
+  if(chev) chev.style.transform = 'rotate('+(aberto?90:0)+'deg)';
 }
 function renderCatNav(){
   try{
@@ -1589,31 +1625,7 @@ function renderCatNav(){
     '| pinnedKeys inclui venda-imovel?', pinnedKeys.includes('venda-imovel'),
     '| allKeys inclui venda-imovel?', allKeys.includes('venda-imovel'));
 
-  const filhosItensCasa = getItensCasaChildren().filter(k=>allKeys.includes(k));
-  const representanteItensCasa = filhosItensCasa[0] || null;
-
   list.innerHTML = allKeys.map(k=>{
-    if(filhosItensCasa.includes(k) && k!==representanteItensCasa) return ''; // já aparece dentro do grupo, abaixo
-
-    if(k===representanteItensCasa){
-      const infoGrupo = {label:'Itens para Casa', icon:'🏠', color: (CATS['itens-casa']?.color)||'#f48fb1'};
-      const isOpenGrupo = !!expanded['itens-casa-group'];
-      const etapaNumGrupo = ++imovelCount;
-      const subsGrupo = buildItensCasaChildrenHtml();
-      return `<div class="nav-cat-wrap" id="cat-wrap-itens-casa-group"
-        style="background:${infoGrupo.color}18;border:1px solid ${infoGrupo.color}44;border-left:3px solid ${infoGrupo.color};border-radius:8px;margin:4px 6px;">
-        <div class="nav-item-wrap" id="nav-wrap-itens-casa-group">
-          <span class="nav-drag" style="cursor:default;opacity:.25" title="Esse grupo ainda não é arrastável">⠿</span>
-          <button id="chev-itens-casa-group" style="background:none;border:none;color:var(--c-secondary);cursor:pointer;padding:4px 2px;font-size:12px;transition:transform .2s;transform:rotate(${isOpenGrupo?90:0}deg)" onclick="toggleExpand('itens-casa-group',event)"><i class="ti ti-chevron-right"></i></button>
-          <div class="nav-item" onclick="toggleExpand('itens-casa-group',event)" id="nav-itens-casa-group" style="padding-left:2px;flex:1;display:flex;align-items:center;gap:6px;color:${infoGrupo.color};font-weight:600;font-size:13px">
-            <span style="width:16px;height:16px;border-radius:50%;background:${infoGrupo.color};color:var(--c-panel);font-size:10px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">${etapaNumGrupo}</span>${infoGrupo.icon} ${infoGrupo.label}
-          </div>
-          <button class="nav-dots" onclick="toggleCatMenu('itens-casa',false,true,event)" title="Opções"><i class="ti ti-dots-vertical"></i></button>
-        </div>
-        <div id="subcat-list-itens-casa-group" style="overflow:hidden;max-height:${isOpenGrupo?'none':'0'}">${subsGrupo}</div>
-      </div>`;
-    }
-
     const isImovel = !!IMOVEL_CATS[k];
     const isPinnedStage = isImovel || EXTRA_PINNED_STAGES.includes(k);
     const info = isImovel ? IMOVEL_CATS[k] : CATS[k];
@@ -1657,6 +1669,7 @@ function renderCatNav(){
   const active = document.getElementById('nav-'+currentPage);
   if(active) active.classList.add('active');
   }catch(e){ console.error('renderCatNav error:', e); }
+  try{ agruparItensCasaNoDOM(); }catch(e){ console.error('agruparItensCasaNoDOM error:', e); }
 }
 
 let lastNavClickInfo = {k:null, time:0};
