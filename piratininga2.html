@@ -302,7 +302,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 106)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 107)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1437,6 +1437,15 @@ function ensureItensCasaAmbienteSubcats(){
   const slugify = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
   const migracoes = []; // {childKey, de, para} — lançamentos que precisam trocar de sub-categoria
   getItensCasaChildren().forEach(childKey=>{
+    if(childKey==='outroscustos'){
+      // "Outros custos" não segue os ambientes — é só uma etapa solta de
+      // pegadinha; se cair dentro do grupo, ganha um sub único "Pessoal" que
+      // a pessoa pode renomear/adicionar mais à vontade, sem se preocupar
+      // com o resto da sincronização.
+      if(!SUBCATS[childKey]) SUBCATS[childKey] = {};
+      if(Object.keys(SUBCATS[childKey]).length===0) SUBCATS[childKey]['pessoal'] = {label:'Pessoal', ordem:0};
+      return;
+    }
     if(!SUBCATS[childKey]) SUBCATS[childKey] = {};
     const slugsCanonicos = new Set();
     ativosOrdenados.forEach((amb, idx)=>{
@@ -1644,15 +1653,20 @@ function agruparItensCasaNoDOM(){
   const isOpen = !!expanded['itens-casa-group'];
   const cor = (CATS['itens-casa']?.color) || '#f48fb1';
 
-  // Pega o número que o primeiro filho já ganhou no desenho normal (pra não
-  // ter que renumerar tudo depois dele) e usa esse mesmo número no grupo —
-  // ao mesmo tempo, apaga o numerozinho de CADA filho (vira só uma bolinha),
-  // já que agora eles são sub-itens, não etapas próprias.
+  // Conta quantas etapas numeradas já apareceram ANTES do lugar onde o grupo
+  // vai entrar — assim o número dele fica certo na sequência, mesmo que os
+  // filhos (que não têm mais número próprio) estejam espalhados no meio.
   let numeroGrupo = '';
+  {
+    let contador = 0;
+    let el = pai.firstElementChild;
+    while(el && el !== primeiro){
+      if(el.querySelector && el.querySelector('.nav-item > span[style*="border-radius:50%"]')) contador++;
+      el = el.nextElementSibling;
+    }
+    numeroGrupo = String(contador+1);
+  }
   existentes.forEach(el=>{
-    const badge = el.querySelector('.nav-item > span[style*="border-radius:50%"]');
-    if(badge && badge.textContent.trim() && !numeroGrupo) numeroGrupo = badge.textContent.trim();
-    if(badge) badge.outerHTML = `<span style="width:6px;height:6px;border-radius:50%;background:${cor};display:inline-block;flex-shrink:0"></span>`;
     // Todos os filhos usam a MESMA cor do grupo, em vez da cor original de
     // cada um — igual às fases dentro de Execução de Obra, pra não confundir.
     el.style.background = `${cor}18`;
@@ -1665,11 +1679,8 @@ function agruparItensCasaNoDOM(){
   const grupo = document.createElement('div');
   grupo.id = 'itens-casa-group-wrap';
   grupo.style.cssText = `background:${cor}18;border:1px solid ${cor}44;border-left:3px solid ${cor};border-radius:8px;margin:4px 6px;overflow:hidden`;
-  grupo.ondragover = function(e){ e.preventDefault(); grupo.classList.add('drag-over'); };
-  grupo.ondragleave = function(){ grupo.classList.remove('drag-over'); };
-  grupo.ondrop = function(e){ dropIntoItensCasa(e); };
   grupo.innerHTML = `
-    <div class="nav-item-wrap">
+    <div class="nav-item-wrap" id="itens-casa-header-row">
       <span class="nav-drag" style="cursor:default;opacity:.25" title="Esse grupo ainda não é arrastável">⠿</span>
       <button id="chev-itens-casa-group" style="background:none;border:none;color:var(--c-secondary);cursor:pointer;padding:4px 2px;font-size:12px;transition:transform .2s;transform:rotate(${isOpen?90:0}deg)" onclick="toggleItensCasaGroup(event)"><i class="ti ti-chevron-right"></i></button>
       <div class="nav-item" onclick="handleItensCasaGroupClick(event)" id="nav-itens-casa" style="padding-left:2px;flex:1;display:flex;align-items:center;gap:6px;color:${cor};font-weight:600;font-size:13px;user-select:none">
@@ -1678,6 +1689,13 @@ function agruparItensCasaNoDOM(){
       <button class="nav-dots" onclick="toggleCatMenu('itens-casa',false,true,event)" title="Opções"><i class="ti ti-dots-vertical"></i></button>
     </div>
     <div id="itens-casa-children-wrap" style="overflow:hidden;max-height:${isOpen?'none':'0'};padding:0 4px"></div>`;
+  // O "soltar aqui pra entrar no grupo" só vale em cima do CABEÇALHO — assim
+  // arrastar uma categoria por perto (pra reordenar em outro lugar) não é
+  // engolido sem querer pelo grupo inteiro.
+  const headerRow = grupo.querySelector('#itens-casa-header-row');
+  headerRow.ondragover = function(e){ e.preventDefault(); e.stopPropagation(); grupo.classList.add('drag-over'); };
+  headerRow.ondragleave = function(){ grupo.classList.remove('drag-over'); };
+  headerRow.ondrop = function(e){ dropIntoItensCasa(e); };
 
   pai.insertBefore(grupo, proximoIrmao);
   const wrap = grupo.querySelector('#itens-casa-children-wrap');
@@ -1691,6 +1709,15 @@ function agruparItensCasaNoDOM(){
 function removerDeItensCasa(chave){
   const extras = getItensCasaExtraChildren().filter(k=>k!==chave);
   saveItensCasaExtraChildren(extras);
+  // Limpa sub-ambientes automáticos que essa categoria ganhou enquanto estava
+  // dentro do grupo — só os que não têm lançamento nenhum, pra nunca perder dado.
+  if(SUBCATS[chave]){
+    Object.keys(SUBCATS[chave]).forEach(sk=>{
+      const entry = SUBCATS[chave][sk];
+      if(entry.auto && !gastos.some(g=>g.categoria===chave && g.subcategoria===sk)) delete SUBCATS[chave][sk];
+    });
+    saveSubCats();
+  }
   renderCatNav();
 }
 // Soltar uma categoria arrastada em cima da caixinha "Itens para Casa" —
@@ -1768,7 +1795,7 @@ function renderCatNav(){
     const hasSubs = SUBCATS[k] && Object.keys(SUBCATS[k]).length>0;
     const isOpen = !!expanded[k];
     const subColor = info.color||'#e8b544';
-    const etapaNum = isPinnedStage ? ++imovelCount : null;
+    const etapaNum = (isPinnedStage && !getItensCasaChildren().includes(k)) ? ++imovelCount : null;
     if(['venda-imovel','compra-imovel','projeto-arq'].includes(k)){
       console.log('[piratininga][row-debug] k=', k, '| hasSubs=', hasSubs, '| isOpen=', isOpen, '| SUBCATS[k]=', SUBCATS[k]);
     }
@@ -2182,10 +2209,12 @@ function toggleCatMenu(k, isImovel, isPinnedStage, e){
        <div class="cat-menu-item" onclick="openEditImovelCat('${k}')"><i class="ti ti-pencil"></i> Renomear</div>
        <div class="cat-menu-item" onclick="openStageColorPicker('${k}',true,event)"><i class="ti ti-palette"></i> Cor</div>
        <div class="cat-menu-item danger" onclick="deleteImovelCat('${k}')"><i class="ti ti-trash"></i> Excluir</div>`
+    : getItensCasaChildren().includes(k)
+    ? `<div class="cat-menu-item" onclick="openEditCat('${k}')"><i class="ti ti-pencil"></i> Renomear</div>
+       <div class="cat-menu-item" onclick="openStageColorPicker('${k}',false,event)"><i class="ti ti-palette"></i> Cor</div>`
     : `<div class="cat-menu-item" onclick="openModalAddSubCat('${k}')"><i class="ti ti-plus"></i> Cartão</div>
        <div class="cat-menu-item" onclick="openEditCat('${k}')"><i class="ti ti-pencil"></i> Renomear</div>
        ${isPinnedStage?`<div class="cat-menu-item" onclick="openStageColorPicker('${k}',false,event)"><i class="ti ti-palette"></i> Cor</div>`:''}
-       ${getItensCasaChildren().includes(k)?`<div class="cat-menu-item" onclick="removerDeItensCasa('${k}')"><i class="ti ti-corner-up-left"></i> Tirar de Itens para Casa</div>`:''}
        <div class="cat-menu-item danger" onclick="deleteCat('${k}')"><i class="ti ti-trash"></i> Excluir</div>`;
   const btn = e.currentTarget;
   const rect = btn.getBoundingClientRect();
@@ -2873,6 +2902,12 @@ function dragDrop(k, e){
   if(e.target.closest('.fase-group-draggable') || e.target.closest('.subcat-row')) return;
   e.preventDefault();
   if(k===dragKey) return;
+  // Arrastou uma categoria que estava dentro de "Itens para Casa" pra cima de
+  // OUTRA etapa (não o próprio grupo) → sai do grupo automaticamente. É assim
+  // que se tira algo de lá, já que arrastar pra fora não tem outro sinal.
+  if(dragKey && getItensCasaChildren().includes(dragKey) && k!=='itens-casa'){
+    removerDeItensCasa(dragKey);
+  }
   // Arrastou uma etapa pra dentro de "Execução de Obra" → vira fase lá dentro,
   // em vez de só reordenar.
   if(k==='obra-bruta' && dragKey && CATS[dragKey] && !IMOVEL_CATS[dragKey]){
@@ -9196,8 +9231,19 @@ function subDragDrop(catKey, sk, e){
   const entries = Object.entries(subs);
   const [moved] = entries.splice(fromIdx, 1);
   entries.splice(toIdx, 0, moved);
+  // Atualiza o campo 'ordem' de cada um pra refletir a nova posição — a lista
+  // agora respeita 'ordem', não mais a ordem de inserção do objeto.
+  entries.forEach(([,entry], idx)=>{ entry.ordem = idx; });
   SUBCATS[catKey] = Object.fromEntries(entries);
   saveSubCats();
+  // Se essa categoria é uma das de "Itens para Casa", a ordem dos sub-itens
+  // dela é a mesma coisa que a ordem dos ambientes — sincroniza os dois lados,
+  // pra nunca ficar bagunçado entre "Definir Ambientes" e aqui.
+  if(getItensCasaChildren().includes(catKey)){
+    const novaOrdemAmbientes = entries.map(([,entry])=>entry.label).filter(Boolean);
+    saveAmbienteOrder(novaOrdemAmbientes);
+    ensureItensCasaAmbienteSubcats();
+  }
   renderCatNav();
   subDragKey = null;
   subDragCat = null;
