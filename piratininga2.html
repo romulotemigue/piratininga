@@ -301,7 +301,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 98)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 99)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -834,38 +834,27 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
       <h3 style="margin:0">Novo lançamento em Execução de Obra</h3>
       <button onclick="closeObraTriagemModal()" style="background:none;border:none;color:var(--c-primary);font-size:21px;cursor:pointer;line-height:1">&times;</button>
     </div>
-    <div style="font-size:13px;color:var(--c-primary);margin-bottom:1.25rem">Isso é um pacote de empreitada (vários serviços juntos) ou um serviço avulso?</div>
+    <div style="font-size:13px;color:var(--c-primary);margin-bottom:1.25rem">Isso é um pacote de empreitada (vários serviços juntos), um serviço avulso, ou só a compra de um material?</div>
     <div id="obra-triagem-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <button onclick="chooseObraTipo('empreitada','com-material')" style="background:var(--c-apagar-bg2);border:2px solid #e8b544;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#251f00'" onmouseout="this.style.background='var(--c-apagar-bg2)'">
-        <div style="font-size:25px;margin-bottom:8px">📦🧱</div>
-        <div style="font-size:14px;font-weight:700;color:#e8b544">Empreitada</div>
-        <div style="font-size:12px;color:#e8b544;margin-top:2px">com material (tudo incluso)</div>
-      </button>
       <button onclick="chooseObraTipo('empreitada','sem-material')" style="background:var(--c-apagar-bg2);border:2px solid #e8b544;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#251f00'" onmouseout="this.style.background='var(--c-apagar-bg2)'">
         <div style="font-size:25px;margin-bottom:8px">📦</div>
         <div style="font-size:14px;font-weight:700;color:#e8b544">Empreitada</div>
-        <div style="font-size:12px;color:#e8b544;margin-top:2px">sem material (só mão de obra)</div>
-      </button>
-      <button onclick="chooseObraTipo('unico','com-material')" style="background:var(--c-necessario-bg);border:2px solid #42a5f5;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#122535'" onmouseout="this.style.background='var(--c-necessario-bg)'">
-        <div style="font-size:25px;margin-bottom:8px">🔧🧱</div>
-        <div style="font-size:14px;font-weight:700;color:#42a5f5">Serviço único</div>
-        <div style="font-size:12px;color:#42a5f5;margin-top:2px">com material (tudo incluso)</div>
+        <div style="font-size:12px;color:#e8b544;margin-top:2px">vários serviços juntos</div>
       </button>
       <button onclick="chooseObraTipo('unico','sem-material')" style="background:var(--c-necessario-bg);border:2px solid #42a5f5;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#122535'" onmouseout="this.style.background='var(--c-necessario-bg)'">
         <div style="font-size:25px;margin-bottom:8px">🔧</div>
         <div style="font-size:14px;font-weight:700;color:#42a5f5">Serviço único</div>
-        <div style="font-size:12px;color:#42a5f5;margin-top:2px">sem material (só mão de obra)</div>
+        <div style="font-size:12px;color:#42a5f5;margin-top:2px">um serviço avulso</div>
       </button>
-      <button onclick="chooseObraMaterialTipo('unico')" style="background:var(--c-material-bg);border:2px solid #b565d8;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#2a1030'" onmouseout="this.style.background='var(--c-material-bg)'">
-        <div style="font-size:25px;margin-bottom:8px">🧱</div>
-        <div style="font-size:14px;font-weight:700;color:#c77dea">Material</div>
-        <div style="font-size:12px;color:#c77dea;margin-top:2px">1 item</div>
-      </button>
-      <button onclick="chooseObraMaterialTipo('lote')" style="background:var(--c-material-bg);border:2px solid #b565d8;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#2a1030'" onmouseout="this.style.background='var(--c-material-bg)'">
-        <div style="font-size:25px;margin-bottom:8px">🧱🧱</div>
-        <div style="font-size:14px;font-weight:700;color:#c77dea">Material</div>
-        <div style="font-size:12px;color:#c77dea;margin-top:2px">compra em lote (vários itens)</div>
-      </button>
+      <div style="grid-column:1/-1">
+        <button onclick="chooseObraMaterialEscolha()" style="width:100%;box-sizing:border-box;background:var(--c-material-bg);border:2px solid #b565d8;border-radius:10px;padding:16px 14px;cursor:pointer;text-align:left;transition:background .15s;display:flex;align-items:center;gap:12px" onmouseover="this.style.background='#2a1030'" onmouseout="this.style.background='var(--c-material-bg)'">
+          <div style="font-size:25px">🧱</div>
+          <div>
+            <div style="font-size:14px;font-weight:700;color:#c77dea">Material</div>
+            <div style="font-size:12px;color:#c77dea;margin-top:2px">só a compra do produto — sem instalação nem prestação de serviço</div>
+          </div>
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -993,7 +982,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
       </div>
     </div>
     <div class="form-group" id="mbulk-linkpacote-group" style="margin-bottom:14px;display:none;background:var(--c-material-bg2);border:1px solid #7d4a94;border-radius:8px;padding:10px 12px">
-      <label style="color:#c77dea;display:flex;align-items:center;gap:6px;font-weight:700">🔗 Vincular todo esse lote a um pacote sem material desta fase (opcional)</label>
+      <label style="color:#c77dea;display:flex;align-items:center;gap:6px;font-weight:700">🔗 Vincular todo esse lote a um pacote de serviços (opcional)</label>
       <select id="mbulk-linkpacote" style="border-color:#7d4a94"><option value="">— nenhum —</option></select>
     </div>
     <div style="font-size:12px;color:var(--c-primary);margin-bottom:8px">Itens comprados:</div>
@@ -1001,17 +990,6 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
     <button type="button" onclick="addMbulkItemRow()" style="background:none;border:1px dashed var(--c-faint);color:var(--c-muted2);border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer;margin-bottom:14px">+ item</button>
     <div style="text-align:right;font-size:13px;color:var(--c-primary);margin-bottom:10px">Total: <b id="mbulk-total">R$ 0,00</b></div>
     <button class="btn-confirm" onclick="confirmMaterialBulk()">Confirmar compra em lote</button>
-  </div>
-</div>
-
-<div class="modal-overlay" id="mat-link-picker-overlay" onclick="if(event.target===this) closeMaterialLinkPicker()">
-  <div class="modal" style="max-width:480px;width:92vw">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-      <h3 style="margin:0;font-size:16px">🔗 Esse material é pra algum pacote já existente?</h3>
-      <button onclick="closeMaterialLinkPicker()" style="background:none;border:none;color:var(--c-primary);font-size:21px;cursor:pointer">×</button>
-    </div>
-    <div id="mat-link-picker-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
-    <button type="button" onclick="resolveMaterialLinkPicker(null)" style="width:100%;background:var(--c-panel2);border:1px dashed var(--c-border3);color:var(--c-secondary);border-radius:8px;padding:12px;font-size:13px;cursor:pointer">+ Novo material (sem vínculo)</button>
   </div>
 </div>
 
@@ -1127,7 +1105,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
           </div>
         </div>
         <div class="form-group" id="mat-l-linkpacote-group" style="margin-bottom:0;margin-top:14px;display:none;background:var(--c-material-bg2);border:1px solid #7d4a94;border-radius:8px;padding:10px 12px">
-          <label style="color:#c77dea;display:flex;align-items:center;gap:6px;font-weight:700">🔗 Vincular a um pacote sem material desta fase (opcional)</label>
+          <label style="color:#c77dea;display:flex;align-items:center;gap:6px;font-weight:700">🔗 Vincular a um pacote de serviços (opcional)</label>
           <select id="mat-l-linkpacote" style="border-color:#7d4a94"><option value="">— nenhum —</option></select>
         </div>
       </div>
@@ -1200,11 +1178,11 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
       <button onclick="closeObraEmpreitadaModal()" style="background:none;border:none;color:var(--c-primary);font-size:21px;cursor:pointer;line-height:1">&times;</button>
     </div>
     <div style="display:flex;gap:10px;margin-bottom:16px">
-      <button type="button" id="emp-vincular-material-btn" onclick="abrirVincularMaterialEmp()" title="Vincular um material comprado à parte a este pacote"
+      <button type="button" id="emp-vincular-material-btn" onclick="abrirVincularMaterialEmp()" title="Adicionar um gasto de material vinculado a este pacote"
         style="flex:1;background:linear-gradient(135deg,#7d4a94,#c77dea);border:none;color:#fff;font-weight:700;border-radius:10px;padding:12px 16px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 0 14px rgba(199,125,234,.35);transition:transform .15s"
-        onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">🔗 Vincular material</button>
+        onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">🧱 Adicionar gastos com materiais</button>
       <button type="button" id="emp-material-incluso-btn" onclick="toggleEmpMaterialIncluso()" title="Esse serviço já vem com o material incluso?"
-        style="flex:1;background:var(--c-panel);border:2px solid var(--c-border2);color:var(--c-faint3);font-weight:700;border-radius:10px;padding:12px 16px;cursor:pointer;font-size:13px;transition:all .15s">🧱 Material incluso com mão de obra</button>
+        style="flex:1;background:var(--c-panel);border:2px solid var(--c-border2);color:var(--c-faint3);font-weight:700;border-radius:10px;padding:12px 16px;cursor:pointer;font-size:13px;transition:all .15s">🧱 Materiais inclusos</button>
     </div>
     <div id="emp-extra-info-group" style="display:none">
       <div id="emp-fornecedor-row" style="margin-bottom:14px">
@@ -3215,8 +3193,8 @@ let materialEditingId = null;
 // Primeira tela ao lançar material: 1 item de cada vez, ou compra em lote
 // (vários itens da mesma loja, numa tacada só).
 let materialEntryArgs = null;
-function openMaterialEntryChoice(presetCat, presetFase, presetSub){
-  materialEntryArgs = {cat: presetCat, fase: presetFase, sub: presetSub};
+function openMaterialEntryChoice(presetCat, presetFase, presetSub, presetLinkPacote){
+  materialEntryArgs = {cat: presetCat, fase: presetFase, sub: presetSub, linkPacote: presetLinkPacote||null};
   document.getElementById('mat-entry-choice-overlay').classList.add('open');
 }
 function closeMaterialEntryChoice(){
@@ -3225,13 +3203,13 @@ function closeMaterialEntryChoice(){
 function chooseMaterialEntryTipo(tipo){
   closeMaterialEntryChoice();
   const a = materialEntryArgs || {};
-  if(tipo==='unico') openMaterialLinkPicker(a.cat, a.fase, a.sub);
-  else openMaterialBulkModal(a.fase);
+  if(tipo==='unico') openMaterialModal(a.cat, a.fase, a.sub, a.linkPacote);
+  else openMaterialBulkModal(a.fase, a.linkPacote);
 }
 
 // ── Compra em lote ──────────────────────────────────────────────
 let mbulkItemCount = 0;
-function openMaterialBulkModal(presetFase){
+function openMaterialBulkModal(presetFase, presetLinkPacote){
   document.getElementById('mbulk-loja').value = '';
   document.getElementById('mbulk-data').value = new Date().toISOString().slice(0,10);
   document.getElementById('mbulk-status').value = pendingStatusPreset || 'necessario';
@@ -3243,6 +3221,7 @@ function openMaterialBulkModal(presetFase){
   if(presetFase && fases.includes(presetFase)) faseSel.value = presetFase;
   refreshMbulkSubOptions();
   refreshMbulkLinkPacote();
+  if(presetLinkPacote) document.getElementById('mbulk-linkpacote').value = presetLinkPacote;
   document.getElementById('mbulk-itens').innerHTML = '';
   mbulkItemCount = 0;
   addMbulkItemRow();
@@ -3268,14 +3247,13 @@ function refreshMbulkLinkPacote(){
   const fase = document.getElementById('mbulk-fase').value;
   const candidatos = gastos.filter(g=>{
     if(g.categoria!=='obra-bruta') return false;
-    const tipo = (g.tipo_contratacao||'').replace('unico-','');
-    if(tipo!=='sem-material') return false;
+    if(!g.pacote_subs) return false; // qualquer pacote (com ou sem material) pode receber material vinculado
     const subEntry = SUBCATS['obra-bruta']?.[g.subcategoria];
     return subEntry && subEntry.grupo===fase;
   });
   if(!candidatos.length){ group.style.display='none'; sel.innerHTML='<option value="">— nenhum —</option>'; return; }
   group.style.display = '';
-  sel.innerHTML = '<option value="">— nenhum —</option>' + candidatos.map(g=>`<option value="${g.id}">${(g.descricao||'sem descrição').replace(/</g,'&lt;')} — ${fmtShort(gastoValor(g))}</option>`).join('');
+  sel.innerHTML = '<option value="">— nenhum —</option>' + candidatos.map(g=>`<option value="${g.id}">${nomeExibicaoGasto(g).replace(/</g,'&lt;')} — ${fmtShort(gastoValor(g))}</option>`).join('');
 }
 function addMbulkItemRow(){
   mbulkItemCount++;
@@ -3329,46 +3307,6 @@ async function confirmMaterialBulk(){
   }
 }
 
-// Antes de abrir o popup de material, pergunta se ele é pra um pacote sem
-// material que já existe (nessa mesma fase) — assim a pessoa já vincula na
-// hora, sem precisar caçar o dropdown lá dentro. Se não tiver nenhum pacote
-// candidato (ou não for Execução de Obra), pula direto pro popup de sempre.
-let materialLinkPickerArgs = null;
-function openMaterialLinkPicker(presetCat, presetFase, presetSub){
-  const cat = presetCat || 'obra-bruta';
-  if(cat!=='obra-bruta'){
-    openMaterialModal(presetCat, presetFase, presetSub);
-    return;
-  }
-  const candidatos = gastos.filter(g=>{
-    if(g.categoria!=='obra-bruta') return false;
-    const tipo = (g.tipo_contratacao||'').replace('unico-','');
-    if(tipo!=='sem-material') return false;
-    if(!presetFase) return true; // sem fase conhecida ainda — mostra os candidatos de toda a obra
-    const subEntry = SUBCATS['obra-bruta']?.[g.subcategoria];
-    return subEntry && subEntry.grupo===presetFase;
-  });
-  if(!candidatos.length){
-    openMaterialModal(presetCat, presetFase, presetSub);
-    return;
-  }
-  materialLinkPickerArgs = {cat: presetCat, fase: presetFase, sub: presetSub};
-  document.getElementById('mat-link-picker-list').innerHTML = candidatos.map(g=>`
-    <button type="button" onclick="resolveMaterialLinkPicker(${g.id})" style="width:100%;text-align:left;background:var(--c-panel);border:1px solid var(--c-border2);color:var(--c-primary);border-radius:8px;padding:10px 12px;font-size:13px;cursor:pointer;display:flex;justify-content:space-between;gap:10px;align-items:center">
-      <span>${(g.descricao||'sem descrição')}</span>
-      <span style="color:var(--c-muted2);white-space:nowrap">${fmtShort(gastoValor(g))}</span>
-    </button>`).join('');
-  document.getElementById('mat-link-picker-overlay').classList.add('open');
-}
-function resolveMaterialLinkPicker(pacoteId){
-  closeMaterialLinkPicker();
-  const args = materialLinkPickerArgs || {};
-  openMaterialModal(args.cat, args.fase, args.sub, pacoteId);
-}
-function closeMaterialLinkPicker(){
-  document.getElementById('mat-link-picker-overlay').classList.remove('open');
-}
-
 function openMaterialModal(presetCat, presetFase, presetSub, presetLinkPacote){
   materialEditingId = null;
   document.getElementById('mat-l-btn-confirm').textContent = 'Confirmar lançamento';
@@ -3408,6 +3346,13 @@ function closeMaterialModal(){
 
 // Extrai marca/loja/pagamento/garantia/modelo/contato/entregue de volta da
 // observação (foram salvos ali, separados por " · ", como "Marca: X")
+// Nome pra mostrar em listas/selects — prefere o fornecedor/loja (ex: "Rogério
+// Pedreiro"), que é o que realmente identifica quem é, em vez da descrição
+// genérica (que às vezes só diz o tipo, tipo "Empreitada (obra)").
+function nomeExibicaoGasto(g){
+  const loja = parseMaterialObs(g.obs)?.loja;
+  return (loja && loja.trim()) ? loja.trim() : (g.descricao||'');
+}
 function parseMaterialObs(obs){
   const result = {marca:'',loja:'',pagamento:'',garantia:'',modelo:'',contato:'',endereco:'',entregue:false,livre:''};
   if(!obs) return result;
@@ -3548,14 +3493,13 @@ function populateMatLinkPacoteSelect(presetId){
   const fase = document.getElementById('mat-l-subetapa').value;
   const candidatos = gastos.filter(g=>{
     if(g.categoria!=='obra-bruta') return false;
-    const tipo = (g.tipo_contratacao||'').replace('unico-','');
-    if(tipo!=='sem-material') return false;
+    if(!g.pacote_subs) return false; // qualquer pacote (com ou sem material) pode receber material vinculado
     const subEntry = SUBCATS['obra-bruta']?.[g.subcategoria];
     return subEntry && subEntry.grupo===fase;
   });
   if(!candidatos.length){ group.style.display='none'; sel.innerHTML='<option value="">— nenhum —</option>'; return; }
   group.style.display = '';
-  sel.innerHTML = '<option value="">— nenhum —</option>' + candidatos.map(g=>`<option value="${g.id}">${(g.descricao||'sem descrição').replace(/</g,'&lt;')} — ${fmtShort(gastoValor(g))}</option>`).join('');
+  sel.innerHTML = '<option value="">— nenhum —</option>' + candidatos.map(g=>`<option value="${g.id}">${nomeExibicaoGasto(g).replace(/</g,'&lt;')} — ${fmtShort(gastoValor(g))}</option>`).join('');
   if(presetId && candidatos.some(g=>g.id===presetId)) sel.value = presetId;
 }
 // ── Pílulas de forma de pagamento (clicáveis, com parcelas se for crédito) ──
@@ -4037,8 +3981,16 @@ function chooseObraMaterialTipo(tipo){
   closeObraTriagemModal();
   const sub = obraTriagemPresetSub;
   const fase = sub ? (SUBCATS['obra-bruta']?.[sub]?.grupo || null) : null;
-  if(tipo==='unico') openMaterialLinkPicker('obra-bruta', fase, sub);
+  if(tipo==='unico') openMaterialModal('obra-bruta', fase, sub);
   else openMaterialBulkModal(fase);
+}
+// Clicar em "Material" na triagem primeiro pergunta 1 item ou vários, aí sim
+// abre a janela certa — reaproveita a mesma telinha usada no "+material".
+function chooseObraMaterialEscolha(){
+  closeObraTriagemModal();
+  const sub = obraTriagemPresetSub;
+  const fase = sub ? (SUBCATS['obra-bruta']?.[sub]?.grupo || null) : null;
+  openMaterialEntryChoice('obra-bruta', fase, sub);
 }
 
 // Simplificado de volta: sempre array puro de serviços/ambientes. Data de início
@@ -4165,7 +4117,7 @@ function abrirVincularMaterial(gastoId){
   if(!g) return;
   const subEntry = SUBCATS['obra-bruta']?.[g.subcategoria];
   const fase = subEntry?.grupo || null;
-  openMaterialModal('obra-bruta', fase, g.subcategoria, gastoId);
+  openMaterialEntryChoice('obra-bruta', fase, g.subcategoria, gastoId);
 }
 
 // Estado da janela de materiais — funciona tanto pra um gasto já salvo (edita
@@ -4320,8 +4272,11 @@ function toggleEmpMaterialIncluso(){
 // Vincula um material a ESTE pacote específico — só funciona depois de salvo
 // (precisa de um id pra vincular), já que um pacote novo ainda não tem um.
 function abrirVincularMaterialEmp(){
-  if(!empreitadaEditingId){ toast('Salve o pacote primeiro pra poder vincular um material a ele.','err'); return; }
-  abrirVincularMaterial(empreitadaEditingId);
+  if(!empreitadaEditingId){ toast('Salve o pacote primeiro pra poder adicionar material vinculado a ele.','err'); return; }
+  const g = gastos.find(x=>x.id===empreitadaEditingId);
+  const subEntry = g ? SUBCATS['obra-bruta']?.[g.subcategoria] : null;
+  const fase = subEntry?.grupo || null;
+  openMaterialEntryChoice('obra-bruta', fase, g?.subcategoria||null, empreitadaEditingId);
 }
 function openObraEmpreitadaModal(material, presetSub, isUnico){
   empreitadaEditingId = null;
@@ -8672,7 +8627,7 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
     <td style="padding:6px 2px 6px 8px;width:12px"><span class="drag-handle" title="Arrastar">⠿</span></td>
     <td style="width:32px;vertical-align:middle;padding:4px">${fmtDate(g.data)}</td>
     <td style="font-size:13px;padding:4px">
-      <div style="line-height:1.5">${g.descricao||''}</div>
+      <div style="line-height:1.5">${nomeExibicaoGasto(g)}</div>
       ${mainBadgeRowHtml}
       ${prazoLineHtml}
       ${linkedInfoHtml}
@@ -9228,7 +9183,6 @@ const MODAL_CLOSE_FNS = {
   'material-lancamento-overlay': 'closeMaterialModal',
   'mat-entry-choice-overlay': 'closeMaterialEntryChoice',
   'mat-bulk-overlay': 'closeMaterialBulkModal',
-  'mat-link-picker-overlay': 'closeMaterialLinkPicker',
   'materiais-modal-overlay': 'closeMateriaisModal',
   'emp-ambiente-modal-overlay': 'cancelAmbienteModal',
   'obra-empreitada-overlay': 'closeObraEmpreitadaModal',
