@@ -269,6 +269,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
 .dropzone{border:1.5px dashed var(--c-faint);border-radius:8px;padding:14px 10px;text-align:center;cursor:pointer;font-size:12px;color:var(--c-secondary);transition:border-color .15s,background .15s}
 .dropzone:hover{border-color:var(--c-faint3)}
 .dropzone.drag-over{border-color:#e8b544;background:rgba(232,181,68,.08)}
+#itens-casa-group-wrap.drag-over{box-shadow:0 0 0 2px #e8b544 inset,0 0 14px rgba(232,181,68,.55);animation:dropPulse 1s ease-in-out infinite}
 .dropzone.has-file{border-style:solid;border-color:#4caf50;color:#4caf50}
 .modal .form-group label{font-size:11px;color:var(--c-primary);text-transform:uppercase;letter-spacing:.06em}
 .modal .form-group input,
@@ -301,7 +302,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 103)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 104)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1398,14 +1399,28 @@ if(!CATS['itens-casa']) CATS['itens-casa'] = {label:'Itens para Casa', icon:'�
 function getItensCasaExtraChildren(){ try{ return JSON.parse(localStorage.getItem('itens_casa_extra_children')||'[]'); }catch(e){ return []; } }
 function saveItensCasaExtraChildren(arr){ localStorage.setItem('itens_casa_extra_children', JSON.stringify(arr)); }
 function getItensCasaChildren(){
-  const known = ['camamesabanho','decoracao','moveis'];
-  const utilidadesKey = Object.keys(CATS).find(k=>{
-    const nl = (CATS[k].label||'').toLowerCase();
-    return nl.includes('utilidades') && (nl.includes('domestic')||nl.includes('domestica'));
-  });
-  const all = [...known, ...(utilidadesKey?[utilidadesKey]:[]), ...getItensCasaExtraChildren()].filter(k=>CATS[k] && k!=='itens-casa');
-  return [...new Set(all)];
+  return getItensCasaExtraChildren().filter(k=>CATS[k] && k!=='itens-casa');
 }
+// Só roda uma vez (marcado por essa flag): garante que as 4 categorias que
+// já existiam antes desse recurso comecem dentro de "Itens para Casa", sem
+// depender de adivinhar chave/nome (o que causava bug com acento em
+// "Domésticas"). Depois disso, é 100% controlado por arrastar-e-soltar.
+(function seedItensCasaChildrenUmaVez(){
+  try{
+    if(localStorage.getItem('itens_casa_seed_v2')) return;
+    const atual = getItensCasaExtraChildren();
+    const known = ['camamesabanho','decoracao','moveis'];
+    const norm = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const utilidadesKey = Object.keys(CATS).find(k=>{
+      const nl = norm(CATS[k].label);
+      return nl.includes('utilidades') && nl.includes('domestic');
+    });
+    const desejados = [...known, ...(utilidadesKey?[utilidadesKey]:[])].filter(k=>CATS[k]);
+    const mesclado = [...new Set([...atual, ...desejados])];
+    saveItensCasaExtraChildren(mesclado);
+    localStorage.setItem('itens_casa_seed_v2','1');
+  }catch(e){ console.error('seedItensCasaChildrenUmaVez error:', e); }
+})();
 // Cria, dentro de cada categoria de "Itens para Casa", um sub-item pra cada
 // ambiente selecionado em "Definir Ambientes" — na MESMA ordem de lá, pra não
 // deixar a pessoa perdida. Roda de novo toda vez que os ambientes mudam, ou
@@ -1568,14 +1583,30 @@ function agruparItensCasaNoDOM(){
   const isOpen = !!expanded['itens-casa-group'];
   const cor = (CATS['itens-casa']?.color) || '#f48fb1';
 
+  // Pega o número que o primeiro filho já ganhou no desenho normal (pra não
+  // ter que renumerar tudo depois dele) e usa esse mesmo número no grupo —
+  // ao mesmo tempo, apaga o numerozinho de CADA filho (vira só uma bolinha),
+  // já que agora eles são sub-itens, não etapas próprias.
+  let numeroGrupo = '';
+  existentes.forEach(el=>{
+    const badge = el.querySelector('.nav-item > span[style*="border-radius:50%"]');
+    if(badge && badge.textContent.trim() && !numeroGrupo) numeroGrupo = badge.textContent.trim();
+    if(badge) badge.outerHTML = `<span style="width:6px;height:6px;border-radius:50%;background:${cor};display:inline-block;flex-shrink:0"></span>`;
+  });
+
   const grupo = document.createElement('div');
   grupo.id = 'itens-casa-group-wrap';
   grupo.style.cssText = `background:${cor}18;border:1px solid ${cor}44;border-left:3px solid ${cor};border-radius:8px;margin:4px 6px;overflow:hidden`;
+  grupo.ondragover = function(e){ e.preventDefault(); grupo.classList.add('drag-over'); };
+  grupo.ondragleave = function(){ grupo.classList.remove('drag-over'); };
+  grupo.ondrop = function(e){ dropIntoItensCasa(e); };
   grupo.innerHTML = `
     <div class="nav-item-wrap">
       <span class="nav-drag" style="cursor:default;opacity:.25" title="Esse grupo ainda não é arrastável">⠿</span>
       <button id="chev-itens-casa-group" style="background:none;border:none;color:var(--c-secondary);cursor:pointer;padding:4px 2px;font-size:12px;transition:transform .2s;transform:rotate(${isOpen?90:0}deg)" onclick="toggleItensCasaGroup(event)"><i class="ti ti-chevron-right"></i></button>
-      <div class="nav-item" onclick="toggleItensCasaGroup(event)" style="padding-left:2px;flex:1;display:flex;align-items:center;gap:6px;color:${cor};font-weight:600;font-size:13px">🏠 Itens para Casa</div>
+      <div class="nav-item" onclick="toggleItensCasaGroup(event)" style="padding-left:2px;flex:1;display:flex;align-items:center;gap:6px;color:${cor};font-weight:600;font-size:13px">
+        ${numeroGrupo ? `<span style="width:16px;height:16px;border-radius:50%;background:${cor};color:var(--c-panel);font-size:10px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">${numeroGrupo}</span>` : ''}🏠 Itens para Casa
+      </div>
       <button class="nav-dots" onclick="toggleCatMenu('itens-casa',false,true,event)" title="Opções"><i class="ti ti-dots-vertical"></i></button>
     </div>
     <div id="itens-casa-children-wrap" style="overflow:hidden;max-height:${isOpen?'none':'0'};padding:0 4px"></div>`;
@@ -1586,6 +1617,24 @@ function agruparItensCasaNoDOM(){
     el.style.margin = '3px 4px';
     wrap.appendChild(el); // reparenta o elemento JÁ renderizado — mantém clique/menu/tudo intacto
   });
+}
+// Soltar uma categoria arrastada em cima da caixinha "Itens para Casa" —
+// adiciona ela na lista de filhos (persistida) e redesenha.
+function dropIntoItensCasa(e){
+  e.preventDefault();
+  const chave = dragKey;
+  dragKey = null;
+  document.querySelectorAll('.nav-cat-wrap').forEach(el=>el.classList.remove('dragging','drag-over'));
+  document.getElementById('itens-casa-group-wrap')?.classList.remove('drag-over');
+  if(!chave || IMOVEL_CATS[chave] || chave==='itens-casa' || !CATS[chave]) return;
+  if(!EXTRA_PINNED_STAGES.includes(chave)){ EXTRA_PINNED_STAGES.push(chave); saveCustomStages(); }
+  const extras = getItensCasaExtraChildren();
+  if(!extras.includes(chave)){
+    extras.push(chave);
+    saveItensCasaExtraChildren(extras);
+    ensureItensCasaAmbienteSubcats();
+  }
+  renderCatNav();
 }
 function toggleItensCasaGroup(e){
   if(e) e.stopPropagation();
@@ -1839,7 +1888,8 @@ function buildSubcatRowsHtml(k){
   const skKeys = Object.keys(SUBCATS[k]);
   const hasGroups = skKeys.some(sk=>SUBCATS[k][sk].grupo);
   if(!hasGroups){
-    return skKeys.map(sk=>renderFlatSubcatRow(k, sk, subColor, false)).join('');
+    const skOrdenados = [...skKeys].sort((a,b)=>(SUBCATS[k][a].ordem??999999)-(SUBCATS[k][b].ordem??999999));
+    return skOrdenados.map(sk=>renderFlatSubcatRow(k, sk, subColor, false)).join('');
   }
   // Hierarquia de 2 níveis: fase (grupo) > itens — mantém a ordem definida em 'ordem'
   const groups = {};
