@@ -283,7 +283,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 18JUL26 (versão 87)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 18JUL26 (versão 88)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -915,6 +915,17 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <button onclick="confirmPacoteDelete()" style="background:#c62828;border:none;color:#fff;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:14px">Excluir pacote inteiro</button>
       </div>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="mat-link-picker-overlay" onclick="if(event.target===this) closeMaterialLinkPicker()">
+  <div class="modal" style="max-width:480px;width:92vw">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <h3 style="margin:0;font-size:16px">🔗 Esse material é pra algum pacote já existente?</h3>
+      <button onclick="closeMaterialLinkPicker()" style="background:none;border:none;color:var(--c-primary);font-size:21px;cursor:pointer">×</button>
+    </div>
+    <div id="mat-link-picker-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
+    <button type="button" onclick="resolveMaterialLinkPicker(null)" style="width:100%;background:var(--c-panel2);border:1px dashed var(--c-border3);color:var(--c-secondary);border-radius:8px;padding:12px;font-size:13px;cursor:pointer">+ Novo material (sem vínculo)</button>
   </div>
 </div>
 
@@ -3062,7 +3073,46 @@ function todasEtapasParaSelect(){
 }
 
 let materialEditingId = null;
-function openMaterialModal(presetCat, presetFase, presetSub){
+// Antes de abrir o popup de material, pergunta se ele é pra um pacote sem
+// material que já existe (nessa mesma fase) — assim a pessoa já vincula na
+// hora, sem precisar caçar o dropdown lá dentro. Se não tiver nenhum pacote
+// candidato (ou não for Execução de Obra), pula direto pro popup de sempre.
+let materialLinkPickerArgs = null;
+function openMaterialLinkPicker(presetCat, presetFase, presetSub){
+  const cat = presetCat || 'obra-bruta';
+  if(cat!=='obra-bruta' || !presetFase){
+    openMaterialModal(presetCat, presetFase, presetSub);
+    return;
+  }
+  const candidatos = gastos.filter(g=>{
+    if(g.categoria!=='obra-bruta') return false;
+    const tipo = (g.tipo_contratacao||'').replace('unico-','');
+    if(tipo!=='sem-material') return false;
+    const subEntry = SUBCATS['obra-bruta']?.[g.subcategoria];
+    return subEntry && subEntry.grupo===presetFase;
+  });
+  if(!candidatos.length){
+    openMaterialModal(presetCat, presetFase, presetSub);
+    return;
+  }
+  materialLinkPickerArgs = {cat: presetCat, fase: presetFase, sub: presetSub};
+  document.getElementById('mat-link-picker-list').innerHTML = candidatos.map(g=>`
+    <button type="button" onclick="resolveMaterialLinkPicker(${g.id})" style="width:100%;text-align:left;background:var(--c-panel);border:1px solid var(--c-border2);color:var(--c-primary);border-radius:8px;padding:10px 12px;font-size:13px;cursor:pointer;display:flex;justify-content:space-between;gap:10px;align-items:center">
+      <span>${(g.descricao||'sem descrição')}</span>
+      <span style="color:var(--c-muted2);white-space:nowrap">${fmtShort(gastoValor(g))}</span>
+    </button>`).join('');
+  document.getElementById('mat-link-picker-overlay').classList.add('open');
+}
+function resolveMaterialLinkPicker(pacoteId){
+  closeMaterialLinkPicker();
+  const args = materialLinkPickerArgs || {};
+  openMaterialModal(args.cat, args.fase, args.sub, pacoteId);
+}
+function closeMaterialLinkPicker(){
+  document.getElementById('mat-link-picker-overlay').classList.remove('open');
+}
+
+function openMaterialModal(presetCat, presetFase, presetSub, presetLinkPacote){
   materialEditingId = null;
   document.getElementById('mat-l-btn-confirm').textContent = 'Confirmar lançamento';
   document.getElementById('mat-l-desc').value = '';
@@ -3090,7 +3140,7 @@ function openMaterialModal(presetCat, presetFase, presetSub){
   const etapaSel = document.getElementById('mat-l-etapa');
   etapaSel.innerHTML = todasEtapasParaSelect().map(e=>`<option value="${e.key}">${e.label}</option>`).join('');
   etapaSel.value = presetCat || 'obra-bruta';
-  onMatEtapaChange(presetFase, presetSub);
+  onMatEtapaChange(presetFase, presetSub, undefined, presetLinkPacote);
   document.getElementById('material-lancamento-overlay').classList.add('open');
   setTimeout(()=>document.getElementById('mat-l-desc').focus(), 80);
 }
@@ -3733,7 +3783,7 @@ function chooseObraMaterial(){
   closeObraTriagemModal();
   const sub = obraTriagemPresetSub;
   const fase = sub ? (SUBCATS['obra-bruta']?.[sub]?.grupo || null) : null;
-  openMaterialModal('obra-bruta', fase, sub);
+  openMaterialLinkPicker('obra-bruta', fase, sub);
 }
 
 // Simplificado de volta: sempre array puro de serviços/ambientes. Data de início
@@ -4329,12 +4379,23 @@ function buildEmpRowHtml(it, faseNameEsc, showArea){
       <span style="color:var(--c-primary);cursor:grab;font-size:12px;flex-shrink:0" title="Arrastar pra reordenar">⠿</span>
       <input type="checkbox" class="emp-sub-check" data-row="${sk}" value="${sk}" ${isChecked?'checked':''} onchange="empreitadaCheckedServices['${sk}']=this.checked;toggleEmpAmbBtnEnabled('${sk}',this.checked)" style="width:auto;flex-shrink:0">
       <span style="font-size:12px;color:var(--c-secondary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${it.label}">${it.label}</span>
-      <button type="button" onclick="openAmbienteModal('${sk}','${labelEsc}')" id="emp-amb-btn-${sk}" ${isChecked?'':'disabled'}
+      <button type="button" onclick="openAmbienteModalAutoCheck('${sk}','${labelEsc}')" id="emp-amb-btn-${sk}"
         style="width:130px;flex-shrink:0;background:var(--c-panel);border:1px solid var(--c-border2);border-radius:4px;padding:3px 5px;color:${names.length?'var(--c-primary)':'var(--c-faint3)'};font-size:11px;text-align:left;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:${isChecked?'1':'.55'}">
         ${btnLabel}
       </button>
     </div>
   </div>`;
+}
+// Clique no "adicionar local" de um serviço ainda não marcado — em vez de ficar
+// desabilitado (o que parecia bug: "clico e não acontece nada"), marca o
+// serviço automaticamente e já abre a janela de local, sem passo extra.
+function openAmbienteModalAutoCheck(sk, label){
+  const checkEl = document.querySelector(`.emp-sub-check[value="${sk}"]`);
+  if(checkEl && !checkEl.checked){
+    checkEl.checked = true;
+    checkEl.dispatchEvent(new Event('change'));
+  }
+  openAmbienteModal(sk, label);
 }
 // Marca/desmarca um serviço no construtor de pacote — além de habilitar/desabilitar
 // o botão "adicionar local", também corrige a aparência dele (antes ficava
@@ -7327,7 +7388,7 @@ function renderFaseGroup(catKey, gName){
         <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px">
-        <button onclick="openMaterialModal('${catKey}','${gName.replace(/'/g,"\\'")}',null)"
+        <button onclick="openMaterialLinkPicker('${catKey}','${gName.replace(/'/g,"\\'")}',null)"
           style="background:transparent;border:1px solid #c77dea;color:#c77dea;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
           onmouseover="this.style.background='#c77dea';this.style.color='var(--c-panel)'"
           onmouseout="this.style.background='transparent';this.style.color='#c77dea'">
@@ -7382,7 +7443,7 @@ function renderSubgrupoGroup(catKey, gName, sgName){
         <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px">
-        <button onclick="openMaterialModal('${catKey}','${gName.replace(/'/g,"\\'")}',null)"
+        <button onclick="openMaterialLinkPicker('${catKey}','${gName.replace(/'/g,"\\'")}',null)"
           style="background:transparent;border:1px solid #c77dea;color:#c77dea;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
           onmouseover="this.style.background='#c77dea';this.style.color='var(--c-panel)'"
           onmouseout="this.style.background='transparent';this.style.color='#c77dea'">
@@ -7440,7 +7501,7 @@ function renderSubCat(page){
         <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px">
-        <button onclick="openMaterialModal('${catKey}',${catKey==='obra-bruta' ? `'${(SUBCATS[catKey]?.[subKey]?.grupo||'').replace(/'/g,"\\'")}'` : 'null'},'${subKey}')"
+        <button onclick="openMaterialLinkPicker('${catKey}',${catKey==='obra-bruta' ? `'${(SUBCATS[catKey]?.[subKey]?.grupo||'').replace(/'/g,"\\'")}'` : 'null'},'${subKey}')"
           style="background:transparent;border:1px solid #c77dea;color:#c77dea;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
           onmouseover="this.style.background='#c77dea';this.style.color='var(--c-panel)'"
           onmouseout="this.style.background='transparent';this.style.color='#c77dea'">
@@ -7569,7 +7630,7 @@ function renderObraBrutaSteps(){
         <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px">
-        <button onclick="openMaterialModal('${cat}',null,null)"
+        <button onclick="openMaterialLinkPicker('${cat}',null,null)"
           style="background:transparent;border:1px solid #c77dea;color:#c77dea;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
           onmouseover="this.style.background='#c77dea';this.style.color='var(--c-panel)'"
           onmouseout="this.style.background='transparent';this.style.color='#c77dea'">
@@ -7751,7 +7812,7 @@ function renderCat(cat){
         <span class="cat-stat-value" style="color:var(--c-primary)">${ativos.length}</span>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px">
-        <button onclick="openMaterialModal('${cat}',null,null)"
+        <button onclick="openMaterialLinkPicker('${cat}',null,null)"
           style="background:transparent;border:1px solid #c77dea;color:#c77dea;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
           onmouseover="this.style.background='#c77dea';this.style.color='var(--c-panel)'"
           onmouseout="this.style.background='transparent';this.style.color='#c77dea'">
@@ -8564,6 +8625,7 @@ const MODAL_CLOSE_FNS = {
   'merge-choice-overlay': 'closeMergeChoiceModal',
   'pacote-delete-overlay': 'closePacoteDeleteModal',
   'material-lancamento-overlay': 'closeMaterialModal',
+  'mat-link-picker-overlay': 'closeMaterialLinkPicker',
   'materiais-modal-overlay': 'closeMateriaisModal',
   'emp-ambiente-modal-overlay': 'cancelAmbienteModal',
   'obra-empreitada-overlay': 'closeObraEmpreitadaModal',
