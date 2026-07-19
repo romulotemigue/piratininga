@@ -301,7 +301,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 101)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 102)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -944,7 +944,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div style="font-size:28px">🧱🧱</div>
         <div>
           <div style="font-weight:700;color:#e8b544;font-size:14px">Compra em lote</div>
-          <div style="font-size:12px;color:#e8b544;margin-top:2px;opacity:.85">Vários itens de uma vez, na mesma loja (ex: fomos na Leroy Merlin e compramos 8 coisas)</div>
+          <div style="font-size:12px;color:#e8b544;margin-top:2px;opacity:.85">Vários itens de uma vez, na mesma loja</div>
         </div>
       </button>
     </div>
@@ -987,6 +987,27 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <input type="text" id="mbulk-parcelas" style="display:none">
       </div>
     </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      <div class="form-group" style="margin-bottom:0">
+        <label>WhatsApp da loja/vendedor</label>
+        <div style="display:flex;gap:6px">
+          <input type="text" id="mbulk-contato" placeholder="Ex: (11) 91234-5678" style="flex:1">
+          <button type="button" onclick="abrirWhatsAppMbulk()" title="Abrir no WhatsApp" style="background:var(--c-pago-bg2);border:1px solid var(--c-pago-border2);color:#4caf50;border-radius:8px;padding:0 12px;cursor:pointer;font-size:17px;flex-shrink:0"><i class="ti ti-brand-whatsapp"></i></button>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>Endereço da loja</label>
+        <div style="display:flex;gap:6px">
+          <input type="text" id="mbulk-endereco" placeholder="Ex: Av. Brasil, 123 - Santos/SP" style="flex:1">
+          <button type="button" onclick="abrirMapsMbulk()" title="Abrir no Google Maps" style="background:var(--c-necessario-bg);border:1px solid var(--c-necessario-border2);color:#42a5f5;border-radius:8px;padding:0 12px;cursor:pointer;font-size:17px;flex-shrink:0"><i class="ti ti-map-pin"></i></button>
+        </div>
+      </div>
+    </div>
+    <div id="mbulk-invest-wrap"></div>
+    <div class="form-group" style="margin-bottom:14px">
+      <label>Observação</label>
+      <textarea id="mbulk-obs" rows="2" placeholder="Alguma nota importante sobre essa compra..." style="width:100%;box-sizing:border-box;background:var(--c-panel);border:1px solid var(--c-border2);border-radius:8px;padding:10px 12px;color:var(--c-primary);font-size:13px;resize:vertical"></textarea>
+    </div>
     <div class="form-group" id="mbulk-linkpacote-group" style="margin-bottom:14px;display:none;background:var(--c-material-bg2);border:1px solid #7d4a94;border-radius:8px;padding:10px 12px">
       <label style="color:#c77dea;display:flex;align-items:center;gap:6px;font-weight:700">🔗 Vincular todo esse lote a um pacote de serviços (opcional)</label>
       <select id="mbulk-linkpacote" style="border-color:#7d4a94"><option value="">— nenhum —</option></select>
@@ -994,6 +1015,22 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
     <div style="font-size:12px;color:var(--c-primary);margin-bottom:8px">Itens comprados:</div>
     <div id="mbulk-itens" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
     <button type="button" onclick="addMbulkItemRow()" style="background:none;border:1px dashed var(--c-faint);color:var(--c-muted2);border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer;margin-bottom:14px">+ item</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0">
+      <div class="form-group" style="margin-bottom:0">
+        <label>📄 Nota fiscal</label>
+        <div class="dropzone" id="dz-mbulk-nf" onclick="document.getElementById('mbulk-nf').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDropzoneFile(event,'mbulk-nf')">
+          <span id="dz-mbulk-nf-label">☁ arraste seu comprovante aqui ou clique para buscar</span>
+        </div>
+        <input type="file" id="mbulk-nf" style="display:none" onchange="updateDropzoneLabel('mbulk-nf')">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>💳 Comprovante de pagamento</label>
+        <div class="dropzone" id="dz-mbulk-comprovante" onclick="document.getElementById('mbulk-comprovante').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDropzoneFile(event,'mbulk-comprovante')">
+          <span id="dz-mbulk-comprovante-label">☁ arraste seu comprovante aqui ou clique para buscar</span>
+        </div>
+        <input type="file" id="mbulk-comprovante" style="display:none" onchange="updateDropzoneLabel('mbulk-comprovante')">
+      </div>
+    </div>
     <div style="text-align:right;font-size:13px;color:var(--c-primary);margin-bottom:10px">Total: <b id="mbulk-total">R$ 0,00</b></div>
     <button class="btn-confirm" onclick="confirmMaterialBulk()">Confirmar compra em lote</button>
   </div>
@@ -1533,7 +1570,7 @@ function renderCatNav(){
 
   // Merge CATS + etapas pinadas (imóvel + extras) — sempre no topo, numeradas
   const pinnedKeys = getPinnedStageKeys();
-  const catKeys = Object.keys(CATS).filter(k=>!EXTRA_PINNED_STAGES.includes(k));
+  const catKeys = Object.keys(CATS).filter(k=>!EXTRA_PINNED_STAGES.includes(k) && k!=='itens-casa');
   const allOrder = JSON.parse(localStorage.getItem('all_cat_order')||'null');
   let catOrder;
   if(allOrder){
@@ -2706,7 +2743,7 @@ function dragDrop(k, e){
   const pinnedKeys = getPinnedStageKeys();
   const fromIsPinned = pinnedKeys.includes(dragKey);
   const toIsPinned = pinnedKeys.includes(k);
-  const catKeys = Object.keys(CATS).filter(k2=>!EXTRA_PINNED_STAGES.includes(k2));
+  const catKeys = Object.keys(CATS).filter(k2=>!EXTRA_PINNED_STAGES.includes(k2) && k2!=='itens-casa');
 
   if(fromIsPinned && toIsPinned){
     const arr = [...pinnedKeys];
@@ -3248,7 +3285,7 @@ function todasEtapasParaSelect(){
   // todas as categorias existentes hoje, imóvel + normais (exceto ganho)
   const lista = [];
   Object.keys(IMOVEL_CATS).forEach(k=>lista.push({key:k, label:IMOVEL_CATS[k].label}));
-  Object.keys(CATS).forEach(k=>{ if(k!=='ganho') lista.push({key:k, label:CATS[k].label}); });
+  Object.keys(CATS).forEach(k=>{ if(k!=='ganho' && k!=='itens-casa') lista.push({key:k, label:CATS[k].label}); });
   return lista;
 }
 
@@ -3274,6 +3311,12 @@ function chooseMaterialEntryTipo(tipo){
 let mbulkItemCount = 0;
 function openMaterialBulkModal(presetFase, presetLinkPacote){
   document.getElementById('mbulk-loja').value = '';
+  document.getElementById('mbulk-contato').value = '';
+  document.getElementById('mbulk-endereco').value = '';
+  document.getElementById('mbulk-obs').value = '';
+  document.getElementById('mbulk-invest-wrap').innerHTML = investimentoPickerHtml('mbulk', true);
+  resetDropzone('mbulk-nf');
+  resetDropzone('mbulk-comprovante');
   document.getElementById('mbulk-data').value = new Date().toISOString().slice(0,10);
   document.getElementById('mbulk-status').value = pendingStatusPreset || 'necessario';
   pendingStatusPreset = null;
@@ -3323,15 +3366,18 @@ function addMbulkItemRow(){
   const id = 'mbulk-item-'+mbulkItemCount;
   const fase = document.getElementById('mbulk-fase').value;
   const subs = Object.keys(SUBCATS['obra-bruta']||{}).filter(k=>SUBCATS['obra-bruta'][k].grupo===fase);
+  const ambientes = getAmbienteOptions();
   const row = document.createElement('div');
   row.id = id;
+  row.style.cssText = 'background:var(--c-panel2);border:1px solid var(--c-border2);border-radius:8px;padding:8px';
   row.innerHTML = `
-    <div style="display:grid;grid-template-columns:2fr 1fr 1.4fr auto;gap:8px;align-items:center">
+    <div style="display:grid;grid-template-columns:2fr 1fr 1.4fr auto;gap:8px;align-items:center;margin-bottom:6px">
       <input type="text" placeholder="Descrição do item" class="mbulk-desc">
       <input type="text" placeholder="Valor (R$)" class="mbulk-valor" inputmode="numeric" oninput="maskMoney(this);updateMbulkTotal()">
       <select class="mbulk-sub-select"><option value="">— sub-etapa (opcional) —</option>${subs.map(sk=>`<option value="${sk}">${SUBCATS['obra-bruta'][sk].label}</option>`).join('')}</select>
       <button type="button" onclick="document.getElementById('${id}').remove();updateMbulkTotal()" style="background:none;border:none;color:#ef5350;cursor:pointer;font-size:16px"><i class="ti ti-trash"></i></button>
-    </div>`;
+    </div>
+    <select class="mbulk-ambiente-select" style="width:100%"><option value="">— ambiente (opcional) —</option>${ambientes.map(a=>`<option value="${a}">${a}</option>`).join('')}</select>`;
   document.getElementById('mbulk-itens').appendChild(row);
 }
 function updateMbulkTotal(){
@@ -3339,28 +3385,73 @@ function updateMbulkTotal(){
   document.querySelectorAll('.mbulk-valor').forEach(el=>{ total += parseMoney(el.value); });
   document.getElementById('mbulk-total').textContent = fmt(total);
 }
+function abrirWhatsAppMbulk(){
+  const num = document.getElementById('mbulk-contato').value.replace(/\D/g,'');
+  if(!num){ toast('Preencha o WhatsApp primeiro.','err'); return; }
+  window.open(`https://wa.me/55${num}`,'_blank');
+}
+function abrirMapsMbulk(){
+  const end = document.getElementById('mbulk-endereco').value.trim();
+  if(!end){ toast('Preencha o endereço primeiro.','err'); return; }
+  window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(end)}`,'_blank');
+}
 async function confirmMaterialBulk(){
   const loja = document.getElementById('mbulk-loja').value.trim();
+  const contato = document.getElementById('mbulk-contato').value.trim();
+  const endereco = document.getElementById('mbulk-endereco').value.trim();
+  const observacao = document.getElementById('mbulk-obs').value.trim();
+  const investimento = document.getElementById('mbulk-investimento')?.value || '';
+  const pagamento = document.getElementById('mbulk-pagamento').value;
   const data = document.getElementById('mbulk-data').value;
   const status = document.getElementById('mbulk-status').value;
   const rowsEl = [...document.querySelectorAll('#mbulk-itens > div')];
   const itens = rowsEl.map(row=>({
     desc: row.querySelector('.mbulk-desc').value.trim(),
     valor: parseMoney(row.querySelector('.mbulk-valor').value),
-    sub: row.querySelector('.mbulk-sub-select').value
+    sub: row.querySelector('.mbulk-sub-select').value,
+    ambiente: row.querySelector('.mbulk-ambiente-select')?.value || ''
   })).filter(it=>it.desc && it.valor>0);
   if(!itens.length){ toast('Adicione pelo menos um item com descrição e valor.','err'); return; }
   if(!data){ toast('Preencha a data da compra.','err'); return; }
-  const obsBase = loja ? `Loja: ${loja}` : '';
+  const partesObs = [];
+  if(loja) partesObs.push(`Loja: ${loja}`);
+  if(pagamento) partesObs.push(`Pagamento: ${pagamento}`);
+  if(contato) partesObs.push(`Contato: ${contato}`);
+  if(endereco) partesObs.push(`Endereço: ${endereco}`);
+  if(observacao) partesObs.push(observacao);
+  const obsBase = partesObs.join(' · ');
   const linkedPacoteId = document.getElementById('mbulk-linkpacote').value ? parseInt(document.getElementById('mbulk-linkpacote').value,10) : null;
   const novasLinhas = itens.map(it=>({
     descricao: it.desc, categoria:'obra-bruta', subcategoria: it.sub||'', valor: it.valor, quantidade:1,
-    status, data, obs: obsBase, link:'', tipo_contratacao:'material', ambiente:'',
+    status, data, obs: obsBase, link:'', tipo_contratacao:'material', ambiente: it.ambiente||'',
     linked_pacote_id: linkedPacoteId,
-    investimento:'', data_inicio:null, prazo_dias:null
+    investimento, data_inicio:null, prazo_dias:null
   }));
   try{
-    await sbInsert(novasLinhas);
+    const inserted = await sbInsert(novasLinhas);
+    const insertedArr = Array.isArray(inserted) ? inserted : [inserted];
+    const nfFile = document.getElementById('mbulk-nf').files[0];
+    const compFile = document.getElementById('mbulk-comprovante').files[0];
+    const arquivos = [nfFile, compFile].filter(Boolean);
+    if(arquivos.length && insertedArr.length){
+      // Sobe o(s) anexo(s) uma única vez (vinculados ao 1º item) e referencia
+      // o mesmo link nos demais itens do lote — evita subir o arquivo várias vezes.
+      const urls = await uploadAnexos(insertedArr[0].id, arquivos);
+      const rotulos = [];
+      if(nfFile && urls[0]) rotulos.push(`📄 Nota fiscal: [${urls[0].nome}](${urls[0].url})`);
+      if(compFile){
+        const compUrl = urls.find(u=>u.nome===compFile.name);
+        if(compUrl) rotulos.push(`💳 Comprovante: [${compUrl.nome}](${compUrl.url})`);
+      }
+      if(rotulos.length){
+        const novoObs = obsBase ? obsBase+' · '+rotulos.join(' · ') : rotulos.join(' · ');
+        for(const g of insertedArr){
+          await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${g.id}`,{
+            method:'PATCH', headers:{...HEADERS}, body: JSON.stringify({obs: novoObs, link: urls[0]?.url || ''})
+          });
+        }
+      }
+    }
     toast(`${novasLinhas.length} materiais lançados com sucesso!`);
     closeMaterialBulkModal();
     await loadGastos();
@@ -4725,6 +4816,10 @@ function renderDefinirAmbientes(){
   const ativos = ambientesPendentes!==null ? ambientesPendentes : ativosSalvos;
   const temMudancaPendente = ambientesPendentes!==null && JSON.stringify([...ativosSalvos].sort())!==JSON.stringify([...ambientesPendentes].sort());
   const metragens = getAmbientesMetragem();
+  const totalMetragem = ativos.reduce((s,nome)=>{
+    const chave = Object.keys(metragens).find(m=>m.toLowerCase()===nome.toLowerCase());
+    return s + (chave ? (parseFloat(metragens[chave])||0) : 0);
+  }, 0);
 
   const cardsHtml = ordenados.map(nome=>{
     const ativo = ativos.some(a=>a.toLowerCase()===nome.toLowerCase());
@@ -4760,7 +4855,7 @@ function renderDefinirAmbientes(){
       </div>
       ${cardsHtml}
     </div>
-    <div style="font-size:11px;color:var(--c-faint3);margin-bottom:1.5rem">${ativos.length} ambiente${ativos.length!==1?'s':''} selecionado${ativos.length!==1?'s':''}${!ativos.length ? ' — nenhum selecionado ainda, então por enquanto todas as opções continuam aparecendo nas listas' : ''}${temMudancaPendente ? ' <span style="color:#e8b544">· você tem alterações não confirmadas</span>' : ''}</div>
+    <div style="font-size:11px;color:var(--c-faint3);margin-bottom:1.5rem">${ativos.length} ambiente${ativos.length!==1?'s':''} selecionado${ativos.length!==1?'s':''}${!ativos.length ? ' — nenhum selecionado ainda, então por enquanto todas as opções continuam aparecendo nas listas' : ''}${temMudancaPendente ? ' <span style="color:#e8b544">· você tem alterações não confirmadas</span>' : ''}${totalMetragem>0 ? ` <span style="color:#e8b544;font-weight:700">· ${totalMetragem.toLocaleString('pt-BR')} m² no total</span>` : ''}</div>
     <div class="chart-card">
       <div class="chart-title">Gasto por ambiente</div>
       <div style="position:relative;height:260px"><canvas id="ambienteChartDefinir"></canvas></div>
