@@ -119,6 +119,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .charts-row{display:grid;grid-template-columns:1.5fr 1fr;gap:12px;margin-bottom:1.25rem}
 @media(max-width:700px){.charts-row{grid-template-columns:1fr}}
 .chart-card{background:var(--c-panel3);border:1px solid var(--c-border);border-radius:10px;padding:1.25rem}
+.ambiente-card{width:120px;height:120px;border-radius:14px;background:var(--c-panel);border:2px solid var(--c-border2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;position:relative;transition:all .15s;flex-shrink:0}
+.ambiente-card:hover{border-color:var(--c-faint2)}
+.ambiente-card.ativo{border-color:#e8b544;box-shadow:0 0 18px 2px rgba(232,181,68,.5);background:var(--c-apagar-bg3)}
+.ambiente-card .amb-icon{font-size:30px;color:var(--c-secondary)}
+.ambiente-card.ativo .amb-icon{color:#e8b544}
+.ambiente-card .amb-nome{font-size:11.5px;text-align:center;padding:0 6px;color:var(--c-secondary);line-height:1.25}
+.ambiente-card.ativo .amb-nome{color:#e8b544;font-weight:700}
+.ambiente-card .amb-drag{position:absolute;top:6px;left:7px;color:var(--c-faint3);cursor:grab;font-size:12px;user-select:none}
+.ambiente-card .amb-edit{position:absolute;top:5px;right:6px;background:none;border:none;color:var(--c-faint3);cursor:pointer;font-size:13px;padding:2px 4px}
+.ambiente-card .amb-edit:hover{color:var(--c-primary)}
+.ambiente-card .amb-edit-menu{display:none;position:absolute;top:26px;right:6px;background:var(--c-panel2);border:1px solid var(--c-border2);border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.35);z-index:5;flex-direction:column;min-width:104px;overflow:hidden}
+.ambiente-card .amb-edit-menu button{background:none;border:none;color:var(--c-secondary);font-size:12px;padding:8px 10px;text-align:left;cursor:pointer}
+.ambiente-card .amb-edit-menu button:hover{background:var(--c-panel3)}
+.ambiente-card .amb-metragem{width:56px;background:var(--c-bg0);border:1px solid var(--c-border2);border-radius:6px;color:var(--c-primary);font-size:11px;text-align:center;padding:2px 4px;margin-top:2px}
+.ambiente-card-add{width:120px;height:120px;border-radius:14px;background:none;border:2px dashed var(--c-faint);display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--c-muted2);cursor:pointer;transition:all .15s;flex-shrink:0}
+.ambiente-card-add:hover{border-color:var(--c-muted2);color:var(--c-secondary)}
 .chart-title{font-size:11px;color:var(--c-primary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
 .table-card{background:var(--c-panel3);border:1px solid var(--c-border);border-radius:10px;overflow:hidden}
 .table-card table{width:100%;border-collapse:collapse;font-size:14px}
@@ -283,7 +299,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 18JUL26 (versão 89)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 90)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -4355,12 +4371,10 @@ function openObraEmpreitadaModalForEdit(g){
 }
 
 function getAmbienteOptions(){
-  const padrao = ['Cozinha','Banheiro Social','Suíte','Banheiro da Suíte','Quarto','Sala','Área de Serviço','Sacada','Escritório','Hall de Entrada','Área Externa'];
+  const combinados = getAmbienteCatalog();
   const usadosBrutos = gastos.filter(g=>g.categoria==='obra-bruta' && g.ambiente).map(g=>g.ambiente);
   const usados = [...new Set(usadosBrutos.flatMap(a=>a.split(MAT_AMB_SEP).map(s=>s.trim()).filter(Boolean)))];
-  const combinados = [...padrao];
   usados.forEach(u=>{ if(!combinados.some(c=>c.toLowerCase()===u.toLowerCase())) combinados.push(u); });
-  getCustomAmbientes().forEach(u=>{ if(!combinados.some(c=>c.toLowerCase()===u.toLowerCase())) combinados.push(u); });
   // Se a pessoa já definiu quais ambientes existem de verdade no imóvel dela
   // (etapa "0. Definir Ambientes"), as listas só mostram esses — mais os que
   // já foram usados em lançamentos antigos, pra não sumir nada do histórico.
@@ -4382,6 +4396,19 @@ function getAmbienteOptions(){
 function getAmbienteOrder(){ try{ return JSON.parse(localStorage.getItem('pirati_ambiente_order')||'[]'); }catch(e){ return []; } }
 function saveAmbienteOrder(arr){ localStorage.setItem('pirati_ambiente_order', JSON.stringify(arr)); }
 
+// Catálogo único de ambientes (substitui a antiga separação padrão/custom) —
+// tudo (adicionar, renomear, excluir, reordenar) mexe nessa mesma lista.
+function getAmbienteCatalog(){
+  let cat = JSON.parse(localStorage.getItem('pirati_ambiente_catalog')||'null');
+  if(!cat){
+    cat = ['Cozinha','Banheiro Social','Suíte','Banheiro da Suíte','Quarto','Sala','Área de Serviço','Sacada','Escritório','Hall de Entrada','Área Externa'];
+    getCustomAmbientes().forEach(c=>{ if(!cat.some(x=>x.toLowerCase()===c.toLowerCase())) cat.push(c); });
+    localStorage.setItem('pirati_ambiente_catalog', JSON.stringify(cat));
+  }
+  return cat;
+}
+function saveAmbienteCatalog(arr){ localStorage.setItem('pirati_ambiente_catalog', JSON.stringify(arr)); }
+
 // ── "0. Definir Ambientes" — marca quais ambientes existem de verdade no
 // imóvel, pra filtrar as listas de ambiente em toda a Execução de Obra. ──
 function getAmbientesAtivos(){ try{ return JSON.parse(localStorage.getItem('pirati_ambientes_ativos')||'[]'); }catch(e){ return []; } }
@@ -4399,10 +4426,76 @@ function toggleAmbienteAtivo(nome){
 function addAmbienteNovoDefinir(){
   const nome = prompt('Nome do novo ambiente:','');
   if(!nome || !nome.trim()) return;
+  const cat = getAmbienteCatalog();
+  if(cat.some(c=>c.toLowerCase()===nome.trim().toLowerCase())){ toast('Esse ambiente já existe.','err'); return; }
+  cat.push(nome.trim());
+  saveAmbienteCatalog(cat);
   saveCustomAmbiente(nome.trim());
   const ativos = getAmbientesAtivos();
-  if(!ativos.some(a=>a.toLowerCase()===nome.trim().toLowerCase())) ativos.push(nome.trim());
+  ativos.push(nome.trim());
   saveAmbientesAtivos(ativos);
+  renderDefinirAmbientes();
+}
+function renameAmbienteDefinir(nomeAntigo){
+  const novo = prompt('Novo nome do ambiente:', nomeAntigo);
+  if(!novo || !novo.trim() || novo.trim().toLowerCase()===nomeAntigo.toLowerCase()) return;
+  const novoNome = novo.trim();
+  const cat = getAmbienteCatalog();
+  const idx = cat.findIndex(c=>c.toLowerCase()===nomeAntigo.toLowerCase());
+  if(idx>=0) cat[idx] = novoNome;
+  saveAmbienteCatalog(cat);
+  saveAmbientesAtivos(getAmbientesAtivos().map(a=>a.toLowerCase()===nomeAntigo.toLowerCase()?novoNome:a));
+  saveAmbienteOrder(getAmbienteOrder().map(o=>o.toLowerCase()===nomeAntigo.toLowerCase()?novoNome:o));
+  const metr = getAmbientesMetragem();
+  if(metr[nomeAntigo]!=null){ metr[novoNome] = metr[nomeAntigo]; delete metr[nomeAntigo]; localStorage.setItem('pirati_ambientes_metragem', JSON.stringify(metr)); }
+  renderDefinirAmbientes();
+}
+function deleteAmbienteDefinir(nome){
+  if(!confirm(`Remover "${nome}" da lista de ambientes? Lançamentos antigos que já usam esse nome não são afetados.`)) return;
+  saveAmbienteCatalog(getAmbienteCatalog().filter(c=>c.toLowerCase()!==nome.toLowerCase()));
+  saveAmbientesAtivos(getAmbientesAtivos().filter(a=>a.toLowerCase()!==nome.toLowerCase()));
+  saveAmbienteOrder(getAmbienteOrder().filter(o=>o.toLowerCase()!==nome.toLowerCase()));
+  renderDefinirAmbientes();
+}
+function toggleAmbEditMenu(id, e){
+  if(e) e.stopPropagation();
+  document.querySelectorAll('.amb-edit-menu').forEach(m=>{ if(m.id!=='amb-edit-menu-'+id) m.style.display='none'; });
+  const el = document.getElementById('amb-edit-menu-'+id);
+  if(el) el.style.display = (el.style.display==='flex') ? 'none' : 'flex';
+}
+document.addEventListener('click', ()=>{ document.querySelectorAll('.amb-edit-menu').forEach(m=>m.style.display='none'); });
+function ambienteIconFor(nome){
+  const n = nome.toLowerCase();
+  if(n.includes('cozinha')) return 'ti-tools-kitchen-2';
+  if(n.includes('banheiro')||n.includes('lavabo')) return 'ti-bath';
+  if(n.includes('suíte')||n.includes('suite')||n.includes('quarto')) return 'ti-bed';
+  if(n.includes('sala')) return 'ti-sofa';
+  if(n.includes('serviço')||n.includes('lavanderia')) return 'ti-wash';
+  if(n.includes('sacada')||n.includes('varanda')) return 'ti-door';
+  if(n.includes('escritório')||n.includes('escritorio')) return 'ti-briefcase';
+  if(n.includes('hall')) return 'ti-door-enter';
+  if(n.includes('externa')||n.includes('jardim')||n.includes('quintal')) return 'ti-trees';
+  if(n.includes('garagem')) return 'ti-car';
+  if(n.includes('closet')) return 'ti-shirt';
+  return 'ti-home';
+}
+let ambDragNome = null;
+function ambCardDragStart(e, nome){ ambDragNome = nome; e.dataTransfer.effectAllowed='move'; }
+function ambCardDragOver(e){ e.preventDefault(); }
+function ambCardDrop(e, nomeAlvo){
+  e.preventDefault();
+  if(!ambDragNome || ambDragNome.toLowerCase()===nomeAlvo.toLowerCase()) return;
+  const cat = getAmbienteCatalog();
+  const ordemSalva = getAmbienteOrder();
+  let ordered = ordemSalva.length
+    ? [...ordemSalva.filter(o=>cat.some(c=>c.toLowerCase()===o.toLowerCase())), ...cat.filter(c=>!ordemSalva.some(o=>o.toLowerCase()===c.toLowerCase()))]
+    : [...cat];
+  const fromIdx = ordered.findIndex(o=>o.toLowerCase()===ambDragNome.toLowerCase());
+  const toIdx = ordered.findIndex(o=>o.toLowerCase()===nomeAlvo.toLowerCase());
+  if(fromIdx<0||toIdx<0) return;
+  ordered.splice(toIdx, 0, ordered.splice(fromIdx,1)[0]);
+  saveAmbienteOrder(ordered);
+  ambDragNome = null;
   renderDefinirAmbientes();
 }
 // Soma quanto já foi gasto por ambiente (Execução de Obra). Um lançamento com
@@ -4458,41 +4551,54 @@ function setAmbienteMetragem(nome, valor){
   localStorage.setItem('pirati_ambientes_metragem', JSON.stringify(m));
 }
 function renderDefinirAmbientes(){
-  const padrao = ['Cozinha','Banheiro Social','Suíte','Banheiro da Suíte','Quarto','Sala','Área de Serviço','Sacada','Escritório','Hall de Entrada','Área Externa'];
-  const todos = [...padrao];
-  getCustomAmbientes().forEach(c=>{ if(!todos.some(t=>t.toLowerCase()===c.toLowerCase())) todos.push(c); });
+  const cat = getAmbienteCatalog();
+  const ordemSalva = getAmbienteOrder();
+  const ordenados = ordemSalva.length
+    ? [...ordemSalva.filter(o=>cat.some(c=>c.toLowerCase()===o.toLowerCase())), ...cat.filter(c=>!ordemSalva.some(o=>o.toLowerCase()===c.toLowerCase()))]
+    : cat;
   const ativos = getAmbientesAtivos();
   const metragens = getAmbientesMetragem();
+
+  const cardsHtml = ordenados.map(nome=>{
+    const ativo = ativos.some(a=>a.toLowerCase()===nome.toLowerCase());
+    const nomeEsc = nome.replace(/'/g,"\\'");
+    const safeId = nome.replace(/[^a-zA-Z0-9]/g,'_');
+    const icon = ambienteIconFor(nome);
+    const metragem = metragens[nome] ?? '';
+    return `
+    <div class="ambiente-card${ativo?' ativo':''}" draggable="true"
+      ondragstart="ambCardDragStart(event,'${nomeEsc}')" ondragover="ambCardDragOver(event)" ondrop="ambCardDrop(event,'${nomeEsc}')"
+      onclick="toggleAmbienteAtivo('${nomeEsc}')">
+      <span class="amb-drag" onclick="event.stopPropagation()" title="Arrastar pra reordenar">⠿</span>
+      <button type="button" class="amb-edit" onclick="event.stopPropagation();toggleAmbEditMenu('${safeId}',event)" title="Editar">✎</button>
+      <div class="amb-edit-menu" id="amb-edit-menu-${safeId}" onclick="event.stopPropagation()">
+        <button type="button" onclick="renameAmbienteDefinir('${nomeEsc}')">Renomear</button>
+        <button type="button" onclick="deleteAmbienteDefinir('${nomeEsc}')" style="color:#ef5350">Excluir</button>
+      </div>
+      <i class="ti ${icon} amb-icon"></i>
+      <div class="amb-nome">${nome}</div>
+      ${ativo ? `<input type="text" class="amb-metragem" inputmode="decimal" value="${metragem}" placeholder="m²" onclick="event.stopPropagation()" onchange="setAmbienteMetragem('${nomeEsc}',this.value)">` : ''}
+    </div>`;
+  }).join('');
+
   document.getElementById('content').innerHTML = `
-    <div class="card" style="margin-bottom:1rem">
-      <div style="font-size:13px;color:var(--c-secondary);margin-bottom:14px;line-height:1.5">
-        Marque os ambientes que existem de verdade no seu imóvel. Eles passam a ser as únicas opções nas listas de ambiente da Execução de Obra — assim, numa kitnet sem quarto, por exemplo, "Quarto" nem aparece pra escolher depois. Esqueceu algum? É só voltar aqui e adicionar quando quiser.
+    <div style="font-size:15px;color:var(--c-primary);font-weight:600;margin-bottom:16px">Selecione os ambientes do seu imóvel</div>
+    <div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:1.5rem">
+      <div class="ambiente-card-add" onclick="addAmbienteNovoDefinir()" title="Adicionar novo ambiente">
+        <i class="ti ti-plus" style="font-size:28px"></i>
+        <div style="font-size:11px;margin-top:2px">Novo ambiente</div>
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
-        ${todos.map(nome=>{
-          const ativo = ativos.some(a=>a.toLowerCase()===nome.toLowerCase());
-          const nomeEsc = nome.replace(/'/g,"\\'");
-          const pill = `<button type="button" onclick="toggleAmbienteAtivo('${nomeEsc}')" style="background:${ativo?'var(--c-pago-bg)':'var(--c-panel)'};border:1px solid ${ativo?'var(--c-pago-border2)':'var(--c-border2)'};color:${ativo?'#4caf50':'var(--c-secondary)'};border-radius:20px;padding:8px 16px;font-size:13px;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px">${ativo?'✓ ':''}${nome}</button>`;
-          if(!ativo) return pill;
-          const metragem = metragens[nome] ?? '';
-          const metragemInput = `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--c-panel);border:1px solid var(--c-border2);border-radius:20px;padding:4px 10px 4px 12px">
-            <input type="text" inputmode="decimal" value="${metragem}" placeholder="m²" data-ambiente="${nomeEsc}" onchange="setAmbienteMetragem('${nomeEsc}',this.value)" style="width:48px;background:none;border:none;color:var(--c-primary);font-size:12px;padding:0;text-align:right">
-            <span style="font-size:11px;color:var(--c-muted2)">m²</span>
-          </span>`;
-          return `<span style="display:inline-flex;align-items:center;gap:4px">${pill}${metragemInput}</span>`;
-        }).join('')}
-      </div>
-      <button type="button" onclick="addAmbienteNovoDefinir()" style="background:none;border:1px dashed var(--c-faint);color:var(--c-muted2);border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer">+ novo ambiente</button>
+      ${cardsHtml}
     </div>
-    <div style="font-size:11px;color:var(--c-faint3)">${ativos.length} ambiente${ativos.length!==1?'s':''} marcado${ativos.length!==1?'s':''}${!ativos.length ? ' — nenhum marcado ainda, então por enquanto todas as opções continuam aparecendo nas listas' : ''}</div>
-    <div class="chart-card" style="margin-top:1rem">
+    <div style="font-size:11px;color:var(--c-faint3);margin-bottom:1.5rem">${ativos.length} ambiente${ativos.length!==1?'s':''} selecionado${ativos.length!==1?'s':''}${!ativos.length ? ' — nenhum selecionado ainda, então por enquanto todas as opções continuam aparecendo nas listas' : ''}</div>
+    <div class="chart-card">
       <div class="chart-title">Gasto por ambiente</div>
       <div style="position:relative;height:260px"><canvas id="ambienteChartDefinir"></canvas></div>
       <div id="ambienteChartDefinirVazio" style="display:none;font-size:12px;color:var(--c-faint3);text-align:center;padding:1rem">Ainda não há lançamentos com ambiente definido pra mostrar aqui.</div>
     </div>
   `;
   ambienteChart = renderGastoPorAmbienteChart('ambienteChartDefinir');
-  if(!ambienteChart) document.getElementById('ambienteChartDefinirVazio').style.display = '';
+  if(!ambienteChart){ const v=document.getElementById('ambienteChartDefinirVazio'); if(v) v.style.display=''; }
 }
 
 // Fases cujos serviços tipicamente são medidos por metro quadrado — só nessas
