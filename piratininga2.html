@@ -121,6 +121,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .chart-card{background:var(--c-panel3);border:1px solid var(--c-border);border-radius:10px;padding:1.25rem}
 .ambiente-card{width:150px;height:150px;border-radius:16px;background:var(--c-panel);border:2px solid var(--c-border2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;position:relative;transition:all .15s;flex-shrink:0}
 .ambiente-card:hover{border-color:var(--c-faint2)}
+.ambiente-card.dragging{opacity:.35;transform:scale(.94)}
+.ambiente-card.drag-target{transform:scale(1.06);border-color:#42a5f5;box-shadow:0 0 0 3px rgba(66,165,245,.35);transition:transform .12s,box-shadow .12s,border-color .12s}
 .ambiente-card.ativo{border-color:#e8b544;box-shadow:0 0 18px 2px rgba(232,181,68,.5);background:var(--c-apagar-bg3)}
 .ambiente-card .amb-icon{font-size:36px;color:var(--c-secondary)}
 .ambiente-card.ativo .amb-icon{color:#e8b544}
@@ -299,7 +301,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 92)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 93)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -854,15 +856,16 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div style="font-size:14px;font-weight:700;color:#42a5f5">Serviço único</div>
         <div style="font-size:12px;color:#42a5f5;margin-top:2px">sem material (só mão de obra)</div>
       </button>
-      <div id="obra-triagem-item-wrap" style="display:none;grid-column:1/-1">
-        <button onclick="chooseObraMaterial()" style="width:100%;box-sizing:border-box;background:var(--c-material-bg);border:2px solid #b565d8;border-radius:10px;padding:16px 14px;cursor:pointer;text-align:left;transition:background .15s;display:flex;align-items:center;gap:12px" onmouseover="this.style.background='#2a1030'" onmouseout="this.style.background='var(--c-material-bg)'">
-          <div style="font-size:25px">🧱</div>
-          <div>
-            <div style="font-size:14px;font-weight:700;color:#c77dea">Material</div>
-            <div style="font-size:12px;color:#c77dea;margin-top:2px">só a compra do produto — sem instalação nem prestação de serviço</div>
-          </div>
-        </button>
-      </div>
+      <button onclick="chooseObraMaterialTipo('unico')" style="background:var(--c-material-bg);border:2px solid #b565d8;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#2a1030'" onmouseout="this.style.background='var(--c-material-bg)'">
+        <div style="font-size:25px;margin-bottom:8px">🧱</div>
+        <div style="font-size:14px;font-weight:700;color:#c77dea">Material</div>
+        <div style="font-size:12px;color:#c77dea;margin-top:2px">1 item</div>
+      </button>
+      <button onclick="chooseObraMaterialTipo('lote')" style="background:var(--c-material-bg);border:2px solid #b565d8;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#2a1030'" onmouseout="this.style.background='var(--c-material-bg)'">
+        <div style="font-size:25px;margin-bottom:8px">🧱🧱</div>
+        <div style="font-size:14px;font-weight:700;color:#c77dea">Material</div>
+        <div style="font-size:12px;color:#c77dea;margin-top:2px">compra em lote (vários itens)</div>
+      </button>
     </div>
   </div>
 </div>
@@ -988,6 +991,10 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <input type="hidden" id="mbulk-pagamento">
         <input type="text" id="mbulk-parcelas" style="display:none">
       </div>
+    </div>
+    <div class="form-group" id="mbulk-linkpacote-group" style="margin-bottom:14px;display:none;background:var(--c-material-bg2);border:1px solid #7d4a94;border-radius:8px;padding:10px 12px">
+      <label style="color:#c77dea;display:flex;align-items:center;gap:6px;font-weight:700">🔗 Vincular todo esse lote a um pacote sem material desta fase (opcional)</label>
+      <select id="mbulk-linkpacote" style="border-color:#7d4a94"><option value="">— nenhum —</option></select>
     </div>
     <div style="font-size:12px;color:var(--c-primary);margin-bottom:8px">Itens comprados:</div>
     <div id="mbulk-itens" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
@@ -3191,6 +3198,7 @@ function openMaterialBulkModal(presetFase){
   faseSel.innerHTML = fases.map(f=>`<option value="${f}">${f}</option>`).join('');
   if(presetFase && fases.includes(presetFase)) faseSel.value = presetFase;
   refreshMbulkSubOptions();
+  refreshMbulkLinkPacote();
   document.getElementById('mbulk-itens').innerHTML = '';
   mbulkItemCount = 0;
   addMbulkItemRow();
@@ -3208,6 +3216,22 @@ function refreshMbulkSubOptions(){
     sel.innerHTML = '<option value="">— sub-etapa (opcional) —</option>' + subs.map(sk=>`<option value="${sk}">${SUBCATS['obra-bruta'][sk].label}</option>`).join('');
     if(subs.includes(cur)) sel.value = cur;
   });
+  refreshMbulkLinkPacote();
+}
+function refreshMbulkLinkPacote(){
+  const group = document.getElementById('mbulk-linkpacote-group');
+  const sel = document.getElementById('mbulk-linkpacote');
+  const fase = document.getElementById('mbulk-fase').value;
+  const candidatos = gastos.filter(g=>{
+    if(g.categoria!=='obra-bruta') return false;
+    const tipo = (g.tipo_contratacao||'').replace('unico-','');
+    if(tipo!=='sem-material') return false;
+    const subEntry = SUBCATS['obra-bruta']?.[g.subcategoria];
+    return subEntry && subEntry.grupo===fase;
+  });
+  if(!candidatos.length){ group.style.display='none'; sel.innerHTML='<option value="">— nenhum —</option>'; return; }
+  group.style.display = '';
+  sel.innerHTML = '<option value="">— nenhum —</option>' + candidatos.map(g=>`<option value="${g.id}">${(g.descricao||'sem descrição').replace(/</g,'&lt;')} — ${fmtShort(gastoValor(g))}</option>`).join('');
 }
 function addMbulkItemRow(){
   mbulkItemCount++;
@@ -3243,9 +3267,11 @@ async function confirmMaterialBulk(){
   if(!itens.length){ toast('Adicione pelo menos um item com descrição e valor.','err'); return; }
   if(!data){ toast('Preencha a data da compra.','err'); return; }
   const obsBase = loja ? `Loja: ${loja}` : '';
+  const linkedPacoteId = document.getElementById('mbulk-linkpacote').value ? parseInt(document.getElementById('mbulk-linkpacote').value,10) : null;
   const novasLinhas = itens.map(it=>({
     descricao: it.desc, categoria:'obra-bruta', subcategoria: it.sub||'', valor: it.valor, quantidade:1,
     status, data, obs: obsBase, link:'', tipo_contratacao:'material', ambiente:'',
+    linked_pacote_id: linkedPacoteId,
     investimento:'', data_inicio:null, prazo_dias:null
   }));
   try{
@@ -3962,15 +3988,14 @@ function chooseObraTipo(tipo, material){
   openObraEmpreitadaModal(material, obraTriagemPresetSub, tipo==='unico' || tipo==='item');
 }
 
-// Opção "Material" da triagem — em vez de criar um pacote/serviço com um único
-// item (o antigo "apenas item"), abre direto o popup de material de sempre,
-// já com a fase/sub certa preenchida. Um só caminho pra "só comprei o produto,
-// sem mão de obra", em vez de dois sistemas fazendo a mesma coisa.
-function chooseObraMaterial(){
+// Opções "Material" da triagem — 1 item vai pro popup de sempre (com a fase/sub
+// já preenchida), compra em lote abre o formulário de vários itens de uma vez.
+function chooseObraMaterialTipo(tipo){
   closeObraTriagemModal();
   const sub = obraTriagemPresetSub;
   const fase = sub ? (SUBCATS['obra-bruta']?.[sub]?.grupo || null) : null;
-  openMaterialEntryChoice('obra-bruta', fase, sub);
+  if(tipo==='unico') openMaterialLinkPicker('obra-bruta', fase, sub);
+  else openMaterialBulkModal(fase);
 }
 
 // Simplificado de volta: sempre array puro de serviços/ambientes. Data de início
@@ -4486,10 +4511,20 @@ function ambienteIconFor(nome){
   return 'ti-home';
 }
 let ambDragNome = null;
-function ambCardDragStart(e, nome){ ambDragNome = nome; e.dataTransfer.effectAllowed='move'; }
-function ambCardDragOver(e){ e.preventDefault(); }
+function ambCardDragStart(e, nome){
+  ambDragNome = nome;
+  e.dataTransfer.effectAllowed='move';
+  e.currentTarget.classList.add('dragging');
+}
+function ambCardDragOver(e){
+  e.preventDefault();
+  document.querySelectorAll('.ambiente-card.drag-target').forEach(el=>{ if(el!==e.currentTarget) el.classList.remove('drag-target'); });
+  e.currentTarget.classList.add('drag-target');
+}
+function ambCardDragLeave(e){ e.currentTarget.classList.remove('drag-target'); }
 function ambCardDrop(e, nomeAlvo){
   e.preventDefault();
+  document.querySelectorAll('.ambiente-card').forEach(el=>el.classList.remove('dragging','drag-target'));
   if(!ambDragNome || ambDragNome.toLowerCase()===nomeAlvo.toLowerCase()) return;
   const cat = getAmbienteCatalog();
   const ordemSalva = getAmbienteOrder();
@@ -4536,20 +4571,46 @@ function renderGastoPorAmbienteChart(canvasId){
   const corTexto = cssVar('--c-primary') || '#e8e7e2';
   const corSecundaria = cssVar('--c-secondary') || '#ccc';
   const corBorda = cssVar('--c-border') || '#333';
+  // Desenha o valor de cada barra na hora — dentro dela se for alta o bastante,
+  // ou logo acima se for baixa (sem precisar de um plugin extra do Chart.js).
+  const valueLabelPlugin = {
+    id: 'ambValueLabel',
+    afterDatasetsDraw(chart){
+      const ctx = chart.ctx;
+      chart.getDatasetMeta(0).data.forEach((bar, i)=>{
+        const valor = chart.data.datasets[0].data[i];
+        const pos = bar.getCenterPoint();
+        const altura = Math.abs(bar.base - bar.y);
+        ctx.save();
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        if(altura > 24){
+          ctx.fillStyle = '#1a1400';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(fmtShort(valor), pos.x, pos.y);
+        } else {
+          ctx.fillStyle = corTexto;
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(fmtShort(valor), pos.x, bar.y-4);
+        }
+        ctx.restore();
+      });
+    }
+  };
   return new Chart(canvas.getContext('2d'), {
     type: 'bar',
     data: {
       labels: entries.map(e=>e[0]),
-      datasets: [{ data: entries.map(e=>e[1]), backgroundColor: cores, borderRadius: 6, barThickness: 24 }]
+      datasets: [{ data: entries.map(e=>e[1]), backgroundColor: cores, borderRadius: 6 }]
     },
+    plugins: [valueLabelPlugin],
     options: {
-      indexAxis: 'y',
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c=>fmt(c.parsed.x) } } },
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c=>fmt(c.parsed.y) } } },
       scales: {
-        x: { ticks: { color: corSecundaria, callback: v=>fmtShort(v) }, grid: { color: corBorda } },
-        y: { ticks: { color: corTexto, font: { size: 13, weight: '600' } }, grid: { display: false } }
+        x: { ticks: { color: corTexto, font: { size: 12, weight: '600' } }, grid: { display: false } },
+        y: { ticks: { color: corSecundaria, callback: v=>fmtShort(v) }, grid: { color: corBorda } }
       }
     }
   });
@@ -4581,7 +4642,7 @@ function renderDefinirAmbientes(){
     const metragem = metragens[nome] ?? '';
     return `
     <div class="ambiente-card${ativo?' ativo':''}" draggable="true"
-      ondragstart="ambCardDragStart(event,'${nomeEsc}')" ondragover="ambCardDragOver(event)" ondrop="ambCardDrop(event,'${nomeEsc}')"
+      ondragstart="ambCardDragStart(event,'${nomeEsc}')" ondragover="ambCardDragOver(event)" ondragleave="ambCardDragLeave(event)" ondrop="ambCardDrop(event,'${nomeEsc}')" ondragend="this.classList.remove('dragging')"
       onclick="toggleAmbienteAtivo('${nomeEsc}')">
       <span class="amb-drag" onclick="event.stopPropagation()" title="Arrastar pra reordenar">⠿</span>
       <button type="button" class="amb-edit" onclick="event.stopPropagation();toggleAmbEditMenu('${safeId}',event)" title="Editar">✎</button>
@@ -7815,12 +7876,6 @@ function renderFaseGroup(catKey, gName){
         <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px">
-        <button onclick="openMaterialEntryChoice('${catKey}','${gName.replace(/'/g,"\\'")}',null)"
-          style="background:transparent;border:1px solid #c77dea;color:#c77dea;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
-          onmouseover="this.style.background='#c77dea';this.style.color='var(--c-panel)'"
-          onmouseout="this.style.background='transparent';this.style.color='#c77dea'">
-          🧱 + material
-        </button>
         <button onclick="openObraTriagemModal()"
           style="background:transparent;border:1px solid ${info.color};color:${info.color};padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
           onmouseover="this.style.background='${info.color}';this.style.color='var(--c-panel)'"
@@ -7870,12 +7925,6 @@ function renderSubgrupoGroup(catKey, gName, sgName){
         <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px">
-        <button onclick="openMaterialEntryChoice('${catKey}','${gName.replace(/'/g,"\\'")}',null)"
-          style="background:transparent;border:1px solid #c77dea;color:#c77dea;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
-          onmouseover="this.style.background='#c77dea';this.style.color='var(--c-panel)'"
-          onmouseout="this.style.background='transparent';this.style.color='#c77dea'">
-          🧱 + material
-        </button>
         <button onclick="openObraTriagemModal()"
           style="background:transparent;border:1px solid ${info.color};color:${info.color};padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
           onmouseover="this.style.background='${info.color}';this.style.color='var(--c-panel)'"
@@ -7928,12 +7977,12 @@ function renderSubCat(page){
         <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px">
-        <button onclick="openMaterialEntryChoice('${catKey}',${catKey==='obra-bruta' ? `'${(SUBCATS[catKey]?.[subKey]?.grupo||'').replace(/'/g,"\\'")}'` : 'null'},'${subKey}')"
+        ${catKey!=='obra-bruta' ? `<button onclick="openMaterialEntryChoice('${catKey}',null,'${subKey}')"
           style="background:transparent;border:1px solid #c77dea;color:#c77dea;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
           onmouseover="this.style.background='#c77dea';this.style.color='var(--c-panel)'"
           onmouseout="this.style.background='transparent';this.style.color='#c77dea'">
           🧱 + material
-        </button>
+        </button>` : ''}
         <button onclick="${catKey==='obra-bruta' ? `openObraTriagemModal('${subKey}')` : `openModal('${catKey}','${subKey}')`}"
           style="background:transparent;border:1px solid ${info.color};color:${info.color};padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
           onmouseover="this.style.background='${info.color}';this.style.color='var(--c-panel)'"
@@ -8057,12 +8106,6 @@ function renderObraBrutaSteps(){
         <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px">
-        <button onclick="openMaterialEntryChoice('${cat}',null,null)"
-          style="background:transparent;border:1px solid #c77dea;color:#c77dea;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
-          onmouseover="this.style.background='#c77dea';this.style.color='var(--c-panel)'"
-          onmouseout="this.style.background='transparent';this.style.color='#c77dea'">
-          🧱 + material
-        </button>
         <button onclick="openObraTriagemModal()"
           style="background:transparent;border:1px solid ${info.color};color:${info.color};padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.04em;transition:all .15s"
           onmouseover="this.style.background='${info.color}';this.style.color='var(--c-panel)'"
@@ -8595,6 +8638,7 @@ function renderRowsFiltered(list, status, catKey, borderColor, groupBy, relevant
       return a.localeCompare(b);
     });
     if(groupNames.length >= 1){
+      const jaRenderizadoCompleto = new Set();
       return groupNames.map((gk,i)=>{
         const grp = groupMap[gk];
         const color = gk ? subGroupColor(i) : 'var(--c-faint2)';
@@ -8603,7 +8647,23 @@ function renderRowsFiltered(list, status, catKey, borderColor, groupBy, relevant
             <span style="width:6px;height:6px;border-radius:50%;background:${color};display:inline-block"></span>${grp.label}
           </span>
         </td></tr>`;
-        const rows = grp.items.map(({g,sub})=>renderOneRow(g,status,catKey,rowBorder,false,false,sub,gk)).join('');
+        const rows = grp.items.map(({g,sub})=>{
+          // Um pacote que cobre vários serviços aparece uma vez por ambiente — pra
+          // não repetir o card inteiro (nome/preço/selos) em cada grupo, só a
+          // PRIMEIRA aparição vem completa; as seguintes viram uma linha de
+          // referência bem enxuta, só indicando qual serviço entra ali.
+          if(jaRenderizadoCompleto.has(g.id)){
+            const subLabel = (SUBCATS[catKey]?.[sub]?.label) || sub || '';
+            return `<tr style="border-bottom:1px solid ${rowBorder}">
+              <td colspan="2"></td>
+              <td colspan="4" style="padding:3px 4px 3px 22px;font-size:11px;color:var(--c-muted2)">
+                <i class="ti ti-corner-down-right" style="font-size:11px;margin-right:4px;vertical-align:middle"></i>${g.descricao||''} <span style="color:var(--c-faint3)">· também cobre</span> <span style="color:${color}">${subLabel}</span>
+              </td>
+            </tr>`;
+          }
+          jaRenderizadoCompleto.add(g.id);
+          return renderOneRow(g,status,catKey,rowBorder,false,false,sub,gk);
+        }).join('');
         return header + rows;
       }).join('');
     }
