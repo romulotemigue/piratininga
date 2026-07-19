@@ -119,12 +119,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .charts-row{display:grid;grid-template-columns:1.5fr 1fr;gap:12px;margin-bottom:1.25rem}
 @media(max-width:700px){.charts-row{grid-template-columns:1fr}}
 .chart-card{background:var(--c-panel3);border:1px solid var(--c-border);border-radius:10px;padding:1.25rem}
-.ambiente-card{width:120px;height:120px;border-radius:14px;background:var(--c-panel);border:2px solid var(--c-border2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;position:relative;transition:all .15s;flex-shrink:0}
+.ambiente-card{width:150px;height:150px;border-radius:16px;background:var(--c-panel);border:2px solid var(--c-border2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;position:relative;transition:all .15s;flex-shrink:0}
 .ambiente-card:hover{border-color:var(--c-faint2)}
 .ambiente-card.ativo{border-color:#e8b544;box-shadow:0 0 18px 2px rgba(232,181,68,.5);background:var(--c-apagar-bg3)}
-.ambiente-card .amb-icon{font-size:30px;color:var(--c-secondary)}
+.ambiente-card .amb-icon{font-size:36px;color:var(--c-secondary)}
 .ambiente-card.ativo .amb-icon{color:#e8b544}
-.ambiente-card .amb-nome{font-size:11.5px;text-align:center;padding:0 6px;color:var(--c-secondary);line-height:1.25}
+.ambiente-card .amb-nome{font-size:13px;text-align:center;padding:0 6px;color:var(--c-secondary);line-height:1.25}
 .ambiente-card.ativo .amb-nome{color:#e8b544;font-weight:700}
 .ambiente-card .amb-drag{position:absolute;top:6px;left:7px;color:var(--c-faint3);cursor:grab;font-size:12px;user-select:none}
 .ambiente-card .amb-edit{position:absolute;top:5px;right:6px;background:none;border:none;color:var(--c-faint3);cursor:pointer;font-size:13px;padding:2px 4px}
@@ -133,7 +133,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .ambiente-card .amb-edit-menu button{background:none;border:none;color:var(--c-secondary);font-size:12px;padding:8px 10px;text-align:left;cursor:pointer}
 .ambiente-card .amb-edit-menu button:hover{background:var(--c-panel3)}
 .ambiente-card .amb-metragem{width:56px;background:var(--c-bg0);border:1px solid var(--c-border2);border-radius:6px;color:var(--c-primary);font-size:11px;text-align:center;padding:2px 4px;margin-top:2px}
-.ambiente-card-add{width:120px;height:120px;border-radius:14px;background:none;border:2px dashed var(--c-faint);display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--c-muted2);cursor:pointer;transition:all .15s;flex-shrink:0}
+.ambiente-card-add{width:150px;height:150px;border-radius:16px;background:none;border:2px dashed var(--c-faint);display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--c-muted2);cursor:pointer;transition:all .15s;flex-shrink:0}
 .ambiente-card-add:hover{border-color:var(--c-muted2);color:var(--c-secondary)}
 .chart-title{font-size:11px;color:var(--c-primary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
 .table-card{background:var(--c-panel3);border:1px solid var(--c-border);border-radius:10px;overflow:hidden}
@@ -299,7 +299,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 91)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 92)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1732,11 +1732,12 @@ function buildSubcatRowsHtml(k){
   });
   const expandedSub = getExpandedSub();
   const definirAmbientesRow = k==='obra-bruta' ? `
-    <div class="nav-item-wrap">
-      <div class="nav-item" onclick="navigate('definir-ambientes')" id="nav-definir-ambientes" style="display:flex;align-items:center;gap:8px;padding:6px 1.25rem 6px 1.6rem">
-        <span style="font-family:'Arial Black',sans-serif;font-size:12px;font-weight:900;color:var(--c-faint2);opacity:.9">0.</span>
-        <i class="ti ti-home-2" style="font-size:13px;color:var(--c-faint2)"></i>
-        <span style="font-size:12px;color:var(--c-secondary)">Definir Ambientes</span>
+    <div class="nav-item-wrap" style="padding:2px 10px;margin:4px 0 8px">
+      <div class="nav-item" onclick="navigate('definir-ambientes')" id="nav-definir-ambientes"
+        style="display:flex;align-items:center;gap:8px;padding:9px 10px;background:var(--c-apagar-bg3);border:1px solid #e8b544;border-radius:9px;box-shadow:0 0 10px rgba(232,181,68,.3)">
+        <i class="ti ti-home-2" style="font-size:15px;color:#e8b544;flex-shrink:0"></i>
+        <span style="font-size:12px;color:#e8b544;font-weight:700">Definir Ambientes</span>
+        <span style="margin-left:auto;font-size:8.5px;color:#e8b544;background:rgba(232,181,68,.18);border-radius:10px;padding:2px 6px;white-space:nowrap">comece aqui</span>
       </div>
     </div>` : '';
   return definirAmbientesRow + groupNames.map((gName,gIdx)=>{
@@ -4413,15 +4414,21 @@ function saveAmbienteCatalog(arr){ localStorage.setItem('pirati_ambiente_catalog
 // imóvel, pra filtrar as listas de ambiente em toda a Execução de Obra. ──
 function getAmbientesAtivos(){ try{ return JSON.parse(localStorage.getItem('pirati_ambientes_ativos')||'[]'); }catch(e){ return []; } }
 function saveAmbientesAtivos(arr){ localStorage.setItem('pirati_ambientes_ativos', JSON.stringify(arr)); }
+let ambientesPendentes = null; // rascunho da seleção (não afeta o app até confirmar)
 function toggleAmbienteAtivo(nome){
-  let ativos = getAmbientesAtivos();
-  if(ativos.some(a=>a.toLowerCase()===nome.toLowerCase())){
-    ativos = ativos.filter(a=>a.toLowerCase()!==nome.toLowerCase());
+  if(ambientesPendentes===null) ambientesPendentes = getAmbientesAtivos();
+  if(ambientesPendentes.some(a=>a.toLowerCase()===nome.toLowerCase())){
+    ambientesPendentes = ambientesPendentes.filter(a=>a.toLowerCase()!==nome.toLowerCase());
   } else {
-    ativos.push(nome);
+    ambientesPendentes.push(nome);
   }
-  saveAmbientesAtivos(ativos);
   renderDefinirAmbientes();
+}
+function confirmarAmbientesSelecionados(){
+  if(ambientesPendentes===null) return;
+  saveAmbientesAtivos(ambientesPendentes);
+  toast('Ambientes atualizados!');
+  render();
 }
 function addAmbienteNovoDefinir(){
   const nome = prompt('Nome do novo ambiente:','');
@@ -4431,9 +4438,8 @@ function addAmbienteNovoDefinir(){
   cat.push(nome.trim());
   saveAmbienteCatalog(cat);
   saveCustomAmbiente(nome.trim());
-  const ativos = getAmbientesAtivos();
-  ativos.push(nome.trim());
-  saveAmbientesAtivos(ativos);
+  if(ambientesPendentes===null) ambientesPendentes = getAmbientesAtivos();
+  ambientesPendentes.push(nome.trim());
   renderDefinirAmbientes();
 }
 function renameAmbienteDefinir(nomeAntigo){
@@ -4519,17 +4525,22 @@ function computeGastoPorAmbiente(){
 }
 // Desenha o gráfico de barras "gasto por ambiente" no canvas indicado —
 // usado tanto na Visão Geral quanto na tela de Definir Ambientes.
+function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 function renderGastoPorAmbienteChart(canvasId){
   const canvas = document.getElementById(canvasId);
   if(!canvas) return null;
   const somas = computeGastoPorAmbiente();
   const entries = Object.entries(somas).sort((a,b)=>b[1]-a[1]);
   if(!entries.length) return null;
+  const cores = entries.map((_,i)=>subGroupColor(i));
+  const corTexto = cssVar('--c-primary') || '#e8e7e2';
+  const corSecundaria = cssVar('--c-secondary') || '#ccc';
+  const corBorda = cssVar('--c-border') || '#333';
   return new Chart(canvas.getContext('2d'), {
     type: 'bar',
     data: {
       labels: entries.map(e=>e[0]),
-      datasets: [{ data: entries.map(e=>e[1]), backgroundColor: '#e8b544', borderRadius: 4 }]
+      datasets: [{ data: entries.map(e=>e[1]), backgroundColor: cores, borderRadius: 6, barThickness: 24 }]
     },
     options: {
       indexAxis: 'y',
@@ -4537,8 +4548,8 @@ function renderGastoPorAmbienteChart(canvasId){
       maintainAspectRatio: false,
       plugins: { legend: { display: false }, tooltip: { callbacks: { label: c=>fmt(c.parsed.x) } } },
       scales: {
-        x: { ticks: { color: 'var(--c-secondary)', callback: v=>fmtShort(v) }, grid: { color: 'var(--c-border)' } },
-        y: { ticks: { color: 'var(--c-primary)' }, grid: { display: false } }
+        x: { ticks: { color: corSecundaria, callback: v=>fmtShort(v) }, grid: { color: corBorda } },
+        y: { ticks: { color: corTexto, font: { size: 13, weight: '600' } }, grid: { display: false } }
       }
     }
   });
@@ -4557,7 +4568,9 @@ function renderDefinirAmbientes(){
   const ordenados = ordemSalva.length
     ? [...ordemSalva.filter(o=>cat.some(c=>c.toLowerCase()===o.toLowerCase())), ...cat.filter(c=>!ordemSalva.some(o=>o.toLowerCase()===c.toLowerCase()))]
     : cat;
-  const ativos = getAmbientesAtivos();
+  const ativosSalvos = getAmbientesAtivos();
+  const ativos = ambientesPendentes!==null ? ambientesPendentes : ativosSalvos;
+  const temMudancaPendente = ambientesPendentes!==null && JSON.stringify([...ativosSalvos].sort())!==JSON.stringify([...ambientesPendentes].sort());
   const metragens = getAmbientesMetragem();
 
   const cardsHtml = ordenados.map(nome=>{
@@ -4583,7 +4596,10 @@ function renderDefinirAmbientes(){
   }).join('');
 
   document.getElementById('content').innerHTML = `
-    <div style="font-size:15px;color:var(--c-primary);font-weight:600;margin-bottom:16px">Selecione os ambientes do seu imóvel</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <div style="font-size:15px;color:var(--c-primary);font-weight:600">Selecione os ambientes do seu imóvel</div>
+      ${temMudancaPendente ? `<button type="button" onclick="confirmarAmbientesSelecionados()" style="background:#e8b544;border:none;color:#1a1400;font-weight:700;border-radius:8px;padding:10px 20px;font-size:13px;cursor:pointer;box-shadow:0 0 12px rgba(232,181,68,.4)">✓ Confirmar seleção</button>` : ''}
+    </div>
     <div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:1.5rem">
       <div class="ambiente-card-add" onclick="addAmbienteNovoDefinir()" title="Adicionar novo ambiente">
         <i class="ti ti-plus" style="font-size:28px"></i>
@@ -4591,7 +4607,7 @@ function renderDefinirAmbientes(){
       </div>
       ${cardsHtml}
     </div>
-    <div style="font-size:11px;color:var(--c-faint3);margin-bottom:1.5rem">${ativos.length} ambiente${ativos.length!==1?'s':''} selecionado${ativos.length!==1?'s':''}${!ativos.length ? ' — nenhum selecionado ainda, então por enquanto todas as opções continuam aparecendo nas listas' : ''}</div>
+    <div style="font-size:11px;color:var(--c-faint3);margin-bottom:1.5rem">${ativos.length} ambiente${ativos.length!==1?'s':''} selecionado${ativos.length!==1?'s':''}${!ativos.length ? ' — nenhum selecionado ainda, então por enquanto todas as opções continuam aparecendo nas listas' : ''}${temMudancaPendente ? ' <span style="color:#e8b544">· você tem alterações não confirmadas</span>' : ''}</div>
     <div class="chart-card">
       <div class="chart-title">Gasto por ambiente</div>
       <div style="position:relative;height:260px"><canvas id="ambienteChartDefinir"></canvas></div>
@@ -7407,8 +7423,8 @@ function renderGeral(){
       data:{labels,datasets:[{data:values,backgroundColor:colors,borderRadius:4,borderSkipped:false}]},
       options:{responsive:true,maintainAspectRatio:false,
         plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)}}},
-        scales:{x:{grid:{display:false},ticks:{color:'var(--c-faint2)',font:{size:10}}},
-                y:{grid:{color:'var(--c-panel6)'},ticks:{color:'var(--c-faint2)',font:{size:10},callback:v=>fmtShort(v)}}}}
+        scales:{x:{grid:{display:false},ticks:{color:cssVar('--c-faint2'),font:{size:10}}},
+                y:{grid:{color:cssVar('--c-panel6')},ticks:{color:cssVar('--c-faint2'),font:{size:10},callback:v=>fmtShort(v)}}}}
     });
 
     document.getElementById(pieLegendId).innerHTML = hasData
@@ -8254,8 +8270,8 @@ function renderCat(cat){
             datasets:[{data:mVals,backgroundColor:info.color,borderRadius:4,borderSkipped:false}]},
       options:{responsive:true,maintainAspectRatio:false,
         plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)}}},
-        scales:{x:{grid:{display:false},ticks:{color:'var(--c-faint2)',font:{size:10}}},
-                y:{grid:{color:'var(--c-panel6)'},ticks:{color:'var(--c-faint2)',font:{size:10},callback:v=>fmtShort(v)}}}}
+        scales:{x:{grid:{display:false},ticks:{color:cssVar('--c-faint2'),font:{size:10}}},
+                y:{grid:{color:cssVar('--c-panel6')},ticks:{color:cssVar('--c-faint2'),font:{size:10},callback:v=>fmtShort(v)}}}}
     });
   }
 }
