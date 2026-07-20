@@ -271,7 +271,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
 .dropzone.drag-over{border-color:#e8b544;background:rgba(232,181,68,.08)}
 #itens-casa-group-wrap.drag-over{box-shadow:0 0 0 2px #e8b544 inset,0 0 14px rgba(232,181,68,.55);animation:dropPulse 1s ease-in-out infinite}
 @keyframes etapaOcultaPop{0%{transform:scale(0.4);opacity:0}60%{transform:scale(1.15);opacity:1}100%{transform:scale(1)}}
-.etapa-oculta-wrap{display:flex;justify-content:center;padding:4px 6px}
+.etapa-oculta-wrap{display:flex;justify-content:flex-start;padding:4px 6px 4px 14px}
 .etapa-oculta-bolinha{width:30px;height:30px;border-radius:50%;color:var(--c-panel);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;cursor:pointer;animation:etapaOcultaPop .3s ease-out;transition:transform .15s}
 .etapa-oculta-bolinha:hover{transform:scale(1.15)}
 .dropzone.has-file{border-style:solid;border-color:#4caf50;color:#4caf50}
@@ -306,7 +306,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 108)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 109)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1634,9 +1634,9 @@ function moverDefinirAmbientesParaTopo(){
   row.style.cssText = 'padding:2px 4px;margin:2px 2px 8px';
   row.innerHTML = `
     <div class="nav-item" onclick="navigate('definir-ambientes')" id="nav-definir-ambientes"
-      style="display:flex;align-items:center;gap:8px;padding:9px 10px;background:var(--c-apagar-bg3);border:1px solid #e8b544;border-radius:9px;box-shadow:0 0 10px rgba(232,181,68,.3);cursor:pointer">
-      <i class="ti ti-home-2" style="font-size:15px;color:#e8b544;flex-shrink:0"></i>
-      <span style="font-size:12px;color:#e8b544;font-weight:700">Definir Ambientes</span>
+      style="display:flex;align-items:center;gap:10px;padding:16px 12px;background:var(--c-apagar-bg3);border:1px solid #e8b544;border-radius:9px;box-shadow:0 0 10px rgba(232,181,68,.3);cursor:pointer">
+      <i class="ti ti-home-2" style="font-size:19px;color:#e8b544;flex-shrink:0"></i>
+      <span style="font-size:13px;color:#e8b544;font-weight:700">Definir Ambientes</span>
       <span style="margin-left:auto;font-size:8.5px;color:#e8b544;background:rgba(232,181,68,.18);border-radius:10px;padding:2px 6px;white-space:nowrap">comece aqui</span>
     </div>`;
   obraWrap.parentNode.insertBefore(row, obraWrap);
@@ -1665,7 +1665,9 @@ function agruparItensCasaNoDOM(){
     let contadorOculto = 0;
     let elOculto = pai.firstElementChild;
     while(elOculto && elOculto !== primeiro){
-      if(elOculto.querySelector && elOculto.querySelector('.nav-item > span[style*="border-radius:50%"]')) contadorOculto++;
+      const badgeOculto = elOculto.querySelector && elOculto.querySelector('.nav-item > span[style*="border-radius:50%"]');
+      const bolinhaOculta = elOculto.querySelector && elOculto.querySelector('.etapa-oculta-bolinha');
+      if((badgeOculto && badgeOculto.textContent.trim()) || bolinhaOculta) contadorOculto++;
       elOculto = elOculto.nextElementSibling;
     }
     const bolinhaWrap = document.createElement('div');
@@ -1686,7 +1688,9 @@ function agruparItensCasaNoDOM(){
     let contador = 0;
     let el = pai.firstElementChild;
     while(el && el !== primeiro){
-      if(el.querySelector && el.querySelector('.nav-item > span[style*="border-radius:50%"]')) contador++;
+      const badge = el.querySelector && el.querySelector('.nav-item > span[style*="border-radius:50%"]');
+      const bolinha = el.querySelector && el.querySelector('.etapa-oculta-bolinha');
+      if((badge && badge.textContent.trim()) || bolinha) contador++;
       el = el.nextElementSibling;
     }
     numeroGrupo = String(contador+1);
@@ -1894,7 +1898,7 @@ function renderCatNav(){
           ${etapaNum ? `<span style="width:16px;height:16px;border-radius:50%;background:${info.color};color:var(--c-panel);font-size:10px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">${etapaNum}</span>` : `<span style="width:6px;height:6px;border-radius:50%;background:${info.color};display:inline-block;flex-shrink:0"></span>`}${info.icon||''} ${info.label}
         </div>
         ${k==='obra-bruta' ? `<button id="btn-expand-all-${k}" onclick="toggleAllFaseGroups('${k}',event)" title="Expandir/recolher todas as fases" style="background:none;border:none;color:var(--c-primary);cursor:pointer;font-size:13px;padding:0 4px;line-height:1" onmouseover="this.style.color='${info.color}'" onmouseout="this.style.color='var(--c-faint2)'"><i class="ti ti-chevrons-down"></i></button>` : ''}
-        ${isPinnedStage ? `<button onclick="ocultarEtapa('${k}',event)" title="Esconder essa etapa (continua somando na Visão Geral)" style="background:none;border:none;color:var(--c-muted2);cursor:pointer;font-size:13px;padding:0 2px"><i class="ti ti-chevron-left"></i></button>` : ''}
+        ${(isPinnedStage && !getItensCasaChildren().includes(k)) ? `<button onclick="ocultarEtapa('${k}',event)" title="Esconder essa etapa (continua somando na Visão Geral)" style="background:none;border:none;color:var(--c-muted2);cursor:pointer;font-size:13px;padding:0 2px"><i class="ti ti-chevron-left"></i></button>` : ''}
         <button class="nav-dots" onclick="toggleCatMenu('${k}',${isImovel},${isPinnedStage},event)" title="Opções"><i class="ti ti-dots-vertical"></i></button>
       </div>
       <div id="subcat-list-${k}" style="overflow:hidden;max-height:${isOpen?'none':'0'}">${subs}</div>
@@ -2108,7 +2112,6 @@ function buildSubcatRowsHtml(k){
         ondragleave="faseGroupDragLeave('${gNameEsc}',event)"
         ondrop="faseGroupDrop('${gNameEsc}',event)"
         style="display:flex;align-items:center;gap:5px;padding:5px 6px 5px .4rem;user-select:none;${faseAtiva?'':'opacity:.4'}">
-        <span class="fase-drag-handle" title="Arrastar" style="cursor:grab;color:var(--c-primary);font-size:12px;padding:0 2px;flex-shrink:0" onmousedown="this.closest('.fase-group-draggable').setAttribute('draggable','true')" onmouseup="this.closest('.fase-group-draggable').setAttribute('draggable','false')">⠿</span>
         <button id="chev-grp-btn-${safeId}" onclick="toggleSubGroup('${k}','${gNameEsc}',event)" title="Expandir/recolher itens" style="background:none;border:none;cursor:pointer;padding:2px 4px;flex-shrink:0">
           <span id="chev-grp-${safeId}" style="color:var(--c-primary);font-size:10px;transition:transform .15s;transform:rotate(${isOpen?90:0}deg);display:inline-block">▶</span>
         </button>
@@ -2117,7 +2120,7 @@ function buildSubcatRowsHtml(k){
           <span style="font-size:12px;color:var(--c-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${gName}</span>
         </span>
         <span style="font-size:10px;color:var(--c-muted3);background:var(--c-panel3);border-radius:8px;padding:1px 6px;flex-shrink:0">${items.length}</span>
-        ${items.some(e=>e.subgrupo) ? `<button onclick="toggleAllSubgroupsInFase('${k}','${gNameEsc}',event)" title="Expandir/recolher todos os subgrupos desta fase" style="background:none;border:none;color:var(--c-primary);cursor:pointer;font-size:13px;padding:0 4px;line-height:1;flex-shrink:0" onmouseover="this.style.color='${subColor}'" onmouseout="this.style.color='var(--c-primary)'"><i class="ti ti-chevrons-down"></i></button>` : ''}
+        <button onclick="toggleAllSubgroupsInFase('${k}','${gNameEsc}',event)" title="Expandir/recolher todos os subgrupos desta fase" style="background:none;border:none;color:var(--c-primary);cursor:pointer;font-size:13px;padding:0 4px;line-height:1;flex-shrink:0" onmouseover="this.style.color='${subColor}'" onmouseout="this.style.color='var(--c-primary)'"><i class="ti ti-chevrons-down"></i></button>
         ${miniToggleHtml(faseAtiva, `toggleFaseAtivo('${k}',${JSON.stringify(skListJson).replace(/"/g,'&quot;')},event)`)}
         <button class="subcat-dots-btn" style="background:none;border:none;color:var(--c-primary);cursor:pointer;padding:4px 6px;font-size:14px;flex-shrink:0;opacity:1" onclick="toggleFaseMenu('${k}','${gNameEsc}',event)"><i class="ti ti-dots-vertical"></i></button>
       </div>`;
@@ -7879,6 +7882,7 @@ function renderGeral(){
   const htmlInvestimento = `
     <div class="card" style="border-left:3px solid #e8b544;background:var(--c-panel3);height:100%">
       <div class="card-label"><i class="ti ti-tags" style="font-size:14px;color:#e8b544"></i> ${gcTitles['investimento']||'Investimento'}</div>
+      <div style="margin-top:6px;font-size:11px;visibility:hidden">.</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px;align-items:center">
         <div style="position:relative;height:200px"><canvas id="investPieChart"></canvas></div>
         <div style="display:flex;flex-direction:column;gap:10px">
@@ -8743,7 +8747,7 @@ function renderCat(cat){
       </div>
     </div>
 
-    ${months.length>=2?`
+    ${(months.length>=2 && cat!=='itens-casa')?`
     <div class="chart-card" style="margin-bottom:1.25rem">
       <div class="chart-title">Evolução de gastos</div>
       <div style="position:relative;height:160px"><canvas id="catChart"></canvas></div>
@@ -8752,7 +8756,7 @@ function renderCat(cat){
     ${renderColGrid(lista, cat, null, null, info.label)}
   `;
 
-  if(months.length>=2){
+  if(months.length>=2 && cat!=='itens-casa'){
     catChart = new Chart(document.getElementById('catChart'),{
       type:'bar',
       data:{labels:months.map(m=>{const[y,mo]=m.split('-');return mo+'/'+y.slice(2);}),
