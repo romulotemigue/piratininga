@@ -310,7 +310,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 129)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 130)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -2161,7 +2161,7 @@ function buildSubcatRowsHtml(k){
     (groups[gName]=groups[gName]||[]).push({sk, ...entry});
   });
   const groupNames = Object.keys(groups).sort((a,b)=>{
-    const oa = groups[a][0]?.ordem ?? 0, ob = groups[b][0]?.ordem ?? 0;
+    const oa = Math.min(...groups[a].map(e=>e.ordem??0)), ob = Math.min(...groups[b].map(e=>e.ordem??0));
     return oa-ob;
   });
   const expandedSub = getExpandedSub();
@@ -5993,7 +5993,7 @@ function refreshObraExtraFields(prefix){
       const g = entry.grupo || 'Outros';
       (grouped[g]=grouped[g]||[]).push({sk,label:entry.label,ordem:entry.ordem??0});
     });
-    const groupNames = Object.keys(grouped).sort((a,b)=>(grouped[a][0]?.ordem??0)-(grouped[b][0]?.ordem??0));
+    const groupNames = Object.keys(grouped).sort((a,b)=>Math.min(...grouped[a].map(e=>e.ordem??0))-Math.min(...grouped[b].map(e=>e.ordem??0)));
     pacoteListEl.innerHTML = groupNames.map(gName=>{
       const items = grouped[gName].sort((a,b)=>a.ordem-b.ordem);
       return `<div style="font-size:10px;color:var(--c-primary);text-transform:uppercase;margin-top:6px">${gName}</div>` +
