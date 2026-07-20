@@ -270,6 +270,10 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
 .dropzone:hover{border-color:var(--c-faint3)}
 .dropzone.drag-over{border-color:#e8b544;background:rgba(232,181,68,.08)}
 #itens-casa-group-wrap.drag-over{box-shadow:0 0 0 2px #e8b544 inset,0 0 14px rgba(232,181,68,.55);animation:dropPulse 1s ease-in-out infinite}
+@keyframes etapaOcultaPop{0%{transform:scale(0.4);opacity:0}60%{transform:scale(1.15);opacity:1}100%{transform:scale(1)}}
+.etapa-oculta-wrap{display:flex;justify-content:center;padding:4px 6px}
+.etapa-oculta-bolinha{width:30px;height:30px;border-radius:50%;color:var(--c-panel);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;cursor:pointer;animation:etapaOcultaPop .3s ease-out;transition:transform .15s}
+.etapa-oculta-bolinha:hover{transform:scale(1.15)}
 .dropzone.has-file{border-style:solid;border-color:#4caf50;color:#4caf50}
 .modal .form-group label{font-size:11px;color:var(--c-primary);text-transform:uppercase;letter-spacing:.06em}
 .modal .form-group input,
@@ -302,7 +306,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 107)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19JUL26 (versão 108)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1640,6 +1644,8 @@ function moverDefinirAmbientesParaTopo(){
 function agruparItensCasaNoDOM(){
   const antigo = document.getElementById('itens-casa-group-wrap');
   if(antigo) antigo.remove();
+  const antigaBolinha = document.getElementById('itens-casa-bolinha-wrap');
+  if(antigaBolinha) antigaBolinha.remove();
 
   const filhos = getItensCasaChildren();
   const existentes = filhos.map(k=>document.getElementById('cat-wrap-'+k)).filter(Boolean);
@@ -1652,6 +1658,25 @@ function agruparItensCasaNoDOM(){
   const expanded = JSON.parse(localStorage.getItem('pirati_expanded')||'{}');
   const isOpen = !!expanded['itens-casa-group'];
   const cor = (CATS['itens-casa']?.color) || '#f48fb1';
+
+  if(getEtapasOcultas()['itens-casa']){
+    // Grupo inteiro escondido — some tudo (inclusive os filhos) e deixa só a
+    // bolinha no lugar. Clicar nela mostra tudo de volta.
+    let contadorOculto = 0;
+    let elOculto = pai.firstElementChild;
+    while(elOculto && elOculto !== primeiro){
+      if(elOculto.querySelector && elOculto.querySelector('.nav-item > span[style*="border-radius:50%"]')) contadorOculto++;
+      elOculto = elOculto.nextElementSibling;
+    }
+    const bolinhaWrap = document.createElement('div');
+    bolinhaWrap.id = 'itens-casa-bolinha-wrap';
+    bolinhaWrap.className = 'etapa-oculta-wrap';
+    bolinhaWrap.title = 'Itens para Casa — clique pra mostrar de novo';
+    bolinhaWrap.innerHTML = `<div class="etapa-oculta-bolinha" onclick="mostrarEtapa('itens-casa',event)" style="background:${cor}">${contadorOculto+1}</div>`;
+    pai.insertBefore(bolinhaWrap, proximoIrmao);
+    existentes.forEach(el=>{ el.style.display = 'none'; });
+    return;
+  }
 
   // Conta quantas etapas numeradas já apareceram ANTES do lugar onde o grupo
   // vai entrar — assim o número dele fica certo na sequência, mesmo que os
@@ -1686,6 +1711,7 @@ function agruparItensCasaNoDOM(){
       <div class="nav-item" onclick="handleItensCasaGroupClick(event)" id="nav-itens-casa" style="padding-left:2px;flex:1;display:flex;align-items:center;gap:6px;color:${cor};font-weight:600;font-size:13px;user-select:none">
         ${numeroGrupo ? `<span style="width:16px;height:16px;border-radius:50%;background:${cor};color:var(--c-panel);font-size:10px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">${numeroGrupo}</span>` : ''}🏠 Itens para Casa
       </div>
+      <button onclick="ocultarEtapa('itens-casa',event)" title="Esconder essa etapa (continua somando na Visão Geral)" style="background:none;border:none;color:var(--c-muted2);cursor:pointer;font-size:13px;padding:0 2px"><i class="ti ti-chevron-left"></i></button>
       <button class="nav-dots" onclick="toggleCatMenu('itens-casa',false,true,event)" title="Opções"><i class="ti ti-dots-vertical"></i></button>
     </div>
     <div id="itens-casa-children-wrap" style="overflow:hidden;max-height:${isOpen?'none':'0'};padding:0 4px"></div>`;
@@ -1703,6 +1729,28 @@ function agruparItensCasaNoDOM(){
     el.style.margin = '3px 4px';
     wrap.appendChild(el); // reparenta o elemento JÁ renderizado — mantém clique/menu/tudo intacto
   });
+
+  // Zona fina logo ABAIXO da caixinha inteira — pra reordenar outra etapa em
+  // relação ao grupo (não pra entrar nele). Sem isso, só dava pra "entrar",
+  // nunca pra passar por cima dele reordenando.
+  const dropAbaixo = document.createElement('div');
+  dropAbaixo.id = 'itens-casa-drop-abaixo';
+  dropAbaixo.style.cssText = 'height:10px;margin:-6px 6px 0';
+  dropAbaixo.ondragover = function(e){ e.preventDefault(); dropAbaixo.style.background = 'rgba(232,181,68,.25)'; };
+  dropAbaixo.ondragleave = function(){ dropAbaixo.style.background = 'transparent'; };
+  dropAbaixo.ondrop = function(e){
+    e.preventDefault();
+    dropAbaixo.style.background = 'transparent';
+    if(!dragKey || dragKey==='itens-casa' || getItensCasaChildren().includes(dragKey)) return;
+    const pinnedKeys = getPinnedStageKeys();
+    const arr = pinnedKeys.filter(x=>x!==dragKey);
+    const idxAncora = arr.indexOf(filhos[0]);
+    arr.splice(idxAncora+1, 0, dragKey);
+    savePinnedStageOrder(arr);
+    dragKey = null;
+    renderCatNav();
+  };
+  grupo.after(dropAbaixo);
 }
 // Tira uma categoria do grupo "Itens para Casa" (caso tenha caído lá sem
 // querer, arrastando por perto) — ela volta a ser uma etapa solta.
@@ -1760,6 +1808,22 @@ function handleItensCasaGroupClick(e){
     lastNavItensCasaClickInfo = {time: now};
   }
 }
+function getEtapasOcultas(){ try{ return JSON.parse(localStorage.getItem('pirati_etapas_ocultas')||'{}'); }catch(e){ return {}; } }
+function saveEtapasOcultas(obj){ localStorage.setItem('pirati_etapas_ocultas', JSON.stringify(obj)); }
+function ocultarEtapa(k, e){
+  if(e) e.stopPropagation();
+  const ocultas = getEtapasOcultas();
+  ocultas[k] = true;
+  saveEtapasOcultas(ocultas);
+  renderCatNav();
+}
+function mostrarEtapa(k, e){
+  if(e) e.stopPropagation();
+  const ocultas = getEtapasOcultas();
+  delete ocultas[k];
+  saveEtapasOcultas(ocultas);
+  renderCatNav();
+}
 function renderCatNav(){
   try{
   const list = document.getElementById('cat-nav-list');
@@ -1780,6 +1844,7 @@ function renderCatNav(){
   }
   const allKeys = [...pinnedKeys, ...catOrder];
   let imovelCount = 0;
+  const etapasOcultas = getEtapasOcultas();
   console.log('[piratininga][chevron-debug] renderCatNav rodou às', new Date().toLocaleTimeString(),
     '| venda-imovel tem subs?', !!(SUBCATS['venda-imovel'] && Object.keys(SUBCATS['venda-imovel']).length>0), '(', SUBCATS['venda-imovel']?Object.keys(SUBCATS['venda-imovel']).length:'undefined', ')',
     '| compra-imovel tem subs?', !!(SUBCATS['compra-imovel'] && Object.keys(SUBCATS['compra-imovel']).length>0), '(', SUBCATS['compra-imovel']?Object.keys(SUBCATS['compra-imovel']).length:'undefined', ')',
@@ -1805,6 +1870,14 @@ function renderCatNav(){
     const imovelStyle = isPinnedStage ? `background:${info.color}18;border:1px solid ${info.color}44;border-left:3px solid ${info.color};border-radius:8px;margin:4px 6px;` : '';
     const imovelNavStyle = isPinnedStage ? `color:${info.color};font-weight:600;font-size:13px;` : '';
 
+    // Etapa "escondida" — vira só uma bolinha com o número, pra sair de cena
+    // sem sumir de vez (continua contando normal na Visão Geral).
+    if(isPinnedStage && etapasOcultas[k]){
+      return `<div class="etapa-oculta-wrap" id="cat-wrap-${k}" title="${info.label} — clique pra mostrar de novo">
+        <div class="etapa-oculta-bolinha" onclick="mostrarEtapa('${k}',event)" style="background:${info.color}">${etapaNum||''}</div>
+      </div>`;
+    }
+
     return `<div class="nav-cat-wrap" id="cat-wrap-${k}" draggable="true"
       style="${imovelStyle}"
       ondragstart="dragStart('${k}',event)"
@@ -1821,6 +1894,7 @@ function renderCatNav(){
           ${etapaNum ? `<span style="width:16px;height:16px;border-radius:50%;background:${info.color};color:var(--c-panel);font-size:10px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">${etapaNum}</span>` : `<span style="width:6px;height:6px;border-radius:50%;background:${info.color};display:inline-block;flex-shrink:0"></span>`}${info.icon||''} ${info.label}
         </div>
         ${k==='obra-bruta' ? `<button id="btn-expand-all-${k}" onclick="toggleAllFaseGroups('${k}',event)" title="Expandir/recolher todas as fases" style="background:none;border:none;color:var(--c-primary);cursor:pointer;font-size:13px;padding:0 4px;line-height:1" onmouseover="this.style.color='${info.color}'" onmouseout="this.style.color='var(--c-faint2)'"><i class="ti ti-chevrons-down"></i></button>` : ''}
+        ${isPinnedStage ? `<button onclick="ocultarEtapa('${k}',event)" title="Esconder essa etapa (continua somando na Visão Geral)" style="background:none;border:none;color:var(--c-muted2);cursor:pointer;font-size:13px;padding:0 2px"><i class="ti ti-chevron-left"></i></button>` : ''}
         <button class="nav-dots" onclick="toggleCatMenu('${k}',${isImovel},${isPinnedStage},event)" title="Opções"><i class="ti ti-dots-vertical"></i></button>
       </div>
       <div id="subcat-list-${k}" style="overflow:hidden;max-height:${isOpen?'none':'0'}">${subs}</div>
@@ -2298,10 +2372,11 @@ function saveEditCat(){
   const icon  = document.getElementById('ec-emoji').value||'🏷️';
   const color = document.getElementById('ec-color').value;
   if(!nome){ alert('Preencha o nome.'); return; }
-  CATS[editingCatKey] = {label:nome, icon, color};
+  CATS[editingCatKey] = {label:nome, icon, color, ...(CATS[editingCatKey]?.isGroup?{isGroup:true}:{})};
   saveCats();
   closeModalEditCat();
   renderCatNav();
+  render();
   toast('Categoria atualizada!');
 }
 
@@ -2657,6 +2732,7 @@ function saveEditSubCat(){
   saveSubCats();
   closeModalEditSubCat();
   renderCatNav();
+  render();
   toast('Subcategoria atualizada!');
 }
 
@@ -4975,7 +5051,14 @@ function renderGastoPorAmbienteChart(canvasId){
       maintainAspectRatio: false,
       plugins: { legend: { display: false }, tooltip: { callbacks: { label: c=>fmt(c.parsed.y) } } },
       scales: {
-        x: { ticks: { color: corTexto, font: { size: 12, weight: '600' } }, grid: { display: false } },
+        x: { ticks: { color: corTexto, font: { size: 11, weight: '600' }, maxRotation: 0, minRotation: 0,
+              callback: function(val){
+                const label = this.getLabelForValue(val);
+                if(label.length <= 12) return label;
+                const partes = label.split(' ');
+                const meio = Math.ceil(partes.length/2);
+                return [partes.slice(0,meio).join(' '), partes.slice(meio).join(' ')];
+              } }, grid: { display: false } },
         y: { ticks: { color: corSecundaria, callback: v=>fmtShort(v) }, grid: { color: corBorda } }
       }
     }
@@ -7794,23 +7877,25 @@ function renderGeral(){
     </div>`;
 
   const htmlInvestimento = `
-    <div class="card-label"><i class="ti ti-tags" style="font-size:14px;color:#e8b544"></i> ${gcTitles['investimento']||'Investimento'}</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px;align-items:center">
-      <div style="position:relative;height:180px"><canvas id="investPieChart"></canvas></div>
-      <div style="display:flex;flex-direction:column;gap:10px">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:13px;color:#4caf50">🟢 Perpétuo</span>
-          <span style="font-size:16px;font-weight:700;color:#4caf50">${fmt(investTotais.perpetuo)}</span>
+    <div class="card" style="border-left:3px solid #e8b544;background:var(--c-panel3);height:100%">
+      <div class="card-label"><i class="ti ti-tags" style="font-size:14px;color:#e8b544"></i> ${gcTitles['investimento']||'Investimento'}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px;align-items:center">
+        <div style="position:relative;height:200px"><canvas id="investPieChart"></canvas></div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:13px;color:#4caf50">🟢 Perpétuo</span>
+            <span style="font-size:16px;font-weight:700;color:#4caf50">${fmt(investTotais.perpetuo)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:13px;color:#42a5f5">🔵 Transferível</span>
+            <span style="font-size:16px;font-weight:700;color:#42a5f5">${fmt(investTotais.transferivel)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:13px;color:#c77dea">🟣 Pessoal</span>
+            <span style="font-size:16px;font-weight:700;color:#c77dea">${fmt(investTotais.pessoal)}</span>
+          </div>
+          ${investSemTag>0 ? `<div style="font-size:11px;color:var(--c-muted2);margin-top:2px;padding-top:8px;border-top:1px solid var(--c-border)">${fmt(investSemTag)} ainda sem essa tag</div>` : ''}
         </div>
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:13px;color:#42a5f5">🔵 Transferível</span>
-          <span style="font-size:16px;font-weight:700;color:#42a5f5">${fmt(investTotais.transferivel)}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:13px;color:#c77dea">🟣 Pessoal</span>
-          <span style="font-size:16px;font-weight:700;color:#c77dea">${fmt(investTotais.pessoal)}</span>
-        </div>
-        ${investSemTag>0 ? `<div style="font-size:11px;color:var(--c-muted2);margin-top:2px;padding-top:8px;border-top:1px solid var(--c-border)">${fmt(investSemTag)} ainda sem essa tag</div>` : ''}
       </div>
     </div>`;
 
