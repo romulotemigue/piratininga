@@ -65,7 +65,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sidebar-nav{padding:.5rem 0;flex:1 1 0;overflow-y:auto;min-height:0}
 .nav-item{display:flex;align-items:center;gap:10px;padding:9px 1.25rem;font-size:14px;color:var(--c-secondary);cursor:pointer;border-left:2px solid transparent;transition:all .15s;user-select:none}
 .nav-item:hover{color:var(--c-primary);background:var(--c-panel4)}
-.nav-item.active{color:#e8b544;border-left-color:#e8b544;background:var(--c-panel4)}
+.nav-item.active{color:#e8b544;border-left-color:#e8b544;background:var(--c-panel4);box-shadow:0 0 14px 1px rgba(232,181,68,.45), inset 0 0 0 1px rgba(232,181,68,.3)}
 .nav-item i{font-size:17px}
 .nav-section{font-size:11px;color:var(--c-primary);padding:1rem 1.25rem .4rem;letter-spacing:.08em;text-transform:uppercase}
 .divider{height:1px;background:var(--c-border);margin:.25rem 0}
@@ -308,7 +308,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 126)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 127)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -2349,8 +2349,7 @@ function toggleCatMenu(k, isImovel, isPinnedStage, e){
        <div class="cat-menu-item" onclick="openEditCat('${k}')"><i class="ti ti-pencil"></i> Renomear</div>
        <div class="cat-menu-item" onclick="openStageColorPicker('${k}',false,event)"><i class="ti ti-palette"></i> Cor</div>`
     : isImovel
-    ? `<div class="cat-menu-item" onclick="openModalAddSubCat('${k}')"><i class="ti ti-plus"></i> Cartão</div>
-       <div class="cat-menu-item" onclick="openEditImovelCat('${k}')"><i class="ti ti-pencil"></i> Renomear</div>
+    ? `<div class="cat-menu-item" onclick="openEditImovelCat('${k}')"><i class="ti ti-pencil"></i> Renomear</div>
        <div class="cat-menu-item" onclick="openStageColorPicker('${k}',true,event)"><i class="ti ti-palette"></i> Cor</div>
        <div class="cat-menu-item danger" onclick="deleteImovelCat('${k}')"><i class="ti ti-trash"></i> Excluir</div>`
     : getItensCasaChildren().includes(k)
@@ -6352,15 +6351,15 @@ function aplicarEstadoVisualItensCasa(ehItensCasaOuFilho, isPinnedPage){
   if(ehItensCasaOuFilho){
     grupoWrap.style.opacity = '1';
     grupoWrap.style.filter = 'none';
-    if(grupoNavEl){ grupoNavEl.style.color = '#e8b544'; grupoNavEl.style.background = 'var(--c-panel4)'; grupoNavEl.style.borderLeftColor = '#e8b544'; }
+    if(grupoNavEl){ grupoNavEl.style.color = '#e8b544'; grupoNavEl.style.background = 'var(--c-panel4)'; grupoNavEl.style.borderLeftColor = '#e8b544'; grupoNavEl.style.boxShadow = '0 0 14px 1px rgba(232,181,68,.45), inset 0 0 0 1px rgba(232,181,68,.3)'; }
   } else if(isPinnedPage){
     grupoWrap.style.opacity = '0.62';
     grupoWrap.style.filter = 'saturate(0.65)';
-    if(grupoNavEl){ grupoNavEl.style.color = corGrupo; grupoNavEl.style.background = 'transparent'; grupoNavEl.style.borderLeftColor = 'transparent'; }
+    if(grupoNavEl){ grupoNavEl.style.color = corGrupo; grupoNavEl.style.background = 'transparent'; grupoNavEl.style.borderLeftColor = 'transparent'; grupoNavEl.style.boxShadow = 'none'; }
   } else {
     grupoWrap.style.opacity = '1';
     grupoWrap.style.filter = 'none';
-    if(grupoNavEl){ grupoNavEl.style.color = corGrupo; grupoNavEl.style.background = 'transparent'; grupoNavEl.style.borderLeftColor = 'transparent'; }
+    if(grupoNavEl){ grupoNavEl.style.color = corGrupo; grupoNavEl.style.background = 'transparent'; grupoNavEl.style.borderLeftColor = 'transparent'; grupoNavEl.style.boxShadow = 'none'; }
   }
 }
 function navigate(page, skipHistory){
@@ -7606,7 +7605,6 @@ function renderImovelCat(catKey, subKey){
   // RIGHT: days + novo cartão button
   html += '<div style="display:flex;align-items:center;gap:1.5rem;flex-shrink:0;padding-left:1.5rem;border-left:1px solid var(--c-panel6)">';
   if(daysHtml) html += daysHtml;
-  html += '<button id="btn-novo-cartao-'+catKey+'" style="background:transparent;border:1px solid '+info.color+';color:'+info.color+';padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">+ Novo cartão</button>';
   html += '</div>';
 
   html += '</div>';
