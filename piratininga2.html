@@ -308,7 +308,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 122)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 123)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1402,14 +1402,10 @@ if(Object.keys(CATS).length === 0) CATS = JSON.parse(JSON.stringify(DEFAULT_CATS
 // sub-itens dentro dela, igual as fases dentro de Execução de Obra. Ela em
 // si não tem lançamento próprio — é só uma organização visual no menu.
 if(!CATS['itens-casa']) CATS['itens-casa'] = {label:'Itens para Casa', icon:'🏠', color:'#db6942', isGroup:true};
-// Corrige, uma vez só, quem já tinha a cor antiga (bem mais viva que as
-// outras etapas, que passaram por um ajuste de tom — por isso ficava
-// sempre "acesa" mesmo fora de seleção).
-if(!localStorage.getItem('itens_casa_cor_fix_v1')){
-  if(CATS['itens-casa']) CATS['itens-casa'].color = '#db6942';
-  localStorage.setItem('pirati_cats', JSON.stringify(CATS));
-  localStorage.setItem('itens_casa_cor_fix_v1','1');
-}
+// Força essa cor SEMPRE (não só uma vez) — sem depender de nenhuma flag
+// que possa ficar presa, sem precisar de nada salvo antes.
+CATS['itens-casa'].color = '#db6942';
+localStorage.setItem('pirati_cats', JSON.stringify(CATS));
 function getItensCasaExtraChildren(){
   try{
     const lista = JSON.parse(localStorage.getItem('itens_casa_extra_children')||'[]');
@@ -1722,7 +1718,7 @@ function agruparItensCasaNoDOM(){
 
   const grupo = document.createElement('div');
   grupo.id = 'itens-casa-group-wrap';
-  grupo.style.cssText = `background:${cor}18;border:1px solid ${cor}44;border-left:3px solid ${cor};border-radius:8px;margin:4px 6px;overflow:hidden`;
+  grupo.style.cssText = `background:${cor}10;border:1px solid ${cor}30;border-left:3px solid ${cor};border-radius:8px;margin:4px 6px;overflow:hidden`;
   grupo.innerHTML = `
     <div class="nav-item-wrap" id="itens-casa-header-row">
       <button id="chev-itens-casa-group" style="background:none;border:none;color:var(--c-secondary);cursor:pointer;padding:4px 2px;font-size:12px;transition:transform .2s;transform:rotate(${isOpen?90:0}deg)" onclick="toggleItensCasaGroup(event)"><i class="ti ti-chevron-right"></i></button>
