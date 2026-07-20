@@ -308,7 +308,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 116)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 117)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1626,22 +1626,57 @@ function closeStatusDetailModal(){
 // Move "Definir Ambientes" pra cima, entre Projeto de Arquitetura e Execução
 // de Obra — mesma ideia seleção do agrupamento do Itens para Casa: mexe só
 // depois do menu já estar desenhado, sem número (só a casinha mesmo).
+function getDefinirAmbientesAnchor(){ return localStorage.getItem('definir_ambientes_anchor') || 'obra-bruta'; }
+function saveDefinirAmbientesAnchor(k){ localStorage.setItem('definir_ambientes_anchor', k); }
 function moverDefinirAmbientesParaTopo(){
   const antigo = document.getElementById('definir-ambientes-toplevel-wrap');
   if(antigo) antigo.remove();
-  const obraWrap = document.getElementById('cat-wrap-obra-bruta');
-  if(!obraWrap) return;
+  const anchorKey = getDefinirAmbientesAnchor();
+  const anchorKeyReal = getItensCasaChildren().includes(anchorKey) ? 'itens-casa' : anchorKey;
+  const anchorWrap = anchorKeyReal==='itens-casa'
+    ? document.getElementById('itens-casa-group-wrap')
+    : document.getElementById('cat-wrap-'+anchorKeyReal);
+  const anchorFinal = anchorWrap || document.getElementById('cat-wrap-obra-bruta') || document.getElementById('itens-casa-group-wrap');
+  if(!anchorFinal) return;
   const row = document.createElement('div');
   row.id = 'definir-ambientes-toplevel-wrap';
+  row.setAttribute('draggable','false');
   row.style.cssText = 'padding:2px 4px;margin:2px 2px 8px';
+  row.ondragstart = function(e){
+    dragKey = '__definir_ambientes__';
+    e.dataTransfer.effectAllowed = 'move';
+  };
+  row.ondragend = function(){ dragKey = null; row.setAttribute('draggable','false'); };
+  row.ondragover = function(e){ e.preventDefault(); row.querySelector('.nav-item').classList.add('drag-over'); };
+  row.ondragleave = function(){ row.querySelector('.nav-item').classList.remove('drag-over'); };
+  row.ondrop = function(e){
+    e.preventDefault();
+    row.querySelector('.nav-item').classList.remove('drag-over');
+    if(!dragKey || dragKey==='__definir_ambientes__') return;
+    dropIntoDefinirAmbientes(dragKey);
+  };
   row.innerHTML = `
     <div class="nav-item" onclick="navigate('definir-ambientes')" id="nav-definir-ambientes"
       style="display:flex;align-items:center;gap:10px;padding:16px 12px;background:var(--c-apagar-bg3);border:1px solid #e8b544;border-radius:9px;box-shadow:0 0 10px rgba(232,181,68,.3);cursor:pointer">
+      <span class="nav-drag" title="Arrastar"
+        onmousedown="event.stopPropagation();this.closest('#definir-ambientes-toplevel-wrap').setAttribute('draggable','true')"
+        onmouseup="event.stopPropagation();this.closest('#definir-ambientes-toplevel-wrap').setAttribute('draggable','false')"
+        style="cursor:grab;color:#e8b544;flex-shrink:0">⠿</span>
       <i class="ti ti-home-2" style="font-size:19px;color:#e8b544;flex-shrink:0"></i>
       <span style="font-size:13px;color:#e8b544;font-weight:700">Definir Ambientes</span>
       <span style="margin-left:auto;font-size:8.5px;color:#e8b544;background:rgba(232,181,68,.18);border-radius:10px;padding:2px 6px;white-space:nowrap">comece aqui</span>
     </div>`;
-  obraWrap.parentNode.insertBefore(row, obraWrap);
+  anchorFinal.parentNode.insertBefore(row, anchorFinal);
+}
+// Soltou outra etapa em cima de "Definir Ambientes" — não é bem um "arrastar
+// pra dentro", é só reposicionar: Definir Ambientes passa a ficar logo antes
+// dessa etapa onde foi solto.
+function dropIntoDefinirAmbientes(k){
+  if(IMOVEL_CATS[k] || CATS[k]){
+    saveDefinirAmbientesAnchor(getItensCasaChildren().includes(k) ? 'itens-casa' : k);
+    dragKey = null;
+    renderCatNav();
+  }
 }
 function agruparItensCasaNoDOM(){
   const antigo = document.getElementById('itens-casa-group-wrap');
@@ -3054,6 +3089,14 @@ function dragDrop(k, e){
   if(e.target.closest('.fase-group-draggable') || e.target.closest('.subcat-row')) return;
   e.preventDefault();
   if(k===dragKey) return;
+  // Arrastou "Definir Ambientes" em cima de outra etapa — ela passa a ficar
+  // logo antes dessa etapa onde foi solta.
+  if(dragKey==='__definir_ambientes__'){
+    saveDefinirAmbientesAnchor(getItensCasaChildren().includes(k) ? 'itens-casa' : k);
+    dragKey = null;
+    renderCatNav();
+    return;
+  }
   // Arrastou o grupo "Itens para Casa" inteiro (como um bloco) pra outra
   // posição — todos os filhos se movem juntos, mantendo a ordem entre eles.
   if(dragKey==='__itens_casa_group__'){
@@ -6288,8 +6331,20 @@ async function confirmPacoteDelete(){
 function getEtapaNum(page){
   const catKey = page.includes('__') ? page.split('__')[0] : page;
   const pinnedKeys = getPinnedStageKeys();
-  const idx = pinnedKeys.indexOf(catKey);
-  return idx > -1 ? idx + 1 : null;
+  const filhos = getItensCasaChildren().filter(k=>pinnedKeys.includes(k));
+  let n = 0;
+  let grupoNum = null;
+  for(const k of pinnedKeys){
+    if(filhos.includes(k)){
+      if(grupoNum===null){ n++; grupoNum = n; }
+      if(catKey===k) return grupoNum;
+      continue;
+    }
+    n++;
+    if(catKey===k) return n;
+  }
+  if(catKey==='itens-casa') return grupoNum;
+  return null;
 }
 
 function applyContentColor(page){
