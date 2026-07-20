@@ -308,7 +308,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 120)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 121)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -6339,7 +6339,9 @@ function navigate(page, skipHistory){
   // dim non-active pinned stages (imóvel + extras)
   const activeCatKey = page.includes('__') ? page.split('__')[0] : page;
   const pinnedKeys = getPinnedStageKeys();
-  const isPinnedPage = pinnedKeys.includes(activeCatKey);
+  const filhosItensCasa = getItensCasaChildren();
+  const ehItensCasaOuFilho = activeCatKey==='itens-casa' || filhosItensCasa.includes(activeCatKey);
+  const isPinnedPage = pinnedKeys.includes(activeCatKey) || ehItensCasaOuFilho;
   pinnedKeys.forEach(k=>{
     const wrap = document.getElementById('cat-wrap-'+k);
     if(!wrap) return;
@@ -6349,6 +6351,13 @@ function navigate(page, skipHistory){
       wrap.classList.remove('imovel-dimmed');
     }
   });
+  // O grupo "Itens para Casa" não é uma chave normal de pinnedKeys, então
+  // precisa ser tratado à parte pra também clarear/escurecer certo.
+  const grupoWrap = document.getElementById('itens-casa-group-wrap');
+  if(grupoWrap){
+    if(isPinnedPage && !ehItensCasaOuFilho) grupoWrap.classList.add('imovel-dimmed');
+    else grupoWrap.classList.remove('imovel-dimmed');
+  }
   // handle subcat pages like 'obra__subkey'
   if(page.includes('__')){
     const [catKey, subKey] = page.split('__');
