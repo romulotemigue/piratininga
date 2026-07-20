@@ -306,7 +306,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 109)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 110)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1662,39 +1662,21 @@ function agruparItensCasaNoDOM(){
   if(getEtapasOcultas()['itens-casa']){
     // Grupo inteiro escondido — some tudo (inclusive os filhos) e deixa só a
     // bolinha no lugar. Clicar nela mostra tudo de volta.
-    let contadorOculto = 0;
-    let elOculto = pai.firstElementChild;
-    while(elOculto && elOculto !== primeiro){
-      const badgeOculto = elOculto.querySelector && elOculto.querySelector('.nav-item > span[style*="border-radius:50%"]');
-      const bolinhaOculta = elOculto.querySelector && elOculto.querySelector('.etapa-oculta-bolinha');
-      if((badgeOculto && badgeOculto.textContent.trim()) || bolinhaOculta) contadorOculto++;
-      elOculto = elOculto.nextElementSibling;
-    }
+    const numeroOculto = window.__itensCasaGroupNum || '';
     const bolinhaWrap = document.createElement('div');
     bolinhaWrap.id = 'itens-casa-bolinha-wrap';
     bolinhaWrap.className = 'etapa-oculta-wrap';
     bolinhaWrap.title = 'Itens para Casa — clique pra mostrar de novo';
-    bolinhaWrap.innerHTML = `<div class="etapa-oculta-bolinha" onclick="mostrarEtapa('itens-casa',event)" style="background:${cor}">${contadorOculto+1}</div>`;
+    bolinhaWrap.innerHTML = `<div class="etapa-oculta-bolinha" onclick="mostrarEtapa('itens-casa',event)" style="background:${cor}">${numeroOculto}</div>`;
     pai.insertBefore(bolinhaWrap, proximoIrmao);
     existentes.forEach(el=>{ el.style.display = 'none'; });
     return;
   }
 
-  // Conta quantas etapas numeradas já apareceram ANTES do lugar onde o grupo
-  // vai entrar — assim o número dele fica certo na sequência, mesmo que os
-  // filhos (que não têm mais número próprio) estejam espalhados no meio.
-  let numeroGrupo = '';
-  {
-    let contador = 0;
-    let el = pai.firstElementChild;
-    while(el && el !== primeiro){
-      const badge = el.querySelector && el.querySelector('.nav-item > span[style*="border-radius:50%"]');
-      const bolinha = el.querySelector && el.querySelector('.etapa-oculta-bolinha');
-      if((badge && badge.textContent.trim()) || bolinha) contador++;
-      el = el.nextElementSibling;
-    }
-    numeroGrupo = String(contador+1);
-  }
+  // O número certo já foi calculado durante o desenho normal (na posição do
+  // primeiro filho) — usa ele direto, em vez de tentar adivinhar contando
+  // elementos na tela (o que causava números repetidos).
+  const numeroGrupo = window.__itensCasaGroupNum ? String(window.__itensCasaGroupNum) : '';
   existentes.forEach(el=>{
     // Todos os filhos usam a MESMA cor do grupo, em vez da cor original de
     // cada um — igual às fases dentro de Execução de Obra, pra não confundir.
@@ -1716,6 +1698,7 @@ function agruparItensCasaNoDOM(){
         ${numeroGrupo ? `<span style="width:16px;height:16px;border-radius:50%;background:${cor};color:var(--c-panel);font-size:10px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">${numeroGrupo}</span>` : ''}🏠 Itens para Casa
       </div>
       <button onclick="ocultarEtapa('itens-casa',event)" title="Esconder essa etapa (continua somando na Visão Geral)" style="background:none;border:none;color:var(--c-muted2);cursor:pointer;font-size:13px;padding:0 2px"><i class="ti ti-chevron-left"></i></button>
+      <button onclick="toggleAllItensCasaChildren(event)" title="Expandir/recolher todos" style="background:none;border:none;color:${cor};cursor:pointer;font-size:13px;padding:0 4px;line-height:1"><i class="ti ti-chevrons-down"></i></button>
       <button class="nav-dots" onclick="toggleCatMenu('itens-casa',false,true,event)" title="Opções"><i class="ti ti-dots-vertical"></i></button>
     </div>
     <div id="itens-casa-children-wrap" style="overflow:hidden;max-height:${isOpen?'none':'0'};padding:0 4px"></div>`;
@@ -1739,7 +1722,7 @@ function agruparItensCasaNoDOM(){
   // nunca pra passar por cima dele reordenando.
   const dropAbaixo = document.createElement('div');
   dropAbaixo.id = 'itens-casa-drop-abaixo';
-  dropAbaixo.style.cssText = 'height:10px;margin:-6px 6px 0';
+  dropAbaixo.style.cssText = 'height:4px;margin:-4px 6px 0';
   dropAbaixo.ondragover = function(e){ e.preventDefault(); dropAbaixo.style.background = 'rgba(232,181,68,.25)'; };
   dropAbaixo.ondragleave = function(){ dropAbaixo.style.background = 'transparent'; };
   dropAbaixo.ondrop = function(e){
@@ -1758,6 +1741,15 @@ function agruparItensCasaNoDOM(){
 }
 // Tira uma categoria do grupo "Itens para Casa" (caso tenha caído lá sem
 // querer, arrastando por perto) — ela volta a ser uma etapa solta.
+function toggleAllItensCasaChildren(e){
+  if(e) e.stopPropagation();
+  const filhos = getItensCasaChildren();
+  const expanded = JSON.parse(localStorage.getItem('pirati_expanded')||'{}');
+  const algumFechado = filhos.some(k=>!expanded[k]);
+  filhos.forEach(k=>{ expanded[k] = algumFechado; });
+  localStorage.setItem('pirati_expanded', JSON.stringify(expanded));
+  renderCatNav();
+}
 function removerDeItensCasa(chave){
   const extras = getItensCasaExtraChildren().filter(k=>k!==chave);
   saveItensCasaExtraChildren(extras);
@@ -1849,6 +1841,8 @@ function renderCatNav(){
   const allKeys = [...pinnedKeys, ...catOrder];
   let imovelCount = 0;
   const etapasOcultas = getEtapasOcultas();
+  window.__itensCasaPrimeiroFilhoVisto = false;
+  window.__itensCasaGroupNum = null;
   console.log('[piratininga][chevron-debug] renderCatNav rodou às', new Date().toLocaleTimeString(),
     '| venda-imovel tem subs?', !!(SUBCATS['venda-imovel'] && Object.keys(SUBCATS['venda-imovel']).length>0), '(', SUBCATS['venda-imovel']?Object.keys(SUBCATS['venda-imovel']).length:'undefined', ')',
     '| compra-imovel tem subs?', !!(SUBCATS['compra-imovel'] && Object.keys(SUBCATS['compra-imovel']).length>0), '(', SUBCATS['compra-imovel']?Object.keys(SUBCATS['compra-imovel']).length:'undefined', ')',
@@ -1864,7 +1858,22 @@ function renderCatNav(){
     const hasSubs = SUBCATS[k] && Object.keys(SUBCATS[k]).length>0;
     const isOpen = !!expanded[k];
     const subColor = info.color||'#e8b544';
-    const etapaNum = (isPinnedStage && !getItensCasaChildren().includes(k)) ? ++imovelCount : null;
+    let etapaNum = null;
+    if(isPinnedStage){
+      if(getItensCasaChildren().includes(k)){
+        // O grupo "Itens para Casa" consome UM número só, na posição do
+        // primeiro filho que aparecer — capturado aqui pra o passo de
+        // agrupamento (depois do desenho) usar exatamente esse valor, em vez
+        // de tentar adivinhar contando elementos na tela (o que causava
+        // números repetidos).
+        if(!window.__itensCasaPrimeiroFilhoVisto){
+          window.__itensCasaPrimeiroFilhoVisto = true;
+          window.__itensCasaGroupNum = ++imovelCount;
+        }
+      } else {
+        etapaNum = ++imovelCount;
+      }
+    }
     if(['venda-imovel','compra-imovel','projeto-arq'].includes(k)){
       console.log('[piratininga][row-debug] k=', k, '| hasSubs=', hasSubs, '| isOpen=', isOpen, '| SUBCATS[k]=', SUBCATS[k]);
     }
@@ -7919,7 +7928,7 @@ function renderGeral(){
     'investimento':  { html: htmlInvestimento, edit:`renameGeralCardTitle('investimento', '${gcTitles['investimento']||'Investimento'}')`, span:5 },
     'venda-imovel':  { html: htmlVenda,        edit:`openEditImovelCat('venda-imovel')`, span:5 },
     'compra-imovel': { html: htmlCompra,       edit:`openEditImovelCat('compra-imovel')`, span:5 },
-    'reforma':       { html: htmlReforma,      edit:`renameGeralCardTitle('reforma', '${gcTitles['reforma']||'REFORMA: TOTAL GASTO'}')`, span:10 },
+    'reforma':       { html: htmlReforma,      edit:`renameGeralCardTitle('reforma', '${gcTitles['reforma']||'REFORMA: TOTAL GASTO'}')`, span:5 },
     'gasto-ambiente':{ html: htmlGastoAmbiente,edit:`renameGeralCardTitle('gasto-ambiente', '${gcTitles['gasto-ambiente']||'Gasto por Ambiente'}')`, span:10 },
   };
 
