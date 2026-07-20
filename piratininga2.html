@@ -308,7 +308,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 114)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 115)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1691,10 +1691,30 @@ function agruparItensCasaNoDOM(){
 
   const grupo = document.createElement('div');
   grupo.id = 'itens-casa-group-wrap';
+  grupo.setAttribute('draggable','false');
+  grupo.ondragstart = function(e){
+    if(!e.target.closest('#itens-casa-header-row')) return;
+    dragKey = '__itens_casa_group__';
+    e.dataTransfer.effectAllowed = 'move';
+    const headerEl = grupo.querySelector('#itens-casa-header-row');
+    if(headerEl){
+      const ghost = headerEl.cloneNode(true);
+      ghost.removeAttribute('id');
+      ghost.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0.9;transform:rotate(-2deg) scale(1.05);background:var(--c-panel3);border-radius:8px;width:'+headerEl.offsetWidth+'px;pointer-events:none;';
+      document.body.appendChild(ghost);
+      e.dataTransfer.setDragImage(ghost, headerEl.offsetWidth/2, 20);
+      setTimeout(()=>ghost.remove(), 0);
+    }
+    grupo.classList.add('dragging');
+  };
+  grupo.ondragend = function(){ dragKey = null; grupo.classList.remove('dragging'); grupo.setAttribute('draggable','false'); };
   grupo.style.cssText = `background:${cor}18;border:1px solid ${cor}44;border-left:3px solid ${cor};border-radius:8px;margin:4px 6px;overflow:hidden`;
   grupo.innerHTML = `
     <div class="nav-item-wrap" id="itens-casa-header-row">
-      <span class="nav-drag" style="cursor:default;opacity:.25" title="Esse grupo ainda não é arrastável">⠿</span>
+      <span class="nav-drag" title="Arrastar o grupo inteiro"
+        onmousedown="this.closest('#itens-casa-group-wrap').setAttribute('draggable','true')"
+        onmouseup="this.closest('#itens-casa-group-wrap').setAttribute('draggable','false')"
+        style="cursor:grab">⠿</span>
       <button id="chev-itens-casa-group" style="background:none;border:none;color:var(--c-secondary);cursor:pointer;padding:4px 2px;font-size:12px;transition:transform .2s;transform:rotate(${isOpen?90:0}deg)" onclick="toggleItensCasaGroup(event)"><i class="ti ti-chevron-right"></i></button>
       <div class="nav-item" onclick="handleItensCasaGroupClick(event)" id="nav-itens-casa" style="padding-left:2px;flex:1;display:flex;align-items:center;gap:6px;color:${cor};font-weight:600;font-size:13px;user-select:none">
         ${numeroGrupo ? `<span style="width:16px;height:16px;border-radius:50%;background:${cor};color:var(--c-panel);font-size:10px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">${numeroGrupo}</span>` : ''}🏠 Itens para Casa
@@ -3021,6 +3041,21 @@ function dragDrop(k, e){
   if(e.target.closest('.fase-group-draggable') || e.target.closest('.subcat-row')) return;
   e.preventDefault();
   if(k===dragKey) return;
+  // Arrastou o grupo "Itens para Casa" inteiro (como um bloco) pra outra
+  // posição — todos os filhos se movem juntos, mantendo a ordem entre eles.
+  if(dragKey==='__itens_casa_group__'){
+    if(k==='__itens_casa_group__' || getItensCasaChildren().includes(k)){ dragKey=null; return; }
+    const filhos = getItensCasaChildren();
+    const pinnedKeys = getPinnedStageKeys();
+    const semFilhos = pinnedKeys.filter(x=>!filhos.includes(x));
+    const idx = semFilhos.indexOf(k);
+    dragKey = null;
+    if(idx===-1){ renderCatNav(); return; }
+    semFilhos.splice(idx+1, 0, ...filhos);
+    savePinnedStageOrder(semFilhos);
+    renderCatNav();
+    return;
+  }
   // Arrastou uma categoria que estava dentro de "Itens para Casa" pra cima de
   // OUTRA etapa (não o próprio grupo) → sai do grupo automaticamente. É assim
   // que se tira algo de lá, já que arrastar pra fora não tem outro sinal.
@@ -4973,6 +5008,15 @@ function toggleAmbEditMenu(id, e){
   if(el) el.style.display = (el.style.display==='flex') ? 'none' : 'flex';
 }
 document.addEventListener('click', ()=>{ document.querySelectorAll('.amb-edit-menu').forEach(m=>m.style.display='none'); });
+// Rede de segurança pro drag das etapas: se o mouseup acontecer fora da
+// bolinha de arrastar (bem fácil de acontecer, principalmente numa caixa
+// grande como "Itens para Casa"), o próprio onmouseup da bolinha nunca
+// dispara — e o elemento inteiro fica "draggable" pra sempre, fazendo
+// qualquer movimento de mouse por cima dele iniciar um arraste sem querer.
+// Esse listener garante que sempre volta pra false, não importa onde soltou.
+document.addEventListener('mouseup', ()=>{
+  document.querySelectorAll('.nav-cat-wrap[draggable="true"], #itens-casa-group-wrap[draggable="true"]').forEach(el=>el.setAttribute('draggable','false'));
+});
 function ambienteIconFor(nome){
   const n = nome.toLowerCase();
   if(n.includes('cozinha')) return 'ti-tools-kitchen-2';
