@@ -63,7 +63,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sidebar-brand .name{font-size:14px;font-weight:600;color:var(--c-primary)}
 .sidebar-brand .sub{font-size:12px;color:var(--c-primary);margin-top:2px}
 .sidebar-nav{padding:.5rem 0;flex:1 1 0;overflow-y:auto;min-height:0}
-.nav-item{display:flex;align-items:center;gap:10px;padding:9px 1.25rem;font-size:14px;color:var(--c-secondary);cursor:pointer;border-left:2px solid transparent;transition:all .15s}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 1.25rem;font-size:14px;color:var(--c-secondary);cursor:pointer;border-left:2px solid transparent;transition:all .15s;user-select:none}
 .nav-item:hover{color:var(--c-primary);background:var(--c-panel4)}
 .nav-item.active{color:#e8b544;border-left-color:#e8b544;background:var(--c-panel4)}
 .nav-item i{font-size:17px}
@@ -202,7 +202,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
 .qty-input:focus{outline:none;border-color:#e8b544}
 .nav-drag{cursor:grab;color:var(--c-primary);padding:4px 2px 4px 6px;font-size:14px;flex-shrink:0}
 .nav-drag:active{cursor:grabbing}
-.nav-cat-wrap{transition:opacity .2s, transform .2s, box-shadow .2s, filter .2s}
+.nav-cat-wrap{transition:opacity .2s, transform .2s, box-shadow .2s, filter .2s;user-select:none}
 .nav-cat-wrap.dragging{opacity:.2;transform:scale(0.93) rotate(-1deg);filter:blur(1px)}
 .nav-item-wrap.drag-over{border-radius:6px;box-shadow:0 0 0 2px #e8b544 inset,0 0 14px rgba(232,181,68,.55);background:rgba(232,181,68,0.14);transform:scale(1.015);transition:all .12s;animation:dropPulse 1s ease-in-out infinite}
 .nav-item-wrap.insert-line-before{box-shadow:inset 0 3px 0 0 #42d9e8,0 0 0 2px #e8b544 inset;background:rgba(66,217,232,.1)}
@@ -308,7 +308,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 119)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 120)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1642,8 +1642,8 @@ function saveDefinirAmbientesAnchor(k){ localStorage.setItem('definir_ambientes_
 function moverDefinirAmbientesParaTopo(){
   const antigo = document.getElementById('definir-ambientes-toplevel-wrap');
   if(antigo) antigo.remove();
-  const anchorFinal = document.getElementById('cat-wrap-obra-bruta') || document.getElementById('itens-casa-group-wrap');
-  if(!anchorFinal) return;
+  const list = document.getElementById('cat-nav-list');
+  if(!list || !list.firstElementChild) return;
   const row = document.createElement('div');
   row.id = 'definir-ambientes-toplevel-wrap';
   row.style.cssText = 'padding:2px 4px;margin:2px 2px 8px';
@@ -1654,7 +1654,7 @@ function moverDefinirAmbientesParaTopo(){
       <span style="font-size:13px;color:#e8b544;font-weight:700">Definir Ambientes</span>
       <span style="margin-left:auto;font-size:8.5px;color:#e8b544;background:rgba(232,181,68,.18);border-radius:10px;padding:2px 6px;white-space:nowrap">comece aqui</span>
     </div>`;
-  anchorFinal.parentNode.insertBefore(row, anchorFinal);
+  list.insertBefore(row, list.firstElementChild);
 }
 // Soltou outra etapa em cima de "Definir Ambientes" — não é bem um "arrastar
 // pra dentro", é só reposicionar: Definir Ambientes passa a ficar logo antes
@@ -1722,7 +1722,7 @@ function agruparItensCasaNoDOM(){
         ${numeroGrupo ? `<span style="width:16px;height:16px;border-radius:50%;background:${cor};color:var(--c-panel);font-size:10px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">${numeroGrupo}</span>` : ''}🏠 Itens para Casa
       </div>
       <button onclick="ocultarEtapa('itens-casa',event)" title="Esconder essa etapa (continua somando na Visão Geral)" style="background:none;border:none;color:var(--c-muted2);cursor:pointer;font-size:13px;padding:0 2px"><i class="ti ti-chevron-left"></i></button>
-      <button onclick="toggleAllItensCasaChildren(event)" title="Expandir/recolher todos" style="background:none;border:none;color:${cor};cursor:pointer;font-size:13px;padding:0 4px;line-height:1"><i class="ti ti-chevrons-down"></i></button>
+      <button onclick="toggleAllItensCasaChildren(event)" title="Expandir/recolher todos" style="background:none;border:none;color:var(--c-faint2);cursor:pointer;font-size:13px;padding:0 4px;line-height:1" onmouseover="this.style.color='${cor}'" onmouseout="this.style.color='var(--c-faint2)'"><i class="ti ti-chevrons-down"></i></button>
       <button class="nav-dots" onclick="toggleCatMenu('itens-casa',false,true,event)" title="Opções"><i class="ti ti-dots-vertical"></i></button>
     </div>
     <div id="itens-casa-children-wrap" style="overflow:hidden;max-height:${isOpen?'none':'0'};padding:0 4px"></div>`;
