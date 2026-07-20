@@ -310,7 +310,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 131)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 132)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -2175,13 +2175,14 @@ function buildSubcatRowsHtml(k){
     const skListJson = items.map(e=>e.sk);
     const gNameEsc = gName.replace(/'/g,"\\'");
     const groupRow = `
-      <div class="nav-item-wrap fase-group-draggable" id="fase-wrap-${safeId}" draggable="false"
+      <div class="nav-item-wrap fase-group-draggable" id="fase-wrap-${safeId}" draggable="true"
         ondragstart="faseGroupDragStart('${gNameEsc}',event)"
         ondragend="faseGroupDragEnd(event)"
         ondragover="faseGroupDragOver('${gNameEsc}',event)"
         ondragleave="faseGroupDragLeave('${gNameEsc}',event)"
         ondrop="faseGroupDrop('${gNameEsc}',event)"
         style="display:flex;align-items:center;gap:5px;padding:5px 6px 5px .4rem;user-select:none;${faseAtiva?'':'opacity:.4'}">
+        <span style="color:var(--c-primary);cursor:grab;font-size:12px;flex-shrink:0" title="Arrastar pra reordenar">⠿</span>
         <button id="chev-grp-btn-${safeId}" onclick="toggleSubGroup('${k}','${gNameEsc}',event)" title="Expandir/recolher itens" style="background:none;border:none;cursor:pointer;padding:2px 4px;flex-shrink:0">
           <span id="chev-grp-${safeId}" style="color:var(--c-primary);font-size:10px;transition:transform .15s;transform:rotate(${isOpen?90:0}deg);display:inline-block">▶</span>
         </button>
@@ -2862,7 +2863,7 @@ function faseGroupDragEnd(e){
   draggedFaseName = null;
   document.getElementById('etapas-header')?.classList.remove('fase-drop-armed','fase-drop-over');
   document.querySelectorAll('.fase-source-dragging').forEach(el=>el.classList.remove('fase-source-dragging'));
-  document.querySelectorAll('.fase-group-draggable').forEach(el=>{ el.classList.remove('drag-over'); el.setAttribute('draggable','false'); });
+  document.querySelectorAll('.fase-group-draggable').forEach(el=>{ el.classList.remove('drag-over'); });
 }
 let etapaDropZone = null;
 function faseGroupDragOver(gName, e){
