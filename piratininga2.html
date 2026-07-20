@@ -308,7 +308,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 118)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 119)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1642,37 +1642,14 @@ function saveDefinirAmbientesAnchor(k){ localStorage.setItem('definir_ambientes_
 function moverDefinirAmbientesParaTopo(){
   const antigo = document.getElementById('definir-ambientes-toplevel-wrap');
   if(antigo) antigo.remove();
-  const anchorKey = getDefinirAmbientesAnchor();
-  const anchorKeyReal = getItensCasaChildren().includes(anchorKey) ? 'itens-casa' : anchorKey;
-  const anchorWrap = anchorKeyReal==='itens-casa'
-    ? document.getElementById('itens-casa-group-wrap')
-    : document.getElementById('cat-wrap-'+anchorKeyReal);
-  const anchorFinal = anchorWrap || document.getElementById('cat-wrap-obra-bruta') || document.getElementById('itens-casa-group-wrap');
+  const anchorFinal = document.getElementById('cat-wrap-obra-bruta') || document.getElementById('itens-casa-group-wrap');
   if(!anchorFinal) return;
   const row = document.createElement('div');
   row.id = 'definir-ambientes-toplevel-wrap';
-  row.setAttribute('draggable','false');
   row.style.cssText = 'padding:2px 4px;margin:2px 2px 8px';
-  row.ondragstart = function(e){
-    dragKey = '__definir_ambientes__';
-    e.dataTransfer.effectAllowed = 'move';
-  };
-  row.ondragend = function(){ dragKey = null; row.setAttribute('draggable','false'); };
-  row.ondragover = function(e){ e.preventDefault(); row.querySelector('.nav-item').classList.add('drag-over'); };
-  row.ondragleave = function(){ row.querySelector('.nav-item').classList.remove('drag-over'); };
-  row.ondrop = function(e){
-    e.preventDefault();
-    row.querySelector('.nav-item').classList.remove('drag-over');
-    if(!dragKey || dragKey==='__definir_ambientes__') return;
-    dropIntoDefinirAmbientes(dragKey);
-  };
   row.innerHTML = `
     <div class="nav-item" onclick="navigate('definir-ambientes')" id="nav-definir-ambientes"
       style="display:flex;align-items:center;gap:10px;padding:16px 12px;background:var(--c-apagar-bg3);border:1px solid #e8b544;border-radius:9px;box-shadow:0 0 10px rgba(232,181,68,.3);cursor:pointer">
-      <span class="nav-drag" title="Arrastar"
-        onmousedown="event.stopPropagation();this.closest('#definir-ambientes-toplevel-wrap').setAttribute('draggable','true')"
-        onmouseup="event.stopPropagation();this.closest('#definir-ambientes-toplevel-wrap').setAttribute('draggable','false')"
-        style="cursor:grab;color:#e8b544;flex-shrink:0">⠿</span>
       <i class="ti ti-home-2" style="font-size:19px;color:#e8b544;flex-shrink:0"></i>
       <span style="font-size:13px;color:#e8b544;font-weight:700">Definir Ambientes</span>
       <span style="margin-left:auto;font-size:8.5px;color:#e8b544;background:rgba(232,181,68,.18);border-radius:10px;padding:2px 6px;white-space:nowrap">comece aqui</span>
@@ -1737,43 +1714,9 @@ function agruparItensCasaNoDOM(){
 
   const grupo = document.createElement('div');
   grupo.id = 'itens-casa-group-wrap';
-  grupo.setAttribute('draggable','false');
-  grupo.ondragstart = function(e){
-    if(!e.target.closest('#itens-casa-header-row')) return;
-    dragKey = '__itens_casa_group__';
-    e.dataTransfer.effectAllowed = 'move';
-    // Não importa o motivo exato, mas arrastar essa caixa enquanto ela tá
-    // ABERTA (com os filhos visíveis) fazia o navegador tratar a caixa
-    // inteira expandida como se fosse a "imagem" do arraste — parecendo que
-    // tudo abaixo se movia junto. Escondendo os filhos ANTES de começar a
-    // arrastar, isso não tem como acontecer mais, seja qual for a causa.
-    const childrenWrap = document.getElementById('itens-casa-children-wrap');
-    if(childrenWrap) childrenWrap.style.display = 'none';
-    const headerEl = grupo.querySelector('#itens-casa-header-row');
-    if(headerEl){
-      const ghost = headerEl.cloneNode(true);
-      ghost.removeAttribute('id');
-      ghost.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0.9;transform:rotate(-2deg) scale(1.05);background:var(--c-panel3);border-radius:8px;width:'+headerEl.offsetWidth+'px;pointer-events:none;';
-      document.body.appendChild(ghost);
-      e.dataTransfer.setDragImage(ghost, headerEl.offsetWidth/2, 20);
-      setTimeout(()=>ghost.remove(), 0);
-    }
-    grupo.classList.add('dragging');
-  };
-  grupo.ondragend = function(){
-    dragKey = null;
-    grupo.classList.remove('dragging');
-    grupo.setAttribute('draggable','false');
-    const childrenWrap = document.getElementById('itens-casa-children-wrap');
-    if(childrenWrap) childrenWrap.style.display = '';
-  };
   grupo.style.cssText = `background:${cor}18;border:1px solid ${cor}44;border-left:3px solid ${cor};border-radius:8px;margin:4px 6px;overflow:hidden`;
   grupo.innerHTML = `
     <div class="nav-item-wrap" id="itens-casa-header-row">
-      <span class="nav-drag" title="Arrastar o grupo inteiro"
-        onmousedown="this.closest('#itens-casa-group-wrap').setAttribute('draggable','true')"
-        onmouseup="this.closest('#itens-casa-group-wrap').setAttribute('draggable','false')"
-        style="cursor:grab">⠿</span>
       <button id="chev-itens-casa-group" style="background:none;border:none;color:var(--c-secondary);cursor:pointer;padding:4px 2px;font-size:12px;transition:transform .2s;transform:rotate(${isOpen?90:0}deg)" onclick="toggleItensCasaGroup(event)"><i class="ti ti-chevron-right"></i></button>
       <div class="nav-item" onclick="handleItensCasaGroupClick(event)" id="nav-itens-casa" style="padding-left:2px;flex:1;display:flex;align-items:center;gap:6px;color:${cor};font-weight:600;font-size:13px;user-select:none">
         ${numeroGrupo ? `<span style="width:16px;height:16px;border-radius:50%;background:${cor};color:var(--c-panel);font-size:10px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">${numeroGrupo}</span>` : ''}🏠 Itens para Casa
@@ -1995,18 +1938,13 @@ function renderCatNav(){
       </div>`;
     }
 
-    return `<div class="nav-cat-wrap" id="cat-wrap-${k}" draggable="false"
+    return `<div class="nav-cat-wrap" id="cat-wrap-${k}"
       style="${imovelStyle}"
-      ondragstart="dragStart('${k}',event)"
       ondragover="dragOver('${k}',event)"
       ondragleave="dragLeave('${k}',event)"
       ondrop="dragDrop('${k}',event)"
       ondragend="dragEnd(event)">
       <div class="nav-item-wrap" id="nav-wrap-${k}">
-        <span class="nav-drag" title="Arrastar"
-          onmousedown="this.closest('.nav-cat-wrap').setAttribute('draggable','true')"
-          onmouseup="this.closest('.nav-cat-wrap').setAttribute('draggable','false')"
-          style="cursor:grab">⠿</span>
         <button id="chev-${k}" style="background:none;border:none;color:var(--c-secondary);cursor:pointer;padding:4px 2px;font-size:12px;transition:transform .2s;transform:rotate(${isOpen?90:0}deg)" onclick="toggleExpand('${k}',event)"><i class="ti ti-chevron-right"></i></button>
         <div class="nav-item" onclick="handleNavItemClick('${k}',event)" id="nav-${k}" style="padding-left:2px;flex:1;display:flex;align-items:center;gap:6px;${imovelNavStyle}">
           ${etapaNum ? `<span style="width:16px;height:16px;border-radius:50%;background:${info.color};color:var(--c-panel);font-size:10px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">${etapaNum}</span>` : `<span style="width:6px;height:6px;border-radius:50%;background:${info.color};display:inline-block;flex-shrink:0"></span>`}${info.icon||''} ${info.label}
@@ -6645,14 +6583,18 @@ function saveCustomStages(){
   localStorage.setItem('pirati_custom_stages', JSON.stringify(custom));
 }
 function getPinnedStageKeys(){
+  // Ordem FIXA, sem arrastar — decidida direto pelo Romulo depois de muita
+  // dor de cabeça com o drag. Não lê mais 'pinned_stage_order' nem depende
+  // de nenhuma lógica de arrastar/soltar pras etapas principais.
+  const ordemFixa = ['venda-imovel','compra-imovel','projeto-arq','obra-bruta','itens-casa','outroscustos'];
   const allPinned = [...Object.keys(IMOVEL_CATS), ...EXTRA_PINNED_STAGES.filter(k=>CATS[k])];
-  let saved = JSON.parse(localStorage.getItem('pinned_stage_order')||'null');
-  if(!saved){
-    const legacyImovelOrder = JSON.parse(localStorage.getItem('imovel_order')||'null');
-    saved = legacyImovelOrder ? [...legacyImovelOrder] : [...Object.keys(IMOVEL_CATS)];
-  }
-  const order = saved.filter(k=>allPinned.includes(k) && k!=='itens-casa');
-  allPinned.forEach(k=>{ if(!order.includes(k)) order.push(k); });
+  const filhos = getItensCasaExtraChildren();
+  const order = [];
+  ordemFixa.forEach(k=>{
+    if(k==='itens-casa'){ filhos.forEach(fk=>{ if(allPinned.includes(fk)) order.push(fk); }); }
+    else if(allPinned.includes(k)) order.push(k);
+  });
+  allPinned.forEach(k=>{ if(!order.includes(k)) order.push(k); }); // qualquer coisa nova entra no fim, sem bagunçar o resto
   return order;
 }
 function savePinnedStageOrder(order){ localStorage.setItem('pinned_stage_order', JSON.stringify(order)); }
