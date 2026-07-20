@@ -308,7 +308,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 115)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 116)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1696,6 +1696,13 @@ function agruparItensCasaNoDOM(){
     if(!e.target.closest('#itens-casa-header-row')) return;
     dragKey = '__itens_casa_group__';
     e.dataTransfer.effectAllowed = 'move';
+    // Não importa o motivo exato, mas arrastar essa caixa enquanto ela tá
+    // ABERTA (com os filhos visíveis) fazia o navegador tratar a caixa
+    // inteira expandida como se fosse a "imagem" do arraste — parecendo que
+    // tudo abaixo se movia junto. Escondendo os filhos ANTES de começar a
+    // arrastar, isso não tem como acontecer mais, seja qual for a causa.
+    const childrenWrap = document.getElementById('itens-casa-children-wrap');
+    if(childrenWrap) childrenWrap.style.display = 'none';
     const headerEl = grupo.querySelector('#itens-casa-header-row');
     if(headerEl){
       const ghost = headerEl.cloneNode(true);
@@ -1707,7 +1714,13 @@ function agruparItensCasaNoDOM(){
     }
     grupo.classList.add('dragging');
   };
-  grupo.ondragend = function(){ dragKey = null; grupo.classList.remove('dragging'); grupo.setAttribute('draggable','false'); };
+  grupo.ondragend = function(){
+    dragKey = null;
+    grupo.classList.remove('dragging');
+    grupo.setAttribute('draggable','false');
+    const childrenWrap = document.getElementById('itens-casa-children-wrap');
+    if(childrenWrap) childrenWrap.style.display = '';
+  };
   grupo.style.cssText = `background:${cor}18;border:1px solid ${cor}44;border-left:3px solid ${cor};border-radius:8px;margin:4px 6px;overflow:hidden`;
   grupo.innerHTML = `
     <div class="nav-item-wrap" id="itens-casa-header-row">
@@ -6908,6 +6921,7 @@ try{
 // ── AJUSTES v3: garantir "Revestimentos (piso)" como etapa (busca mais ampla) ──
 (function stagesFixupV3(){
   try{
+    if(localStorage.getItem('stage_fixup_v3')) return; // já rodou uma vez — não precisa recolorir tudo de novo a cada load
     function normLabel(s){
       return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
     }
@@ -6958,6 +6972,7 @@ try{
       else if(CATS[k]) CATS[k].color = color;
     });
     saveCats();
+    localStorage.setItem('stage_fixup_v3','1');
   }catch(e){ console.warn('Erro no ajuste v3 de etapas:', e); }
 })();
 
