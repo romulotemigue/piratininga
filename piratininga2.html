@@ -308,7 +308,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 123)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 124)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1744,6 +1744,16 @@ function agruparItensCasaNoDOM(){
     el.style.margin = '3px 4px';
     wrap.appendChild(el); // reparenta o elemento JÁ renderizado — mantém clique/menu/tudo intacto
   });
+
+  // O elemento do grupo só existe a partir daqui — o "liga/desliga" de
+  // .active que roda em navigate() já passou e nunca o encontrou, então ele
+  // ficava com a classe active grudada (ou nunca a tendo). Resolve isso na
+  // marra, direto pela página atual.
+  const navItemGrupo = document.getElementById('nav-itens-casa');
+  if(navItemGrupo){
+    if(currentPage==='itens-casa' || filhos.includes(currentPage)) navItemGrupo.classList.add('active');
+    else navItemGrupo.classList.remove('active');
+  }
 
   // Zona fina logo ABAIXO da caixinha inteira — pra reordenar outra etapa em
   // relação ao grupo (não pra entrar nele). Sem isso, só dava pra "entrar",
