@@ -308,7 +308,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 117)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 118)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1402,7 +1402,18 @@ if(Object.keys(CATS).length === 0) CATS = JSON.parse(JSON.stringify(DEFAULT_CATS
 // sub-itens dentro dela, igual as fases dentro de Execução de Obra. Ela em
 // si não tem lançamento próprio — é só uma organização visual no menu.
 if(!CATS['itens-casa']) CATS['itens-casa'] = {label:'Itens para Casa', icon:'🏠', color:'#f48fb1', isGroup:true};
-function getItensCasaExtraChildren(){ try{ return JSON.parse(localStorage.getItem('itens_casa_extra_children')||'[]'); }catch(e){ return []; } }
+function getItensCasaExtraChildren(){
+  try{
+    const lista = JSON.parse(localStorage.getItem('itens_casa_extra_children')||'[]');
+    // obra-bruta (e qualquer etapa do imóvel) nunca pode virar filha do
+    // grupo — tem lógica própria demais (fases, etc.) pra fazer sentido
+    // aninhada. Filtra sempre, então mesmo que tenha entrado sem querer
+    // antes, se autocorrige sozinho a partir de agora.
+    const limpa = lista.filter(k=>k!=='obra-bruta' && !IMOVEL_CATS[k]);
+    if(limpa.length !== lista.length) localStorage.setItem('itens_casa_extra_children', JSON.stringify(limpa));
+    return limpa;
+  }catch(e){ return []; }
+}
 function saveItensCasaExtraChildren(arr){ localStorage.setItem('itens_casa_extra_children', JSON.stringify(arr)); }
 function getItensCasaChildren(){
   return getItensCasaExtraChildren().filter(k=>CATS[k] && k!=='itens-casa');
@@ -1865,7 +1876,7 @@ function dropIntoItensCasa(e){
   dragKey = null;
   document.querySelectorAll('.nav-cat-wrap').forEach(el=>el.classList.remove('dragging','drag-over'));
   document.getElementById('itens-casa-group-wrap')?.classList.remove('drag-over');
-  if(!chave || IMOVEL_CATS[chave] || chave==='itens-casa' || !CATS[chave]) return;
+  if(!chave || IMOVEL_CATS[chave] || chave==='itens-casa' || chave==='obra-bruta' || !CATS[chave]) return;
   if(!EXTRA_PINNED_STAGES.includes(chave)){ EXTRA_PINNED_STAGES.push(chave); saveCustomStages(); }
   const extras = getItensCasaExtraChildren();
   if(!extras.includes(chave)){
@@ -7029,6 +7040,21 @@ try{
     saveCats();
     localStorage.setItem('stage_fixup_v3','1');
   }catch(e){ console.warn('Erro no ajuste v3 de etapas:', e); }
+})();
+
+// ── Corrige a ordem uma vez: Execução de Obra tinha ficado misturada antes
+// do grupo "Itens para Casa" por causa da ordem padrão interna — força a
+// sequência certa uma única vez, sem impedir reordenar depois arrastando.
+(function forcarOrdemEtapasV1(){
+  try{
+    if(localStorage.getItem('forcar_ordem_etapas_v1')) return;
+    const filhos = getItensCasaExtraChildren();
+    const desejado = ['venda-imovel','compra-imovel','projeto-arq','obra-bruta', ...filhos, 'outroscustos'];
+    const atual = getPinnedStageKeys();
+    const resto = atual.filter(k=>!desejado.includes(k));
+    savePinnedStageOrder([...desejado.filter(k=>atual.includes(k)), ...resto]);
+    localStorage.setItem('forcar_ordem_etapas_v1','1');
+  }catch(e){ console.warn('Erro ao forçar ordem das etapas:', e); }
 })();
 
 // ── Garante que as etapas de imóvel já tenham suas subcategorias padrão
