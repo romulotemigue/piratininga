@@ -306,7 +306,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 110)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 111)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1741,6 +1741,29 @@ function agruparItensCasaNoDOM(){
 }
 // Tira uma categoria do grupo "Itens para Casa" (caso tenha caído lá sem
 // querer, arrastando por perto) — ela volta a ser uma etapa solta.
+// Passo final, depois de tudo desenhado e agrupado: percorre a lista na
+// ordem REAL que ficou na tela e carimba 1,2,3... direto nos números —
+// nenhuma conta prévia, só o que realmente está visível, nessa ordem. Isso
+// garante que nunca mais vai repetir número, não importa o que aconteceu
+// antes (grupo, escondido, arrastado, etc).
+function renumerarEtapasNoDOM(){
+  const container = document.getElementById('cat-nav-list');
+  if(!container) return;
+  let n = 0;
+  Array.from(container.children).forEach(topEl=>{
+    if(!topEl.classList) return;
+    if(topEl.classList.contains('etapa-oculta-wrap')){
+      const bolinha = topEl.querySelector('.etapa-oculta-bolinha');
+      if(bolinha){ n++; bolinha.textContent = n; }
+      return;
+    }
+    const badge = topEl.querySelector('.nav-item > span[style*="border-radius:50%"]');
+    if(badge && badge.textContent.trim()!==''){
+      n++;
+      badge.textContent = n;
+    }
+  });
+}
 function toggleAllItensCasaChildren(e){
   if(e) e.stopPropagation();
   const filhos = getItensCasaChildren();
@@ -1920,6 +1943,7 @@ function renderCatNav(){
   }catch(e){ console.error('renderCatNav error:', e); }
   try{ agruparItensCasaNoDOM(); }catch(e){ console.error('agruparItensCasaNoDOM error:', e); }
   try{ moverDefinirAmbientesParaTopo(); }catch(e){ console.error('moverDefinirAmbientesParaTopo error:', e); }
+  try{ renumerarEtapasNoDOM(); }catch(e){ console.error('renumerarEtapasNoDOM error:', e); }
 }
 
 let lastNavClickInfo = {k:null, time:0};
