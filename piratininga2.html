@@ -308,7 +308,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 121)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 122)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1401,7 +1401,15 @@ if(Object.keys(CATS).length === 0) CATS = JSON.parse(JSON.stringify(DEFAULT_CATS
 // Móveis e Utilidades Domésticas (e o que for adicionado depois) como
 // sub-itens dentro dela, igual as fases dentro de Execução de Obra. Ela em
 // si não tem lançamento próprio — é só uma organização visual no menu.
-if(!CATS['itens-casa']) CATS['itens-casa'] = {label:'Itens para Casa', icon:'🏠', color:'#f48fb1', isGroup:true};
+if(!CATS['itens-casa']) CATS['itens-casa'] = {label:'Itens para Casa', icon:'🏠', color:'#db6942', isGroup:true};
+// Corrige, uma vez só, quem já tinha a cor antiga (bem mais viva que as
+// outras etapas, que passaram por um ajuste de tom — por isso ficava
+// sempre "acesa" mesmo fora de seleção).
+if(!localStorage.getItem('itens_casa_cor_fix_v1')){
+  if(CATS['itens-casa']) CATS['itens-casa'].color = '#db6942';
+  localStorage.setItem('pirati_cats', JSON.stringify(CATS));
+  localStorage.setItem('itens_casa_cor_fix_v1','1');
+}
 function getItensCasaExtraChildren(){
   try{
     const lista = JSON.parse(localStorage.getItem('itens_casa_extra_children')||'[]');
