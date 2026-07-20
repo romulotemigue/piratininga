@@ -308,7 +308,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 125)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 126)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1749,11 +1749,11 @@ function agruparItensCasaNoDOM(){
   // .active que roda em navigate() já passou e nunca o encontrou, então ele
   // ficava com a classe active grudada (ou nunca a tendo). Resolve isso na
   // marra, direto pela página atual.
-  const navItemGrupo = document.getElementById('nav-itens-casa');
-  if(navItemGrupo){
-    if(currentPage==='itens-casa' || filhos.includes(currentPage)) navItemGrupo.classList.add('active');
-    else navItemGrupo.classList.remove('active');
-  }
+  const ehItensCasaOuFilhoAgora = currentPage==='itens-casa' || filhos.includes(currentPage);
+  const pinnedKeysAgora = getPinnedStageKeys();
+  const activeCatKeyAgora = currentPage.includes('__') ? currentPage.split('__')[0] : currentPage;
+  const isPinnedPageAgora = pinnedKeysAgora.includes(activeCatKeyAgora) || ehItensCasaOuFilhoAgora;
+  aplicarEstadoVisualItensCasa(ehItensCasaOuFilhoAgora, isPinnedPageAgora);
 
   // Zona fina logo ABAIXO da caixinha inteira — pra reordenar outra etapa em
   // relação ao grupo (não pra entrar nele). Sem isso, só dava pra "entrar",
@@ -6340,6 +6340,29 @@ function breadcrumbTitleHtml(parts, color){
     <span style="font-weight:800;color:${color};font-size:1.15em">${last}</span>
   </span>`;
 }
+// Aplica o estado visual de "Itens para Casa" (aceso/apagado) DIRETO no
+// estilo, sem depender de nenhuma classe CSS — chamado tanto de navigate()
+// (toda vez que clica em algo) quanto de agruparItensCasaNoDOM (quando o
+// grupo é recriado do zero), pra cobrir os dois jeitos que isso pode rodar.
+function aplicarEstadoVisualItensCasa(ehItensCasaOuFilho, isPinnedPage){
+  const grupoWrap = document.getElementById('itens-casa-group-wrap');
+  const grupoNavEl = document.getElementById('nav-itens-casa');
+  if(!grupoWrap) return;
+  const corGrupo = (CATS['itens-casa']?.color) || '#db6942';
+  if(ehItensCasaOuFilho){
+    grupoWrap.style.opacity = '1';
+    grupoWrap.style.filter = 'none';
+    if(grupoNavEl){ grupoNavEl.style.color = '#e8b544'; grupoNavEl.style.background = 'var(--c-panel4)'; grupoNavEl.style.borderLeftColor = '#e8b544'; }
+  } else if(isPinnedPage){
+    grupoWrap.style.opacity = '0.62';
+    grupoWrap.style.filter = 'saturate(0.65)';
+    if(grupoNavEl){ grupoNavEl.style.color = corGrupo; grupoNavEl.style.background = 'transparent'; grupoNavEl.style.borderLeftColor = 'transparent'; }
+  } else {
+    grupoWrap.style.opacity = '1';
+    grupoWrap.style.filter = 'none';
+    if(grupoNavEl){ grupoNavEl.style.color = corGrupo; grupoNavEl.style.background = 'transparent'; grupoNavEl.style.borderLeftColor = 'transparent'; }
+  }
+}
 function navigate(page, skipHistory){
   currentPage = page;
   applyContentColor(page);
@@ -6366,19 +6389,9 @@ function navigate(page, skipHistory){
     }
   });
   // O grupo "Itens para Casa" não é uma chave normal de pinnedKeys, então
-  // precisa ser tratado à parte pra também clarear/escurecer certo.
-  const grupoWrap = document.getElementById('itens-casa-group-wrap');
-  if(grupoWrap){
-    if(isPinnedPage && !ehItensCasaOuFilho) grupoWrap.classList.add('imovel-dimmed');
-    else grupoWrap.classList.remove('imovel-dimmed');
-  }
-  // Reforço direto pro "active" do grupo — não depende do querySelectorAll
-  // geral lá em cima, pega o elemento certo na mão mesmo.
-  const grupoNavEl = document.getElementById('nav-itens-casa');
-  if(grupoNavEl){
-    if(ehItensCasaOuFilho) grupoNavEl.classList.add('active');
-    else grupoNavEl.classList.remove('active');
-  }
+  // precisa ser tratado à parte. Forçando o estilo DIRETO (não por classe),
+  // pra não depender de nenhuma classe CSS bater certinho.
+  aplicarEstadoVisualItensCasa(ehItensCasaOuFilho, isPinnedPage);
   // handle subcat pages like 'obra__subkey'
   if(page.includes('__')){
     const [catKey, subKey] = page.split('__');
