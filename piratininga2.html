@@ -310,7 +310,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 130)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 131)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -3471,16 +3471,25 @@ function ensureObraBrutaPhases(){
 
     // Guarda a ordem customizada E o estado ligado/desligado de cada sub ANTES
     // de apagar, pra não perder o que a pessoa já ajustou.
+    // RESET ÚNICO (v130-fix): alguma reordenação antiga (feita enquanto o bug de
+    // ordenação por "primeiro item encontrado" existia) deixou ordemCustom com
+    // valores que embaralhavam a ordem das fases. Na primeira carga depois desse
+    // ajuste, ignoramos esses ordemCustom de fase e deixamos tudo voltar pro
+    // padrão de fábrica (a ordem certa das 17 fases). Depois disso, reordenar
+    // manualmente arrastando volta a funcionar normalmente.
+    const RESET_ORDEM_FASES_FLAG = 'pirati_fase_ordem_reset_v1';
+    const jaResetouOrdemFases = !!localStorage.getItem(RESET_ORDEM_FASES_FLAG);
     const ordemCustomizada = {};
     const ativoCustomizado = {};
     Object.keys(SUBCATS['obra-bruta']).forEach(k=>{
-      if(SUBCATS['obra-bruta'][k].auto && SUBCATS['obra-bruta'][k].ordemCustom!=null){
+      if(jaResetouOrdemFases && SUBCATS['obra-bruta'][k].auto && SUBCATS['obra-bruta'][k].ordemCustom!=null){
         ordemCustomizada[k] = SUBCATS['obra-bruta'][k].ordemCustom;
       }
       if(SUBCATS['obra-bruta'][k].auto && SUBCATS['obra-bruta'][k].ativo===false){
         ativoCustomizado[k] = false;
       }
     });
+    if(!jaResetouOrdemFases) localStorage.setItem(RESET_ORDEM_FASES_FLAG, '1');
 
     // Apaga TUDO que essa função criou antes (marcado com auto:true) e recria do
     // zero, sempre. Isso evita qualquer bug de comparação de texto/acumulação —
