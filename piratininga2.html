@@ -205,6 +205,8 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
 .nav-cat-wrap{transition:opacity .2s, transform .2s, box-shadow .2s, filter .2s}
 .nav-cat-wrap.dragging{opacity:.2;transform:scale(0.93) rotate(-1deg);filter:blur(1px)}
 .nav-item-wrap.drag-over{border-radius:6px;box-shadow:0 0 0 2px #e8b544 inset,0 0 14px rgba(232,181,68,.55);background:rgba(232,181,68,0.14);transform:scale(1.015);transition:all .12s;animation:dropPulse 1s ease-in-out infinite}
+.nav-item-wrap.insert-line-before{box-shadow:inset 0 3px 0 0 #42d9e8,0 0 0 2px #e8b544 inset;background:rgba(66,217,232,.1)}
+.nav-item-wrap.insert-line-after{box-shadow:inset 0 -3px 0 0 #42d9e8,0 0 0 2px #e8b544 inset;background:rgba(66,217,232,.1)}
 .subcat-row-drop-target{border-radius:6px;box-shadow:0 0 0 2px #e8b544 inset,0 0 14px rgba(232,181,68,.55);background:rgba(232,181,68,0.16);transform:scale(1.015);transition:all .12s;animation:dropPulse 1s ease-in-out infinite}
 .fase-group-draggable.drag-over{border-radius:6px;box-shadow:0 0 0 2px #e8b544 inset,0 0 14px rgba(232,181,68,.55);background:rgba(232,181,68,0.16);transform:scale(1.015);transition:all .12s;animation:dropPulse 1s ease-in-out infinite}
 /* Entrelinhas: cor DIFERENTE (ciano) do amarelo de "juntar" — indica que vai
@@ -306,7 +308,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 111)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 112)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1689,10 +1691,16 @@ function agruparItensCasaNoDOM(){
 
   const grupo = document.createElement('div');
   grupo.id = 'itens-casa-group-wrap';
+  grupo.setAttribute('draggable','false');
+  grupo.ondragstart = function(e){ dragKey = '__itens_casa_group__'; e.dataTransfer.effectAllowed = 'move'; grupo.classList.add('dragging'); };
+  grupo.ondragend = function(){ dragKey = null; grupo.classList.remove('dragging'); grupo.setAttribute('draggable','false'); };
   grupo.style.cssText = `background:${cor}18;border:1px solid ${cor}44;border-left:3px solid ${cor};border-radius:8px;margin:4px 6px;overflow:hidden`;
   grupo.innerHTML = `
     <div class="nav-item-wrap" id="itens-casa-header-row">
-      <span class="nav-drag" style="cursor:default;opacity:.25" title="Esse grupo ainda não é arrastável">⠿</span>
+      <span class="nav-drag" title="Arrastar o grupo inteiro"
+        onmousedown="this.closest('#itens-casa-group-wrap').setAttribute('draggable','true')"
+        onmouseup="this.closest('#itens-casa-group-wrap').setAttribute('draggable','false')"
+        style="cursor:grab">⠿</span>
       <button id="chev-itens-casa-group" style="background:none;border:none;color:var(--c-secondary);cursor:pointer;padding:4px 2px;font-size:12px;transition:transform .2s;transform:rotate(${isOpen?90:0}deg)" onclick="toggleItensCasaGroup(event)"><i class="ti ti-chevron-right"></i></button>
       <div class="nav-item" onclick="handleItensCasaGroupClick(event)" id="nav-itens-casa" style="padding-left:2px;flex:1;display:flex;align-items:center;gap:6px;color:${cor};font-weight:600;font-size:13px;user-select:none">
         ${numeroGrupo ? `<span style="width:16px;height:16px;border-radius:50%;background:${cor};color:var(--c-panel);font-size:10px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">${numeroGrupo}</span>` : ''}🏠 Itens para Casa
@@ -1914,7 +1922,7 @@ function renderCatNav(){
       </div>`;
     }
 
-    return `<div class="nav-cat-wrap" id="cat-wrap-${k}" draggable="true"
+    return `<div class="nav-cat-wrap" id="cat-wrap-${k}" draggable="false"
       style="${imovelStyle}"
       ondragstart="dragStart('${k}',event)"
       ondragover="dragOver('${k}',event)"
@@ -1922,8 +1930,9 @@ function renderCatNav(){
       ondrop="dragDrop('${k}',event)"
       ondragend="dragEnd(event)">
       <div class="nav-item-wrap" id="nav-wrap-${k}">
-        <span class="nav-drag" draggable="true" title="Arrastar"
-          ondragstart="dragStart('${k}',event)"
+        <span class="nav-drag" title="Arrastar"
+          onmousedown="this.closest('.nav-cat-wrap').setAttribute('draggable','true')"
+          onmouseup="this.closest('.nav-cat-wrap').setAttribute('draggable','false')"
           style="cursor:grab">⠿</span>
         <button id="chev-${k}" style="background:none;border:none;color:var(--c-secondary);cursor:pointer;padding:4px 2px;font-size:12px;transition:transform .2s;transform:rotate(${isOpen?90:0}deg)" onclick="toggleExpand('${k}',event)"><i class="ti ti-chevron-right"></i></button>
         <div class="nav-item" onclick="handleNavItemClick('${k}',event)" id="nav-${k}" style="padding-left:2px;flex:1;display:flex;align-items:center;gap:6px;${imovelNavStyle}">
@@ -2995,18 +3004,22 @@ function dragOver(k, e){
   e.preventDefault();
   e.dataTransfer.dropEffect = 'move';
   if(k===dragKey) return;
-  if(k===dragOverKey) return; // already highlighted
-  dragOverKey = k;
-  document.querySelectorAll('.nav-item-wrap').forEach(el=>el.classList.remove('drag-over'));
   const el = document.getElementById('nav-wrap-'+k);
-  if(el) el.classList.add('drag-over');
+  if(!el) return;
+  const rect = el.getBoundingClientRect();
+  const metade = rect.top + rect.height/2;
+  const antes = e.clientY < metade;
+  if(k===dragOverKey && el.classList.contains(antes?'insert-line-before':'insert-line-after')) return; // já tá certo, evita piscar
+  document.querySelectorAll('.nav-item-wrap').forEach(x=>x.classList.remove('drag-over','insert-line-before','insert-line-after'));
+  dragOverKey = k;
+  el.classList.add('drag-over', antes?'insert-line-before':'insert-line-after');
 }
 
 function dragLeave(k, e){
   // only remove if actually leaving (not entering child)
   if(e.relatedTarget && document.getElementById('cat-wrap-'+k)?.contains(e.relatedTarget)) return;
   const el = document.getElementById('nav-wrap-'+k);
-  if(el) el.classList.remove('drag-over');
+  if(el) el.classList.remove('drag-over','insert-line-before','insert-line-after');
   if(dragOverKey===k) dragOverKey=null;
 }
 
@@ -3014,6 +3027,21 @@ function dragDrop(k, e){
   if(e.target.closest('.fase-group-draggable') || e.target.closest('.subcat-row')) return;
   e.preventDefault();
   if(k===dragKey) return;
+  // Arrastou o grupo "Itens para Casa" inteiro (como um bloco) pra outra
+  // posição — todos os filhos se movem juntos, mantendo a ordem entre eles.
+  if(dragKey==='__itens_casa_group__'){
+    if(k==='__itens_casa_group__' || getItensCasaChildren().includes(k)){ dragKey=null; return; }
+    const filhos = getItensCasaChildren();
+    const pinnedKeys = getPinnedStageKeys();
+    const semFilhos = pinnedKeys.filter(x=>!filhos.includes(x));
+    const idx = semFilhos.indexOf(k);
+    dragKey = null;
+    if(idx===-1){ renderCatNav(); return; }
+    semFilhos.splice(idx+1, 0, ...filhos);
+    savePinnedStageOrder(semFilhos);
+    renderCatNav();
+    return;
+  }
   // Arrastou uma categoria que estava dentro de "Itens para Casa" pra cima de
   // OUTRA etapa (não o próprio grupo) → sai do grupo automaticamente. É assim
   // que se tira algo de lá, já que arrastar pra fora não tem outro sinal.
@@ -3061,7 +3089,7 @@ function dragEnd(e){
   document.querySelectorAll('.nav-cat-wrap').forEach(el=>{
     el.classList.remove('dragging','drag-over');
   });
-  document.querySelectorAll('.nav-item-wrap').forEach(el=>el.classList.remove('drag-over'));
+  document.querySelectorAll('.nav-item-wrap').forEach(el=>el.classList.remove('drag-over','insert-line-before','insert-line-after'));
   document.querySelectorAll('.subcat-row-drop-target').forEach(el=>el.classList.remove('subcat-row-drop-target'));
 }
 
