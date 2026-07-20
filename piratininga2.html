@@ -308,7 +308,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 124)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 125)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -6371,6 +6371,13 @@ function navigate(page, skipHistory){
   if(grupoWrap){
     if(isPinnedPage && !ehItensCasaOuFilho) grupoWrap.classList.add('imovel-dimmed');
     else grupoWrap.classList.remove('imovel-dimmed');
+  }
+  // Reforço direto pro "active" do grupo — não depende do querySelectorAll
+  // geral lá em cima, pega o elemento certo na mão mesmo.
+  const grupoNavEl = document.getElementById('nav-itens-casa');
+  if(grupoNavEl){
+    if(ehItensCasaOuFilho) grupoNavEl.classList.add('active');
+    else grupoNavEl.classList.remove('active');
   }
   // handle subcat pages like 'obra__subkey'
   if(page.includes('__')){
