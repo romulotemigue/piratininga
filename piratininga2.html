@@ -310,7 +310,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 134)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 135)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -9272,8 +9272,7 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
     <td width="112" style="white-space:nowrap;padding:4px 10px 4px 2px;width:112px;min-width:112px">
       <span style="display:inline-block;width:16px;text-align:center">${g.link?`<a href="${g.link}" target="_blank" style="color:#2a78d6;font-size:13px"><i class="ti ti-external-link"></i></a>`:''}</span>
       <span style="display:inline-block;width:16px;text-align:center">${g.obs?`<span title="${g.obs}" style="color:var(--c-primary);font-size:12px;cursor:default"><i class="ti ti-message-circle"></i></span>`:''}</span>
-      ${converterBtn}
-      <button class="edit-btn" style="opacity:1;padding:2px 3px" onclick="openEdit(${g.id})"><i class="ti ti-pencil"></i></button>
+            <button class="edit-btn" style="opacity:1;padding:2px 3px" onclick="openEdit(${g.id})"><i class="ti ti-pencil"></i></button>
       <button class="del-btn" style="opacity:1;padding:2px 3px" onclick="${delOnclick}"><i class="ti ti-trash"></i></button>
     </td>
   </tr>`;
