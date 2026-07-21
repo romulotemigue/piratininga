@@ -310,7 +310,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 132)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 133)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -3451,7 +3451,22 @@ function ensureObraBrutaPhases(){
           {label:'Realizar limpeza'}
         ]}
       ]},
-      {fase:'Alvenaria', itens:['Construção de novas paredes','Fechamento de vãos','Abertura de nichos','Vergas e contravergas','Regularizações']},
+      {fase:'Alvenaria', subgrupos:[
+        {nome:'Preparação', itens:[
+          {label:'Conferir projeto'},
+          {label:'Marcar novas paredes'}
+        ]},
+        {nome:'Execução', itens:[
+          {label:'Construir novas paredes', de:'Construção de novas paredes'},
+          {label:'Executar vergas e contravergas', de:'Vergas e contravergas'},
+          {label:'Executar nichos', de:'Abertura de nichos'},
+          {label:'Fechar vãos', de:'Fechamento de vãos'}
+        ]},
+        {nome:'Finalização', itens:[
+          {label:'Regularizar superfícies', de:'Regularizações'},
+          {label:'Realizar limpeza'}
+        ]}
+      ]},
       {fase:'Hidráulica', itens:['Água fria','Água quente','Esgoto','Gás','Drenos de ar-condicionado']},
       {fase:'Elétrica', itens:['Novos circuitos','Quadro elétrico','Tomadas','Interruptores','Iluminação','Rede','Internet','Infraestrutura para automação']},
       {fase:'Impermeabilização', itens:['Banheiros','Lavanderia','Sacadas','Áreas molhadas']},
