@@ -310,7 +310,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 133)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 134)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -2212,7 +2212,14 @@ function renderSubgroupedOrFlatRows(k, items, subColor, groupKey, expandedSub, g
     const sgName = e.subgrupo || '';
     (subgroups[sgName]=subgroups[sgName]||[]).push(e);
   });
-  const sgNames = Object.keys(subgroups); // 'items' já vem ordenado por 'ordem', então a ordem de inserção aqui já é a certa
+  const sgNames = Object.keys(subgroups).sort((a,b)=>{
+    const ordemCanonica = window.FASE_SUBGRUPOS_ORDEM?.[gName] || [];
+    const ia = ordemCanonica.indexOf(a), ib = ordemCanonica.indexOf(b);
+    if(ia===-1 && ib===-1) return 0;
+    if(ia===-1) return 1;
+    if(ib===-1) return -1;
+    return ia-ib;
+  });
   return sgNames.map(sgName=>{
     if(!sgName) return subgroups[sgName].map(e=>renderFlatSubcatRow(k, e.sk, subColor, 1)).join('');
     const sgKey = groupKey+'__sub__'+sgName;
@@ -3483,6 +3490,12 @@ function ensureObraBrutaPhases(){
       {fase:'Pintura Final e Limpeza Pós-Obra', itens:['Última demão de tinta','Retoques','Silicone','Calafetação','Limpeza fina']},
       {fase:'Instalação de Eletrodomésticos e Mudança', itens:['Geladeira','Cooktop','Forno','Coifa','Lava-louças','Máquina de lavar','Ar-condicionado','Mudança','Montagem dos móveis soltos','Decoração']},
     ];
+    // Fonte fixa da ordem dos SUBGRUPOS (Preparação/Execução/Finalização) de cada
+    // fase — usada no render pra não depender de 'ordem'/localStorage bagunçado.
+    window.FASE_SUBGRUPOS_ORDEM = {};
+    FASES.forEach(f=>{
+      if(f.subgrupos) window.FASE_SUBGRUPOS_ORDEM[f.fase] = f.subgrupos.map(sg=>sg.nome).filter(Boolean);
+    });
     if(!SUBCATS['obra-bruta']) SUBCATS['obra-bruta'] = {};
 
     // Guarda a ordem customizada E o estado ligado/desligado de cada sub ANTES
