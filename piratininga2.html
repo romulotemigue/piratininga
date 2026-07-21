@@ -310,7 +310,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 140)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 141)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -9375,7 +9375,7 @@ function renderRowsFiltered(list, status, catKey, borderColor, groupBy, relevant
         if(relevantSubs) parsed = parsed.filter(p=>relevantSubs.includes(p.sub));
         entries = parsed.map(p=>({ambiente:p.ambiente||'', sub:p.sub}));
       }
-      if(!entries.length) entries = [{ambiente:g.ambiente||'', sub:g.subcategoria}];
+      if(!entries.length) entries = [{ambiente: g.ambiente || (getItensCasaChildren().includes(g.categoria) ? (g.subcategoria||'') : ''), sub:g.subcategoria}];
       entries.forEach(en=>{
         const amb = en.ambiente;
         if(!groupMap[amb]) groupMap[amb] = { label: amb || 'Sem ambiente', items: [] };
