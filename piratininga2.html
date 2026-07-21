@@ -310,7 +310,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 138)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 140)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -663,10 +663,24 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
       </div>
     </div>
     <div class="form-group" id="e-subcat-row">
-      <label>Cartão (opcional)</label>
+      <label id="e-subcat-label">Cartão (opcional)</label>
       <select id="e-subcat">
         <option value="">— Nenhuma —</option>
       </select>
+    </div>
+    <div id="e-itenscasa-extra" style="display:none">
+      <div class="form-group">
+        <label>Marca do produto</label>
+        <input type="text" id="e-marca" spellcheck="true" lang="pt-BR">
+      </div>
+      <div class="form-group">
+        <label>Loja/Fornecedor</label>
+        <input type="text" id="e-loja" spellcheck="true" lang="pt-BR">
+      </div>
+      <div class="form-group">
+        <label>Modelo/Código do produto</label>
+        <input type="text" id="e-modelo" spellcheck="true" lang="pt-BR">
+      </div>
     </div>
     <div id="e-data-row-ganho" class="form-group" style="display:none">
       <label>Data</label>
@@ -2637,6 +2651,17 @@ function openEdit(id){
     document.getElementById('e-status-group').style.display='';
     document.getElementById('e-status').value = g.status||'pago';
     document.getElementById('btn-confirm-edit').style.background='#e8b544';
+
+    const ehItensCasa = getItensCasaChildren().includes(g.categoria);
+    document.getElementById('e-subcat-label').textContent = ehItensCasa ? 'Ambiente' : 'Cartão (opcional)';
+    document.getElementById('e-itenscasa-extra').style.display = ehItensCasa ? '' : 'none';
+    if(ehItensCasa){
+      const parsed = parseMaterialObs(g.obs);
+      document.getElementById('e-marca').value = parsed.marca||'';
+      document.getElementById('e-loja').value = parsed.loja||'';
+      document.getElementById('e-modelo').value = parsed.modelo||'';
+      document.getElementById('e-obs').value = parsed.livre||'';
+    }
   }
 
   document.getElementById('modal-edit-overlay').classList.add('open');
@@ -2666,6 +2691,17 @@ async function saveEdit(){
     row.data = document.getElementById('e-data').value;
     row.status = document.getElementById('e-status').value;
     row.investimento = document.getElementById('e-investimento')?.value || '';
+    if(getItensCasaChildren().includes(row.categoria)){
+      const marca = document.getElementById('e-marca').value.trim();
+      const loja = document.getElementById('e-loja').value.trim();
+      const modelo = document.getElementById('e-modelo').value.trim();
+      const linhas = [];
+      if(marca) linhas.push('Marca: '+marca);
+      if(loja) linhas.push('Loja: '+loja);
+      if(modelo) linhas.push('Modelo/código: '+modelo);
+      if(obs) linhas.push(obs);
+      row.obs = linhas.join(' · ');
+    }
   }
 
   try{
