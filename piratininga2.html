@@ -310,7 +310,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 135)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 138)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -8977,16 +8977,16 @@ function renderCat(cat){
       </div>
     </div>
 
-    ${(months.length>=2 && cat!=='itens-casa' && cat!=='outroscustos')?`
+    ${(months.length>=2 && cat!=='itens-casa' && cat!=='outroscustos' && cat!=='camamesabanho' && cat!=='moveis')?`
     <div class="chart-card" style="margin-bottom:1.25rem">
       <div class="chart-title">Evolução de gastos</div>
       <div style="position:relative;height:160px"><canvas id="catChart"></canvas></div>
     </div>`:''}
 
-    ${renderColGrid(lista, cat, null, null, info.label)}
+    ${cat==='itens-casa' ? renderColGrid(lista, cat, 'ambiente', null, info.label) : renderColGrid(lista, cat, null, null, info.label)}
   `;
 
-  if(months.length>=2 && cat!=='itens-casa' && cat!=='outroscustos'){
+  if(months.length>=2 && cat!=='itens-casa' && cat!=='outroscustos' && cat!=='camamesabanho' && cat!=='moveis'){
     catChart = new Chart(document.getElementById('catChart'),{
       type:'bar',
       data:{labels:months.map(m=>{const[y,mo]=m.split('-');return mo+'/'+y.slice(2);}),
