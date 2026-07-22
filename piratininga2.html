@@ -310,7 +310,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 141)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20JUL26 (versão 142)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -8251,6 +8251,21 @@ const GANHO_TIPOS = {
 function renderDiagnostico(){
   const getVal = g=>gastoValor(g);
 
+  // 0) Lançamentos com status inválido: nem 'pago', nem 'necessario', nem 'apagar'.
+  // Esses não aparecem em NENHUMA das 3 colunas de NENHUMA tela (nem na etapa,
+  // nem na Visão Geral) — ficam completamente invisíveis, mesmo que a categoria
+  // e o ambiente estejam certinhos.
+  const STATUS_VALIDOS = ['pago','necessario','apagar'];
+  const statusInvalidoGroups = {};
+  gastos.forEach(g=>{
+    if(g.categoria==='ganho') return;
+    if(STATUS_VALIDOS.includes(g.status)) return;
+    const key = g.status || '(vazio)';
+    (statusInvalidoGroups[key] = statusInvalidoGroups[key] || []).push(g);
+  });
+  const statusInvalidoKeys = Object.keys(statusInvalidoGroups);
+  const statusInvalidoTotalGeral = statusInvalidoKeys.reduce((s,k)=>s+statusInvalidoGroups[k].reduce((s2,g)=>s2+getVal(g),0),0);
+
   // 1) Lançamentos "órfãos": categoria não existe mais em nenhuma etapa/categoria visível
   const orfaGroups = {};
   gastos.forEach(g=>{
@@ -8316,8 +8331,25 @@ function renderDiagnostico(){
   document.getElementById('content').innerHTML = `
     <div style="margin-bottom:1.5rem">
       <h2 style="margin:0 0 4px">Diagnóstico</h2>
-      <div style="font-size:13px;color:var(--c-primary)">Lançamentos que não aparecem em nenhuma etapa (categoria/ambiente antigo ou excluído) e possíveis duplicatas. Nada aqui foi apagado — você decide item por item.</div>
+      <div style="font-size:13px;color:var(--c-primary)">Lançamentos com status inválido (somem de qualquer tela), categoria/ambiente antigo ou excluído, e possíveis duplicatas. Nada aqui foi apagado — você decide item por item.</div>
     </div>
+
+    <div style="background:var(--c-apagar-bg2);border:1px solid var(--c-apagar-bg);border-left:3px solid #ef5350;border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.5rem">
+      <div style="font-size:14px;font-weight:700;color:#ef5350;margin-bottom:4px">Lançamentos com status inválido (invisíveis em qualquer tela)</div>
+      <div style="font-size:13px;color:var(--c-primary)">Total escondido: <b style="color:#ef5350">${fmt(statusInvalidoTotalGeral)}</b> em ${statusInvalidoKeys.length} status diferente(s)</div>
+    </div>
+
+    ${statusInvalidoKeys.length ? statusInvalidoKeys.map(k=>{
+      const items = statusInvalidoGroups[k];
+      const total = items.reduce((s,g)=>s+getVal(g),0);
+      return `<div style="background:var(--c-panel);border:1px solid var(--c-border);border-radius:10px;overflow:hidden;margin-bottom:1rem">
+        <div style="padding:.7rem 1rem;background:var(--c-panel2);display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:13px;font-weight:600">status: "${k}" · ${items.length} lançamento(s)</span>
+          <span style="font-size:14px;font-weight:700;color:#ef5350">${fmt(total)}</span>
+        </div>
+        <table style="width:100%;border-collapse:collapse"><tbody>${items.map(rowHtml).join('')}</tbody></table>
+      </div>`;
+    }).join('') : ''}
 
     <div style="background:var(--c-apagar-bg2);border:1px solid var(--c-apagar-bg);border-left:3px solid #e8b544;border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.5rem">
       <div style="font-size:14px;font-weight:700;color:#e8b544;margin-bottom:4px">Lançamentos órfãos (categoria não existe mais)</div>
