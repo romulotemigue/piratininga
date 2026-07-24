@@ -310,7 +310,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 24JUL26 (versão 145)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 24JUL26 (versão 147)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -2649,7 +2649,21 @@ function openEdit(id){
     document.getElementById('e-subcat').value = g.subcategoria||'';
     document.getElementById('e-data').value = g.data||'';
     document.getElementById('e-status-group').style.display='';
-    document.getElementById('e-status').value = g.status||'pago';
+
+    // Recebimentos da Venda do Imóvel (Sinal/Entrada/Repasse bancário) são dinheiro
+    // ENTRANDO, não um gasto — "Pago/Necessário/Dispensável" não faz sentido aí, e
+    // classificar como Investimento (Perpétuo/Transferível/Pessoal) também não.
+    const tipoCartao = g.categoria==='venda-imovel' ? (getImovelCardDefs('venda-imovel').find(i=>i.key===g.subcategoria)?.tipo) : null;
+    const ehRecebimentoVenda = ['recibo','recebimento','aporte'].includes(tipoCartao);
+    const statusSelect = document.getElementById('e-status');
+    if(ehRecebimentoVenda){
+      statusSelect.innerHTML = '<option value="pago">Recebido</option><option value="necessario">Aguardando</option>';
+      document.getElementById('e-invest-wrap').style.display = 'none';
+    } else {
+      statusSelect.innerHTML = '<option value="pago">Pago</option><option value="necessario">Necessário</option><option value="apagar">Dispensável</option>';
+      document.getElementById('e-invest-wrap').style.display = '';
+    }
+    statusSelect.value = g.status||'pago';
     document.getElementById('btn-confirm-edit').style.background='#e8b544';
 
     const ehItensCasa = getItensCasaChildren().includes(g.categoria);
@@ -7596,14 +7610,28 @@ function renderImovelCat(catKey, subKey){
   function dateBadge(item){
     const key = item.key;
     const d = getCardDate(catKey, key);
-    const dateStr = d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'2-digit'}) : '';
     const inputId = 'card-date-'+catKey+'-'+key;
-    return '<div style="display:flex;align-items:center;gap:4px" onclick="event.stopPropagation()">'
-      +'<span style="font-size:14px;cursor:pointer" onclick="event.stopPropagation();var el=document.getElementById(\''+inputId+'\');el.dataset.catkey=\''+catKey+'\';el.dataset.key=\''+key+'\';if(el.showPicker)el.showPicker();else el.click()">📅</span>'
-      +(dateStr?'<span style="font-size:11px;color:var(--c-primary)">'+(item.tipo==='doc'?'assinado em':item.tipo==='recibo'||item.tipo==='recebimento'?'recebido em':'pago em')+' </span><span style="font-size:11px;color:#e8b544;font-weight:600">'+dateStr+'</span><span style="font-size:10px;color:var(--c-primary);margin-left:4px">('+Math.max(0,Math.round((new Date()-new Date(d+'T12:00:00'))/(1000*60*60*24)))+' dias)</span>':'')
-      +'<input type="date" id="'+inputId+'" value="'+d+'" style="position:fixed;opacity:0;width:1px;height:1px;pointer-events:none" '
-      +'onchange="var el=this;setCardDate(el.dataset.catkey,el.dataset.key,el.value)">'
-      +'</div>';
+    const abrirPicker = 'event.stopPropagation();var el=document.getElementById(\''+inputId+'\');el.dataset.catkey=\''+catKey+'\';el.dataset.key=\''+key+'\';if(el.showPicker)el.showPicker();else el.click()';
+    const hiddenInput = '<input type="date" id="'+inputId+'" value="'+d+'" style="position:fixed;opacity:0;width:1px;height:1px;pointer-events:none" '
+      +'onchange="var el=this;setCardDate(el.dataset.catkey,el.dataset.key,el.value)">';
+    if(!d){
+      return '<div style="display:flex;align-items:center;gap:4px" onclick="event.stopPropagation()">'
+        +'<span style="font-size:14px;cursor:pointer" onclick="'+abrirPicker+'">📅</span>'
+        +hiddenInput
+        +'</div>';
+    }
+    const dt = new Date(d+'T12:00:00');
+    const MESES = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+    const diaStr = String(dt.getDate()).padStart(2,'0');
+    const mesStr = MESES[dt.getMonth()];
+    const anoStr = String(dt.getFullYear()).slice(-2);
+    return '<div onclick="'+abrirPicker+'" title="Clique pra mudar a data" '
+      +'style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--c-panel3);border:1px solid var(--c-border2);border-radius:5px;padding:2px 6px;line-height:1.2;cursor:pointer;min-width:30px">'
+      +'<span style="font-size:11px;font-weight:700;color:#e8b544">'+diaStr+'</span>'
+      +'<span style="font-size:9px;color:var(--c-primary);letter-spacing:.03em">'+mesStr+'</span>'
+      +'<span style="font-size:9px;color:var(--c-primary)">'+anoStr+'</span>'
+      +'</div>'
+      +hiddenInput;
   }
 
   function makeCard(item){
