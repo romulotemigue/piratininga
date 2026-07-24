@@ -310,7 +310,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 24JUL26 (versão 144)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 24JUL26 (versão 145)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -7632,7 +7632,7 @@ function renderImovelCat(catKey, subKey){
       ? '<button onclick="event.stopPropagation();openEdit('+itemGastos[0].id+')" title="Editar" style="background:none;border:none;color:var(--c-primary);cursor:pointer;font-size:15px;padding:0 2px"><i class="ti ti-pencil"></i></button>'
       : (canLaunch ? '<button onclick="event.stopPropagation();openModal(\''+catKey+'\',\''+item.key+'\')" title="Lançar" style="background:none;border:none;color:var(--c-primary);cursor:pointer;font-size:15px;padding:0 2px"><i class="ti ti-pencil"></i></button>' : '');
     const topRow =
-      '<div style="display:flex;align-items:center;justify-content:space-between" onclick="event.stopPropagation()">'
+      '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;row-gap:4px" onclick="event.stopPropagation()">'
       +'<div style="display:flex;align-items:center;gap:6px"><span style="color:var(--c-primary);font-size:14px;cursor:grab;user-select:none">⠿</span><span style="font-size:19px">'+item.icon+'</span></div>'
       +'<div style="display:flex;align-items:center;gap:3px">'
       +pencilBtn
@@ -7668,11 +7668,10 @@ function renderImovelCat(catKey, subKey){
 
   function makeRow(items, label, labelColor, borderColor, addTipo){
     const cols = items.map(makeCard).join('') + (addTipo ? makeAddCard(addTipo) : '');
-    const totalCols = items.length + (addTipo ? 1 : 0);
     return '<div style="margin-bottom:16px">'
       +'<div style="font-size:11px;font-weight:600;color:'+labelColor+';text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;display:flex;align-items:center;gap:6px">'
       +'<span style="width:7px;height:7px;border-radius:50%;background:'+borderColor+';display:inline-block"></span>'+label+'</div>'
-      +'<div style="display:grid;grid-template-columns:repeat('+totalCols+',1fr);align-items:stretch;gap:8px">'+cols+'</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));align-items:stretch;gap:8px">'+cols+'</div>'
       +'</div>';
   }
 
