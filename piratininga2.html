@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 24JUL26 (versão 153)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 25JUL26 (versão 154)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -3329,6 +3329,17 @@ async function migrateGanhoTipos(gastosList){
   }
 }
 
+// Correção única (pré-v153): a troca de "Dispensa" por "Despensa" foi feita
+// antes de existir a migração automática de lançamentos antigos — então ficou
+// um ambiente fantasma "Dispensa" com dados velhos grudados nele. Roda uma vez
+// só e nunca mais.
+function migrarDispensaParaDespensaUmaVez(){
+  try{
+    if(localStorage.getItem('pirati_fix_dispensa_despensa_v1')) return;
+    localStorage.setItem('pirati_fix_dispensa_despensa_v1','1');
+    migrarNomeAmbienteEmLancamentos('Dispensa','Despensa');
+  }catch(e){ console.error('migrarDispensaParaDespensaUmaVez error:', e); }
+}
 async function loadGastos(){
   try{
     gastos = await sbFetch();
@@ -3340,6 +3351,7 @@ async function loadGastos(){
     removeCompraImvelDuplicateCategory();
     ensureObraBrutaPhases();
     ensureItensCasaAmbienteSubcats();
+    migrarDispensaParaDespensaUmaVez();
     restoreOrphanSubcats();
     checkPossibleDuplicates();
     renderCatNav();
@@ -7733,7 +7745,7 @@ function renderImovelCat(catKey, subKey){
       +'</div>';
     const dBadge = dateBadge(item), dias = diasBadge(item);
     const topRow =
-      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px" onclick="event.stopPropagation()">'
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;min-height:38px" onclick="event.stopPropagation()">'
       +'<div style="display:flex;align-items:center;gap:6px;padding-top:2px"><span style="color:var(--c-primary);font-size:14px;cursor:grab;user-select:none">⠿</span><span style="font-size:19px;line-height:1">'+item.icon+'</span></div>'
       +'<div style="display:flex;align-items:center;gap:6px">'+dBadge+dias+pencilBtn+'</div>'
       +'</div>';
