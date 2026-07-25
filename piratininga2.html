@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 24JUL26 (versão 149)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 24JUL26 (versão 150)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -7701,12 +7701,14 @@ function renderImovelCat(catKey, subKey){
       +pencilBtn
       +'</div>';
 
-    // ── LINHA 2 (fixa): rótulo do cartão + data + dias corridos (sempre no
-    // mesmo lugar, existam ou não ainda) ──
-    const labelDateRow = '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:6px">'
-      +'<div style="font-size:11px;color:var(--c-primary);text-transform:uppercase;letter-spacing:.07em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+item.label+'</div>'
-      +'<div style="display:flex;align-items:center;gap:4px;flex-shrink:0">'+dateBadge(item)+diasBadge(item)+'</div>'
-      +'</div>';
+    // ── LINHA 2 (fixa): rótulo do cartão, largura cheia — não divide espaço
+    // com mais nada, pra não truncar o texto ──
+    const labelRow = '<div style="font-size:11px;color:var(--c-primary);text-transform:uppercase;letter-spacing:.07em;margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+item.label+'">'+item.label+'</div>';
+
+    // ── LINHA 3: data + dias corridos, alinhados à direita, numa linha só
+    // deles (não aparece nada aqui se ainda não tiver data) ──
+    const dBadge = dateBadge(item), dias = diasBadge(item);
+    const dateDiasRow = (dBadge||dias) ? '<div style="display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-top:4px">'+dBadge+dias+'</div>' : '<div style="margin-top:4px"></div>';
 
     // ── LINHA 3 (altura reservada sempre, com ou sem valor lançado) ──
     const valueRow = '<div style="font-size:16px;font-weight:700;color:'+(hasData?item.color:'var(--c-panel4)')+';margin-top:4px;height:20px;line-height:20px">'+(hasData?fmt(itemTotal):'—')+'</div>';
@@ -7719,8 +7721,8 @@ function renderImovelCat(catKey, subKey){
         +'</div>'
       : '';
 
-    return '<div data-card-key="'+item.key+'" draggable="true" ondragstart="cardDragStart(event,\''+catKey+'\',\''+item.key+'\')" ondragover="cardDragOver(event,\''+catKey+'\',\''+item.key+'\')" ondrop="cardDragDrop(event,\''+catKey+'\',\''+item.key+'\')" ondragend="cardDragEnd(event)" onclick="navigate(\''+catKey+'__'+item.key+'\')" style="background:var(--c-bg0c);border:1px solid '+(hasData?item.color:'var(--c-panel4)')+';border-top:3px solid '+item.color+';border-radius:8px;padding:12px 14px;cursor:pointer;height:172px;box-sizing:border-box;display:flex;flex-direction:column;transition:all .15s" onmouseover="this.style.background=\'var(--c-panel2)\'" onmouseout="this.style.background=\'var(--c-bg0c)\'">'
-      +topRow+labelDateRow+valueRow+anexoRow+uploadZone
+    return '<div data-card-key="'+item.key+'" draggable="true" ondragstart="cardDragStart(event,\''+catKey+'\',\''+item.key+'\')" ondragover="cardDragOver(event,\''+catKey+'\',\''+item.key+'\')" ondrop="cardDragDrop(event,\''+catKey+'\',\''+item.key+'\')" ondragend="cardDragEnd(event)" onclick="navigate(\''+catKey+'__'+item.key+'\')" style="background:var(--c-bg0c);border:1px solid '+(hasData?item.color:'var(--c-panel4)')+';border-top:3px solid '+item.color+';border-radius:8px;padding:12px 14px;cursor:pointer;height:190px;box-sizing:border-box;display:flex;flex-direction:column;transition:all .15s" onmouseover="this.style.background=\'var(--c-panel2)\'" onmouseout="this.style.background=\'var(--c-bg0c)\'">'
+      +topRow+labelRow+dateDiasRow+valueRow+anexoRow+uploadZone
       +'</div>';
   }
 
@@ -7737,7 +7739,7 @@ function renderImovelCat(catKey, subKey){
     return '<div style="margin-bottom:16px">'
       +'<div style="font-size:11px;font-weight:600;color:'+labelColor+';text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;display:flex;align-items:center;gap:6px">'
       +'<span style="width:7px;height:7px;border-radius:50%;background:'+borderColor+';display:inline-block"></span>'+label+'</div>'
-      +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));align-items:stretch;gap:8px">'+cols+'</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));align-items:stretch;gap:8px">'+cols+'</div>'
       +'</div>';
   }
 
