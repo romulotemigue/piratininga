@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 24JUL26 (versão 150)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 24JUL26 (versão 151)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -7695,23 +7695,20 @@ function renderImovelCat(catKey, subKey){
       +'<button onclick="if(confirm(\'Remover cartão?\'))deleteImovelCard(\''+catKey+'\',\''+item.key+'\')">🗑️ Remover cartão</button>'
       +'</div>'
       +'</div>';
+    const dBadge = dateBadge(item), dias = diasBadge(item);
     const topRow =
-      '<div style="display:flex;align-items:center;justify-content:space-between;height:20px" onclick="event.stopPropagation()">'
-      +'<div style="display:flex;align-items:center;gap:6px"><span style="color:var(--c-primary);font-size:14px;cursor:grab;user-select:none">⠿</span><span style="font-size:19px;line-height:1">'+item.icon+'</span></div>'
-      +pencilBtn
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px" onclick="event.stopPropagation()">'
+      +'<div style="display:flex;align-items:center;gap:6px;padding-top:2px"><span style="color:var(--c-primary);font-size:14px;cursor:grab;user-select:none">⠿</span><span style="font-size:19px;line-height:1">'+item.icon+'</span></div>'
+      +'<div style="display:flex;align-items:center;gap:6px">'+dBadge+dias+pencilBtn+'</div>'
       +'</div>';
 
     // ── LINHA 2 (fixa): rótulo do cartão, largura cheia — não divide espaço
     // com mais nada, pra não truncar o texto ──
-    const labelRow = '<div style="font-size:11px;color:var(--c-primary);text-transform:uppercase;letter-spacing:.07em;margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+item.label+'">'+item.label+'</div>';
+    const labelRow = '<div style="font-size:11px;color:var(--c-primary);text-transform:uppercase;letter-spacing:.07em;margin-top:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+item.label+'">'+item.label+'</div>';
 
-    // ── LINHA 3: data + dias corridos, alinhados à direita, numa linha só
-    // deles (não aparece nada aqui se ainda não tiver data) ──
-    const dBadge = dateBadge(item), dias = diasBadge(item);
-    const dateDiasRow = (dBadge||dias) ? '<div style="display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-top:4px">'+dBadge+dias+'</div>' : '<div style="margin-top:4px"></div>';
-
-    // ── LINHA 3 (altura reservada sempre, com ou sem valor lançado) ──
-    const valueRow = '<div style="font-size:16px;font-weight:700;color:'+(hasData?item.color:'var(--c-panel4)')+';margin-top:4px;height:20px;line-height:20px">'+(hasData?fmt(itemTotal):'—')+'</div>';
+    // ── LINHA 3: valor — só reserva espaço em cartões que podem ter valor
+    // (Documentos nunca têm R$, então não faz sentido sobrar espaço vazio ali) ──
+    const valueRow = item.tipo==='doc' ? '' : '<div style="font-size:16px;font-weight:700;color:'+(hasData?item.color:'var(--c-panel4)')+';margin-top:6px;height:20px;line-height:20px">'+(hasData?fmt(itemTotal):'—')+'</div>';
 
     // anexo (opcional, não reserva espaço quando ausente — fica entre o valor e o upload)
     const anexoRow = itemGastos.length&&itemGastos[0].link
@@ -7722,7 +7719,7 @@ function renderImovelCat(catKey, subKey){
       : '';
 
     return '<div data-card-key="'+item.key+'" draggable="true" ondragstart="cardDragStart(event,\''+catKey+'\',\''+item.key+'\')" ondragover="cardDragOver(event,\''+catKey+'\',\''+item.key+'\')" ondrop="cardDragDrop(event,\''+catKey+'\',\''+item.key+'\')" ondragend="cardDragEnd(event)" onclick="navigate(\''+catKey+'__'+item.key+'\')" style="background:var(--c-bg0c);border:1px solid '+(hasData?item.color:'var(--c-panel4)')+';border-top:3px solid '+item.color+';border-radius:8px;padding:12px 14px;cursor:pointer;height:190px;box-sizing:border-box;display:flex;flex-direction:column;transition:all .15s" onmouseover="this.style.background=\'var(--c-panel2)\'" onmouseout="this.style.background=\'var(--c-bg0c)\'">'
-      +topRow+labelRow+dateDiasRow+valueRow+anexoRow+uploadZone
+      +topRow+labelRow+valueRow+anexoRow+uploadZone
       +'</div>';
   }
 
