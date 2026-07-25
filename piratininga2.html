@@ -136,6 +136,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .ambiente-card .amb-edit-menu{display:none;position:absolute;top:26px;right:6px;background:var(--c-panel2);border:1px solid var(--c-border2);border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.35);z-index:5;flex-direction:column;min-width:104px;overflow:hidden}
 .ambiente-card .amb-edit-menu button{background:none;border:none;color:var(--c-secondary);font-size:12px;padding:8px 10px;text-align:left;cursor:pointer}
 .ambiente-card .amb-edit-menu button:hover{background:var(--c-panel3)}
+.imovel-card-menu{display:none;position:absolute;top:22px;right:0;background:var(--c-panel2);border:1px solid var(--c-border2);border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.35);z-index:5;flex-direction:column;min-width:130px;overflow:hidden}
+.imovel-card-menu.open{display:flex}
+.imovel-card-menu button{background:none;border:none;color:var(--c-secondary);font-size:12px;padding:8px 10px;text-align:left;cursor:pointer}
+.imovel-card-menu button:hover{background:var(--c-panel3)}
 .ambiente-card .amb-metragem{width:56px;background:var(--c-bg0);border:1px solid var(--c-border2);border-radius:6px;color:var(--c-primary);font-size:11px;text-align:center;padding:2px 4px;margin-top:2px}
 .ambiente-card-add{width:150px;height:150px;border-radius:16px;background:none;border:2px dashed var(--c-faint);display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--c-muted2);cursor:pointer;transition:all .15s;flex-shrink:0}
 .ambiente-card-add:hover{border-color:var(--c-muted2);color:var(--c-secondary)}
@@ -310,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 24JUL26 (versão 147)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 24JUL26 (versão 149)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -5124,6 +5128,15 @@ function toggleAmbEditMenu(id, e){
   if(el) el.style.display = (el.style.display==='flex') ? 'none' : 'flex';
 }
 document.addEventListener('click', ()=>{ document.querySelectorAll('.amb-edit-menu').forEach(m=>m.style.display='none'); });
+document.addEventListener('click', ()=>{ document.querySelectorAll('.imovel-card-menu').forEach(m=>m.classList.remove('open')); });
+function toggleImovelCardMenu(id, event){
+  event.stopPropagation();
+  const menu = document.getElementById(id);
+  if(!menu) return;
+  const wasOpen = menu.classList.contains('open');
+  document.querySelectorAll('.imovel-card-menu').forEach(m=>m.classList.remove('open'));
+  if(!wasOpen) menu.classList.add('open');
+}
 // Rede de segurança pro drag das etapas: se o mouseup acontecer fora da
 // bolinha de arrastar (bem fácil de acontecer, principalmente numa caixa
 // grande como "Itens para Casa"), o próprio onmouseup da bolinha nunca
@@ -7634,6 +7647,19 @@ function renderImovelCat(catKey, subKey){
       +hiddenInput;
   }
 
+  // bloquinho vertical do mesmo tamanho da data, com os dias corridos desde ela
+  function diasBadge(item){
+    const d = getCardDate(catKey, item.key);
+    if(!d) return '';
+    const dias = Math.max(0, Math.round((new Date()-new Date(d+'T12:00:00'))/(1000*60*60*24)));
+    return '<div title="Dias corridos" '
+      +'style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--c-panel3);border:1px solid var(--c-border2);border-radius:5px;padding:2px 6px;line-height:1.2;min-width:30px">'
+      +'<span style="font-size:11px;font-weight:700;color:var(--c-primary)">'+dias+'</span>'
+      +'<span style="font-size:9px;color:var(--c-primary)">dias</span>'
+      +'<span style="font-size:9px;color:var(--c-primary)">corridos</span>'
+      +'</div>';
+  }
+
   function makeCard(item){
     const itemGastos = lista.filter(g=>g.subcategoria===item.key);
     const itemTotal = itemGastos.reduce((s,g)=>s+getVal(g),0);
@@ -7642,7 +7668,9 @@ function renderImovelCat(catKey, subKey){
     const uploadLabel = item.tipo==='doc' ? 'documento' : 'recibo';
     const inputId = 'upload-'+catKey+'-'+item.key;
 
-    // upload zone for all non-entrega cards
+    // upload zone for all non-entrega cards — sempre a última fatia do card,
+    // cresce pra ocupar o espaço que sobrar (flex:1), então o card fecha na
+    // mesma altura tenha ou não anexo/valor/data preenchidos.
     const uploadZone = (isUpload && item.tipo!=='entrega') ? (
       '<div onclick="event.stopPropagation();document.getElementById(\''+inputId+'\').click()" '
       +'ondragover="event.preventDefault();event.stopPropagation();this.style.borderColor=\''+item.color+'\'" '
@@ -7654,26 +7682,36 @@ function renderImovelCat(catKey, subKey){
       +'</div>'
     ) : '';
 
-    // top row: ⠿ icon | ✏ 🗑 📅
+    // ── LINHA 1 (fixa): ⠿ ícone à esquerda · lápis (com menu) à direita ──
     const canLaunch = item.tipo !== 'doc';
-    const pencilBtn = itemGastos.length
-      ? '<button onclick="event.stopPropagation();openEdit('+itemGastos[0].id+')" title="Editar" style="background:none;border:none;color:var(--c-primary);cursor:pointer;font-size:15px;padding:0 2px"><i class="ti ti-pencil"></i></button>'
-      : (canLaunch ? '<button onclick="event.stopPropagation();openModal(\''+catKey+'\',\''+item.key+'\')" title="Lançar" style="background:none;border:none;color:var(--c-primary);cursor:pointer;font-size:15px;padding:0 2px"><i class="ti ti-pencil"></i></button>' : '');
-    const topRow =
-      '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;row-gap:4px" onclick="event.stopPropagation()">'
-      +'<div style="display:flex;align-items:center;gap:6px"><span style="color:var(--c-primary);font-size:14px;cursor:grab;user-select:none">⠿</span><span style="font-size:19px">'+item.icon+'</span></div>'
-      +'<div style="display:flex;align-items:center;gap:3px">'
-      +pencilBtn
-      +'<button onclick="if(confirm(\'Remover cartão?\'))deleteImovelCard(\''+catKey+'\',\''+item.key+'\')" title="Remover" style="background:none;border:none;color:var(--c-primary);cursor:pointer;font-size:15px;padding:0 2px"><i class="ti ti-trash"></i></button>'
-      +dateBadge(item)
+    const menuId = 'imovel-card-menu-'+catKey+'-'+item.key;
+    const editarAction = itemGastos.length
+      ? "openEdit("+itemGastos[0].id+")"
+      : (canLaunch ? "openModal('"+catKey+"','"+item.key+"')" : "");
+    const pencilBtn = '<div style="position:relative">'
+      +'<button onclick="event.stopPropagation();toggleImovelCardMenu(\''+menuId+'\',event)" title="Opções" style="background:none;border:none;color:var(--c-primary);cursor:pointer;font-size:15px;padding:0 2px"><i class="ti ti-pencil"></i></button>'
+      +'<div class="imovel-card-menu" id="'+menuId+'" onclick="event.stopPropagation()">'
+      +(editarAction ? '<button onclick="'+editarAction+'">✏️ Editar</button>' : '')
+      +'<button onclick="if(confirm(\'Remover cartão?\'))deleteImovelCard(\''+catKey+'\',\''+item.key+'\')">🗑️ Remover cartão</button>'
       +'</div>'
       +'</div>';
+    const topRow =
+      '<div style="display:flex;align-items:center;justify-content:space-between;height:20px" onclick="event.stopPropagation()">'
+      +'<div style="display:flex;align-items:center;gap:6px"><span style="color:var(--c-primary);font-size:14px;cursor:grab;user-select:none">⠿</span><span style="font-size:19px;line-height:1">'+item.icon+'</span></div>'
+      +pencilBtn
+      +'</div>';
 
-    // value + label
-    const valueRow = hasData ? '<div style="font-size:15px;font-weight:700;color:'+item.color+';margin:6px 0 2px">'+fmt(itemTotal)+'</div>' : '';
-    const labelRow = '<div style="font-size:11px;color:var(--c-primary);text-transform:uppercase;letter-spacing:.07em">'+item.label+'</div>';
+    // ── LINHA 2 (fixa): rótulo do cartão + data + dias corridos (sempre no
+    // mesmo lugar, existam ou não ainda) ──
+    const labelDateRow = '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:6px">'
+      +'<div style="font-size:11px;color:var(--c-primary);text-transform:uppercase;letter-spacing:.07em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+item.label+'</div>'
+      +'<div style="display:flex;align-items:center;gap:4px;flex-shrink:0">'+dateBadge(item)+diasBadge(item)+'</div>'
+      +'</div>';
 
-    // annexe view
+    // ── LINHA 3 (altura reservada sempre, com ou sem valor lançado) ──
+    const valueRow = '<div style="font-size:16px;font-weight:700;color:'+(hasData?item.color:'var(--c-panel4)')+';margin-top:4px;height:20px;line-height:20px">'+(hasData?fmt(itemTotal):'—')+'</div>';
+
+    // anexo (opcional, não reserva espaço quando ausente — fica entre o valor e o upload)
     const anexoRow = itemGastos.length&&itemGastos[0].link
       ? '<div style="position:relative;display:inline-flex;align-self:flex-start;width:fit-content;margin-top:6px" onclick="event.stopPropagation()">'
         +'<a href="'+itemGastos[0].link+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;background:var(--c-necessario-border);border:1px solid #2a78d6;color:#42a5f5;font-size:11px;font-weight:600;padding:4px 10px;border-radius:5px;text-decoration:none"><i class="ti ti-eye" style="font-size:12px"></i> Ver anexo</a>'
@@ -7681,8 +7719,8 @@ function renderImovelCat(catKey, subKey){
         +'</div>'
       : '';
 
-    return '<div data-card-key="'+item.key+'" draggable="true" ondragstart="cardDragStart(event,\''+catKey+'\',\''+item.key+'\')" ondragover="cardDragOver(event,\''+catKey+'\',\''+item.key+'\')" ondrop="cardDragDrop(event,\''+catKey+'\',\''+item.key+'\')" ondragend="cardDragEnd(event)" onclick="navigate(\''+catKey+'__'+item.key+'\')" style="background:var(--c-bg0c);border:1px solid '+(hasData?item.color:'var(--c-panel4)')+';border-top:3px solid '+item.color+';border-radius:8px;padding:12px 14px;cursor:pointer;min-height:90px;height:100%;box-sizing:border-box;display:flex;flex-direction:column;gap:2px;transition:all .15s" onmouseover="this.style.background=\'var(--c-panel2)\'" onmouseout="this.style.background=\'var(--c-bg0c)\'">'
-      +topRow+valueRow+labelRow+anexoRow+uploadZone
+    return '<div data-card-key="'+item.key+'" draggable="true" ondragstart="cardDragStart(event,\''+catKey+'\',\''+item.key+'\')" ondragover="cardDragOver(event,\''+catKey+'\',\''+item.key+'\')" ondrop="cardDragDrop(event,\''+catKey+'\',\''+item.key+'\')" ondragend="cardDragEnd(event)" onclick="navigate(\''+catKey+'__'+item.key+'\')" style="background:var(--c-bg0c);border:1px solid '+(hasData?item.color:'var(--c-panel4)')+';border-top:3px solid '+item.color+';border-radius:8px;padding:12px 14px;cursor:pointer;height:172px;box-sizing:border-box;display:flex;flex-direction:column;transition:all .15s" onmouseover="this.style.background=\'var(--c-panel2)\'" onmouseout="this.style.background=\'var(--c-bg0c)\'">'
+      +topRow+labelDateRow+valueRow+anexoRow+uploadZone
       +'</div>';
   }
 
