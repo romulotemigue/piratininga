@@ -136,7 +136,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .ambiente-card .amb-edit-menu{display:none;position:absolute;top:26px;right:6px;background:var(--c-panel2);border:1px solid var(--c-border2);border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.35);z-index:5;flex-direction:column;min-width:104px;overflow:hidden}
 .ambiente-card .amb-edit-menu button{background:none;border:none;color:var(--c-secondary);font-size:12px;padding:8px 10px;text-align:left;cursor:pointer}
 .ambiente-card .amb-edit-menu button:hover{background:var(--c-panel3)}
-.imovel-card-menu{display:none;position:absolute;top:22px;right:0;background:var(--c-panel2);border:1px solid var(--c-border2);border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.35);z-index:5;flex-direction:column;min-width:130px;overflow:hidden}
+.imovel-card-menu{display:none;position:absolute;top:32px;right:14px;background:var(--c-panel2);border:1px solid var(--c-border2);border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.35);z-index:5;flex-direction:column;min-width:130px;overflow:hidden}
 .imovel-card-menu.open{display:flex}
 .imovel-card-menu button{background:none;border:none;color:var(--c-secondary);font-size:12px;padding:8px 10px;text-align:left;cursor:pointer}
 .imovel-card-menu button:hover{background:var(--c-panel3)}
@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 24JUL26 (versão 151)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 24JUL26 (versão 153)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -5109,8 +5109,45 @@ function renameAmbienteDefinir(nomeAntigo){
   const metr = getAmbientesMetragem();
   if(metr[nomeAntigo]!=null){ metr[novoNome] = metr[nomeAntigo]; delete metr[nomeAntigo]; localStorage.setItem('pirati_ambientes_metragem', JSON.stringify(metr)); }
   ensureItensCasaAmbienteSubcats();
+  migrarNomeAmbienteEmLancamentos(nomeAntigo, novoNome);
   renderCatNav();
   renderDefinirAmbientes();
+}
+// Depois de renomear um ambiente em "Definir Ambientes", propaga o nome novo
+// pros lançamentos que já existem — sem isso, o gráfico "Gasto por Ambiente" e
+// qualquer tela que soma por ambiente continuavam mostrando o nome velho pros
+// lançamentos antigos, mesmo com o cartão já mostrando o nome certo.
+async function migrarNomeAmbienteEmLancamentos(nomeAntigo, novoNome){
+  const slugify = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+
+  // 1) campo "ambiente" (Execução de Obra etc — pode ter vários, separados por ' + ')
+  const afetadosAmbiente = gastos.filter(g=>g.ambiente && g.ambiente.split(MAT_AMB_SEP).map(s=>s.trim()).some(a=>a.toLowerCase()===nomeAntigo.toLowerCase()));
+  for(const g of afetadosAmbiente){
+    const partes = g.ambiente.split(MAT_AMB_SEP).map(s=>s.trim());
+    const novoValor = partes.map(p=>p.toLowerCase()===nomeAntigo.toLowerCase()?novoNome:p).join(MAT_AMB_SEP);
+    g.ambiente = novoValor;
+    try{
+      await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${g.id}`,{method:'PATCH', headers:{...HEADERS}, body: JSON.stringify({ambiente: novoValor})});
+    }catch(e){ console.error('migrarNomeAmbienteEmLancamentos (ambiente) error:', e); }
+  }
+
+  // 2) subcategoria de Itens para Casa (o ambiente vira uma chave própria por
+  // categoria — a chave muda de slug quando o nome muda)
+  const slugAntigo = slugify(nomeAntigo), slugNovo = slugify(novoNome);
+  if(slugAntigo !== slugNovo){
+    for(const childKey of getItensCasaChildren()){
+      const afetados = gastos.filter(g=>g.categoria===childKey && g.subcategoria===slugAntigo);
+      if(!afetados.length) continue;
+      afetados.forEach(g=>{ g.subcategoria = slugNovo; });
+      try{
+        await fetch(`${SB_URL}/rest/v1/${TABLE}?categoria=eq.${encodeURIComponent(childKey)}&subcategoria=eq.${encodeURIComponent(slugAntigo)}`,{
+          method:'PATCH', headers:{...HEADERS}, body: JSON.stringify({subcategoria: slugNovo})
+        });
+      }catch(e){ console.error('migrarNomeAmbienteEmLancamentos (itens-casa) error:', e); }
+    }
+  }
+  renderCatNav();
+  if(typeof render==='function') render();
 }
 function deleteAmbienteDefinir(nome){
   if(!confirm(`Remover "${nome}" da lista de ambientes? Lançamentos antigos que já usam esse nome não são afetados.`)) return;
@@ -7685,15 +7722,14 @@ function renderImovelCat(catKey, subKey){
     // ── LINHA 1 (fixa): ⠿ ícone à esquerda · lápis (com menu) à direita ──
     const canLaunch = item.tipo !== 'doc';
     const menuId = 'imovel-card-menu-'+catKey+'-'+item.key;
-    const editarAction = itemGastos.length
-      ? "openEdit("+itemGastos[0].id+")"
+    const gastoParaEditar = itemGastos.find(g=>getVal(g)>0) || itemGastos[0];
+    const editarAction = gastoParaEditar
+      ? "openEdit("+gastoParaEditar.id+")"
       : (canLaunch ? "openModal('"+catKey+"','"+item.key+"')" : "");
-    const pencilBtn = '<div style="position:relative">'
-      +'<button onclick="event.stopPropagation();toggleImovelCardMenu(\''+menuId+'\',event)" title="Opções" style="background:none;border:none;color:var(--c-primary);cursor:pointer;font-size:15px;padding:0 2px"><i class="ti ti-pencil"></i></button>'
+    const pencilBtn = '<button onclick="event.stopPropagation();toggleImovelCardMenu(\''+menuId+'\',event)" title="Opções" style="background:none;border:none;color:var(--c-primary);cursor:pointer;font-size:15px;padding:0 2px"><i class="ti ti-pencil"></i></button>'
       +'<div class="imovel-card-menu" id="'+menuId+'" onclick="event.stopPropagation()">'
       +(editarAction ? '<button onclick="'+editarAction+'">✏️ Editar</button>' : '')
       +'<button onclick="if(confirm(\'Remover cartão?\'))deleteImovelCard(\''+catKey+'\',\''+item.key+'\')">🗑️ Remover cartão</button>'
-      +'</div>'
       +'</div>';
     const dBadge = dateBadge(item), dias = diasBadge(item);
     const topRow =
@@ -7718,7 +7754,7 @@ function renderImovelCat(catKey, subKey){
         +'</div>'
       : '';
 
-    return '<div data-card-key="'+item.key+'" draggable="true" ondragstart="cardDragStart(event,\''+catKey+'\',\''+item.key+'\')" ondragover="cardDragOver(event,\''+catKey+'\',\''+item.key+'\')" ondrop="cardDragDrop(event,\''+catKey+'\',\''+item.key+'\')" ondragend="cardDragEnd(event)" onclick="navigate(\''+catKey+'__'+item.key+'\')" style="background:var(--c-bg0c);border:1px solid '+(hasData?item.color:'var(--c-panel4)')+';border-top:3px solid '+item.color+';border-radius:8px;padding:12px 14px;cursor:pointer;height:190px;box-sizing:border-box;display:flex;flex-direction:column;transition:all .15s" onmouseover="this.style.background=\'var(--c-panel2)\'" onmouseout="this.style.background=\'var(--c-bg0c)\'">'
+    return '<div data-card-key="'+item.key+'" draggable="true" ondragstart="cardDragStart(event,\''+catKey+'\',\''+item.key+'\')" ondragover="cardDragOver(event,\''+catKey+'\',\''+item.key+'\')" ondrop="cardDragDrop(event,\''+catKey+'\',\''+item.key+'\')" ondragend="cardDragEnd(event)" onclick="navigate(\''+catKey+'__'+item.key+'\')" style="background:var(--c-bg0c);border:1px solid '+(hasData?item.color:'var(--c-panel4)')+';border-top:3px solid '+item.color+';border-radius:8px;padding:12px 14px;cursor:pointer;height:190px;box-sizing:border-box;display:flex;flex-direction:column;position:relative;transition:all .15s" onmouseover="this.style.background=\'var(--c-panel2)\'" onmouseout="this.style.background=\'var(--c-bg0c)\'">'
       +topRow+labelRow+valueRow+anexoRow+uploadZone
       +'</div>';
   }
