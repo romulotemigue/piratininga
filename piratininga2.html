@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 25JUL26 (versão 154)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 26JUL26 (versão 155)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -7807,8 +7807,9 @@ function renderImovelCat(catKey, subKey){
     }
     const days = Math.max(0, Math.round((end-start)/(1000*60*60*24)));
     const propostaFmt = start.toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+    const endFmt = end.toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
     daysHtml = '<div style="text-align:right">'
-      +'<div style="font-size:10px;color:var(--c-primary);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">'+(concluido?'✅ Processo concluído em':'Proposta assinada em')+' '+propostaFmt+'</div>'
+      +'<div style="font-size:10px;color:var(--c-primary);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">'+(concluido?'✅ Processo concluído em '+endFmt:'Proposta assinada em '+propostaFmt)+'</div>'
       +'<div style="font-size:21px;font-weight:800;color:'+(concluido?'#4caf50':info.color)+'">'+days+' <span style="font-size:12px;font-weight:500;color:var(--c-primary)">dias corridos'+(concluido?' no total':'')+'</span></div>'
       +'</div>';
   }
@@ -7833,7 +7834,6 @@ function renderImovelCat(catKey, subKey){
     if(totalAPagar>0) html += '<div style="border-left:1px solid var(--c-panel6);padding:0 2rem"><div style="font-size:11px;color:#e8b544;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">A pagar (seu bolso)</div><div style="font-size:23px;font-weight:800;color:#e8b544">'+fmt(totalAPagar)+'</div></div>';
     if(totalFinanciado>0) html += '<div style="border-left:1px solid var(--c-panel6);padding:0 2rem"><div style="font-size:11px;color:var(--c-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Financiado (banco/FGTS)</div><div style="font-size:23px;font-weight:800;color:var(--c-primary)">'+fmt(totalFinanciado)+'</div><div style="font-size:10px;color:var(--c-secondary);margin-top:3px">não é seu dinheiro</div></div>';
   }
-  html += '<div style="border-left:1px solid var(--c-panel6);padding:0 0 0 2rem"><div style="font-size:11px;color:var(--c-primary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Lançamentos</div><div style="font-size:23px;font-weight:800;color:var(--c-primary)">'+lista.length+'</div></div>';
   html += '</div>';
 
   // RIGHT: days + novo cartão button
@@ -7842,25 +7842,6 @@ function renderImovelCat(catKey, subKey){
   html += '</div>';
 
   html += '</div>';
-
-  // Barra de progresso (% já recebido, na Venda; % já pago, na Compra/Projeto)
-  html += (()=>{
-    let pct, corLabel, label;
-    if(recItems.length){
-      const totalGeralV = totalRecebido+totalAReceber;
-      pct = totalGeralV>0?Math.round(totalRecebido/totalGeralV*100):0;
-      label = 'Recebido';
-    } else {
-      const totalGeralC = totalGasto+totalAPagar;
-      pct = totalGeralC>0?Math.round(totalGasto/totalGeralC*100):0;
-      label = 'Pago';
-    }
-    corLabel = pct>=100?'#4caf50':pct>50?info.color:'#e8b544';
-    return '<div style="margin-bottom:1.5rem">'
-      +'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--c-primary);margin-bottom:5px"><span>'+label+'</span><span style="font-weight:700;color:'+corLabel+'">'+pct+'%</span></div>'
-      +'<div style="height:8px;border-radius:4px;background:var(--c-panel3);overflow:hidden"><div style="height:100%;width:'+Math.min(pct,100)+'%;background:'+corLabel+';border-radius:4px;transition:width .3s"></div></div>'
-      +'</div>';
-  })();
 
   if(catKey==='compra-imovel' && (valorImovelKeys.length || documentacaoKeys.length)){
     html += '<div style="background:var(--c-bg0);border:1px solid var(--c-panel3);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;gap:0;flex-wrap:wrap">';
