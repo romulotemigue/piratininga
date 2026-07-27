@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 27JUL26 (versão 159)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 27JUL26 (versão 160)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -4732,7 +4732,8 @@ function gastoValor(g){
 const INVEST_INFO = {
   perpetuo:     {label:'Perpétuo',     color:'#4caf50', bg:'var(--c-pago-bg2)', border:'var(--c-pago-border2)'},
   transferivel: {label:'Transferível', color:'#42a5f5', bg:'var(--c-necessario-bg)', border:'var(--c-necessario-border2)'},
-  pessoal:      {label:'Pessoal',      color:'#c77dea', bg:'var(--c-material-bg)', border:'#7d4a94'}
+  pessoal:      {label:'Pessoal',      color:'#c77dea', bg:'var(--c-material-bg)', border:'#7d4a94'},
+  taxas:        {label:'Taxas',        color:'#e8b544', bg:'var(--c-apagar-bg2)', border:'var(--c-apagar-strong)'}
 };
 function investimentoBadgeHtml(g){
   const info = INVEST_INFO[g.investimento];
@@ -7996,12 +7997,12 @@ function buildInvestPieChart(){
   const canvas = document.getElementById('investPieChart');
   if(!canvas) return;
   const getVal = g=>gastoValor(g);
-  const totais = {perpetuo:0, transferivel:0, pessoal:0};
+  const totais = {perpetuo:0, transferivel:0, pessoal:0, taxas:0};
   gastos.forEach(g=>{
     if(g.categoria==='ganho') return;
     if(INVEST_INFO[g.investimento]) totais[g.investimento] += getVal(g);
   });
-  const keys = ['perpetuo','transferivel','pessoal'].filter(k=>totais[k]>0);
+  const keys = ['perpetuo','transferivel','pessoal','taxas'].filter(k=>totais[k]>0);
   const labels = keys.map(k=>INVEST_INFO[k].label);
   const colors = keys.map(k=>INVEST_INFO[k].color);
   const values = keys.map(k=>totais[k]);
@@ -8130,7 +8131,7 @@ function renderGeral(){
 
   // Resumo por tipo de Investimento (Perpétuo/Transferível/Pessoal) — considera
   // qualquer lançamento com essa tag, em qualquer categoria (exceto ganhos)
-  const investTotais = {perpetuo:0, transferivel:0, pessoal:0};
+  const investTotais = {perpetuo:0, transferivel:0, pessoal:0, taxas:0};
   gastos.forEach(g=>{
     if(g.categoria==='ganho') return;
     if(INVEST_INFO[g.investimento]) investTotais[g.investimento] += getVal(g);
@@ -8352,6 +8353,10 @@ function renderGeral(){
           <div style="display:flex;justify-content:space-between;align-items:center">
             <span style="font-size:13px;color:#c77dea">🟣 Pessoal</span>
             <span style="font-size:16px;font-weight:700;color:#c77dea">${fmt(investTotais.pessoal)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:13px;color:#e8b544">🟡 Taxas</span>
+            <span style="font-size:16px;font-weight:700;color:#e8b544">${fmt(investTotais.taxas)}</span>
           </div>
           ${investSemTag>0 ? `<div style="font-size:11px;color:var(--c-muted2);margin-top:2px;padding-top:8px;border-top:1px solid var(--c-border)">${fmt(investSemTag)} ainda sem essa tag</div>` : ''}
         </div>
