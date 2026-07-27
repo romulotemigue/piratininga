@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 26JUL26 (versão 157)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 27JUL26 (versão 158)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -6807,7 +6807,7 @@ function renomearCartaoImovelDoSelect(selectId, catSelectId){
 // nome sugerir claramente que é parte do valor do imóvel (ex.: "por fora").
 function getImovelCardGroup(catKey, subKey){
   if(catKey!=='compra-imovel') return null;
-  // FGTS não soma separado — o valor dele já está embutido no valor BRUTO da Entrada
+  // FGTS não soma separado — o valor dele já está embutido no valor do Repasse Bancário
   if(subKey==='fgts') return null;
   const def = getImovelCardDefs(catKey).find(i=>i.key===subKey);
   if(!def || def.tipo==='doc' || def.tipo==='entrega') return null;
@@ -7695,10 +7695,10 @@ function renderImovelCat(catKey, subKey){
   const recLista = lista.filter(g=>recKeys.includes(g.subcategoria));
   const gastoLista = lista.filter(g=>gastoKeys.includes(g.subcategoria));
   const financiadoLista = lista.filter(g=>financiadoKeys.includes(g.subcategoria));
-  // Na Compra do Imóvel, a Entrada é lançada com o valor BRUTO — o FGTS é descontado
-  // dela automaticamente aqui, sem a pessoa precisar fazer essa conta na mão
+  // Na Compra do Imóvel, o FGTS chega junto com o Repasse Bancário do
+  // financiamento — soma automaticamente ali, sem a pessoa precisar somar na mão
   const fgtsTotalEtapa = catKey==='compra-imovel' ? lista.filter(g=>g.subcategoria==='fgts').reduce((s,g)=>s+getVal(g),0) : 0;
-  const getValEtapaAjustado = g => (catKey==='compra-imovel' && g.subcategoria==='entrada') ? getVal(g)-fgtsTotalEtapa : getVal(g);
+  const getValEtapaAjustado = g => (catKey==='compra-imovel' && g.subcategoria==='repasse-bancario') ? getVal(g)+fgtsTotalEtapa : getVal(g);
   const totalRecebido = recLista.filter(g=>g.status==='pago').reduce((s,g)=>s+getVal(g),0);
   const totalAReceber = recLista.filter(g=>g.status!=='pago').reduce((s,g)=>s+getVal(g),0);
   const totalGasto = gastoLista.filter(g=>g.status==='pago').reduce((s,g)=>s+getValEtapaAjustado(g),0);
@@ -8133,10 +8133,10 @@ function renderGeral(){
   // Compra do Imóvel: pagamento do seu bolso (Sinal/Entrada/Taxas) x financiamento (Repasse bancário —
   // não passa pela sua conta corrente, vai direto pro vendedor, não é "seu dinheiro" saindo)
   const compraItems = gastos.filter(g=>g.categoria==='compra-imovel');
-  // A Entrada é lançada com o valor BRUTO; o FGTS é descontado dela automaticamente
-  // aqui (a pessoa não precisa fazer essa conta na mão)
+  // O FGTS chega junto com o Repasse Bancário do financiamento — soma
+  // automaticamente ali (a pessoa não precisa fazer essa conta na mão)
   const compraFgtsTotal = compraItems.filter(g=>g.subcategoria==='fgts').reduce((s,g)=>s+getVal(g),0);
-  const getValCompraAjustado = g => g.subcategoria==='entrada' ? getVal(g)-compraFgtsTotal : getVal(g);
+  const getValCompraAjustado = g => g.subcategoria==='repasse-bancario' ? getVal(g)+compraFgtsTotal : getVal(g);
   const compraPago       = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && g.status==='pago').reduce((s,g)=>s+getValCompraAjustado(g),0);
   const compraAPagar     = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && g.status!=='pago').reduce((s,g)=>s+getValCompraAjustado(g),0);
   // FGTS não é financiamento bancário de verdade — é desconto usado dentro da própria
@@ -8268,7 +8268,7 @@ function renderGeral(){
           ${compraAPagarItems.length ? compraAPagarItems.map(g=>{
             const def = getImovelCardDefs('compra-imovel').find(i=>i.key===g.subcategoria);
             const label = def?.label || g.descricao || g.subcategoria;
-            return `<div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span style="color:var(--c-muted3)">${label}${g.subcategoria==='entrada'?' <span style=\'color:var(--c-primary)\'>(já líquida, FGTS descontado)</span>':''}</span><span style="color:#e8b544;font-weight:600">${fmt(getValCompraAjustado(g))}</span></div>`;
+            return `<div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span style="color:var(--c-muted3)">${label}${g.subcategoria==='repasse-bancario'?' <span style=\'color:var(--c-primary)\'>(inclui FGTS)</span>':''}</span><span style="color:#e8b544;font-weight:600">${fmt(getValCompraAjustado(g))}</span></div>`;
           }).join('') : '<div style="font-size:13px;color:var(--c-primary)">Nada pendente</div>'}
           <div style="display:flex;justify-content:space-between;font-size:14px;padding-top:6px;margin-top:6px;border-top:1px solid var(--c-panel6)"><span style="color:var(--c-primary);font-weight:600">Total</span><span style="color:#e8b544;font-weight:700">${fmt(compraAPagar)}</span></div>
         </div>
