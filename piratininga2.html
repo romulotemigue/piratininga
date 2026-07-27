@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 26JUL26 (versão 155)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 26JUL26 (versão 156)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -650,9 +650,13 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
       <span class="modal-title" id="edit-modal-title">Editar lançamento</span>
       <button class="modal-close" onclick="closeModalEdit()"><i class="ti ti-x"></i></button>
     </div>
-    <div class="form-group">
-      <label>Descrição</label>
-      <input type="text" id="e-desc" spellcheck="true" lang="pt-BR">
+    <div class="form-group" id="e-subcat-row">
+      <label id="e-subcat-label" style="display:flex;align-items:center;gap:6px">Cartão (opcional)
+        <button type="button" id="e-subcat-rename-btn" onclick="renomearCartaoImovelDoSelect('e-subcat','e-cat')" title="Renomear item selecionado" style="display:none;background:none;border:none;color:var(--c-primary);cursor:pointer;font-size:13px;padding:0"><i class="ti ti-pencil"></i></button>
+      </label>
+      <select id="e-subcat">
+        <option value="">— Nenhuma —</option>
+      </select>
     </div>
     <div id="e-cat-row" class="modal-row">
       <div class="form-group">
@@ -666,11 +670,9 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <input type="date" id="e-data">
       </div>
     </div>
-    <div class="form-group" id="e-subcat-row">
-      <label id="e-subcat-label">Cartão (opcional)</label>
-      <select id="e-subcat">
-        <option value="">— Nenhuma —</option>
-      </select>
+    <div class="form-group">
+      <label>Descrição</label>
+      <input type="text" id="e-desc" spellcheck="true" lang="pt-BR">
     </div>
     <div id="e-itenscasa-extra" style="display:none">
       <div class="form-group">
@@ -4409,6 +4411,8 @@ function populateSubCatSelect(catSelectId, subSelectId){
   if(!sel) return;
   const subs = SUBCATS[catKey] ? Object.keys(SUBCATS[catKey]) : [];
   sel.innerHTML = '<option value="">— Nenhuma —</option>' + subs.map(sk=>`<option value="${sk}">${SUBCATS[catKey][sk].label}</option>`).join('');
+  const renameBtn = document.getElementById('e-subcat-rename-btn');
+  if(renameBtn) renameBtn.style.display = (IMOVEL_CATS[catKey] && subs.length>0) ? '' : 'none';
   // edit modal
   const row = document.getElementById('e-subcat-row');
   if(row) row.style.display = subs.length > 0 ? '' : 'none';
@@ -6750,7 +6754,43 @@ function getImovelCardDefs(catKey){
   const defs = [...(IMOVEL_DEFAULT_CARDS[catKey]||[])];
   const customCards = JSON.parse(localStorage.getItem('imovel-custom-cards-'+catKey)||'[]');
   customCards.forEach(c=>{ if(!defs.find(i=>i.key===c.key)) defs.push(c); });
+  const overrides = JSON.parse(localStorage.getItem('imovel-label-overrides-'+catKey)||'{}');
+  if(Object.keys(overrides).length) return defs.map(d=>overrides[d.key]?{...d,label:overrides[d.key]}:d);
   return defs;
+}
+// Renomeia um "cartão" de Venda/Compra/Projeto do Imóvel. Cobre os 3 lugares
+// onde o nome pode estar guardado: SUBCATS (usado pelo <select> de Cartão),
+// o cartão personalizado (usado pela grade de cards), ou — se for um cartão
+// padrão tipo Proposta/Entrada/FGTS, que vem de uma constante fixa no código —
+// um "apelido" salvo à parte, aplicado por cima em getImovelCardDefs.
+function renomearCartaoImovel(catKey, key, novoNome){
+  novoNome = (novoNome||'').trim();
+  if(!novoNome) return;
+  if(SUBCATS[catKey] && SUBCATS[catKey][key]){ SUBCATS[catKey][key].label = novoNome; saveSubCats(); }
+  const customCards = JSON.parse(localStorage.getItem('imovel-custom-cards-'+catKey)||'[]');
+  const idx = customCards.findIndex(c=>c.key===key);
+  if(idx>=0){
+    customCards[idx].label = novoNome;
+    localStorage.setItem('imovel-custom-cards-'+catKey, JSON.stringify(customCards));
+  } else {
+    const overrides = JSON.parse(localStorage.getItem('imovel-label-overrides-'+catKey)||'{}');
+    overrides[key] = novoNome;
+    localStorage.setItem('imovel-label-overrides-'+catKey, JSON.stringify(overrides));
+  }
+  renderCatNav();
+  try{ renderImovelCat(catKey, null); }catch(e){}
+}
+function renomearCartaoImovelDoSelect(selectId, catSelectId){
+  const sel = document.getElementById(selectId);
+  if(!sel || !sel.value){ alert('Selecione um cartão da lista primeiro.'); return; }
+  const key = sel.value;
+  const catKey = document.getElementById(catSelectId).value;
+  const atual = sel.options[sel.selectedIndex].textContent;
+  const novo = prompt('Novo nome para "'+atual+'":', atual);
+  if(!novo || !novo.trim() || novo.trim()===atual) return;
+  renomearCartaoImovel(catKey, key, novo.trim());
+  populateSubCatSelect(catSelectId, selectId);
+  sel.value = key;
 }
 // Classifica um lançamento (subcategoria) de uma etapa de imóvel como recebimento
 // (entra na sua conta) ou pagamento (sai do seu bolso) — considera cartões
