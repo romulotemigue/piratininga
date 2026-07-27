@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 27JUL26 (versão 164)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 27JUL26 (versão 165)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -7968,7 +7968,17 @@ function renderImovelCat(catKey, subKey){
   const permiteNovoCartao = (catKey==='compra-imovel' || catKey==='venda-imovel');
   if(docItems.length)     html += makeRow(docItems,     'Documentos',  'var(--c-faint3)',    'var(--c-faint3)', permiteNovoCartao?'doc':null);
   if(recItems.length)     html += makeRow(recItems,     'Recebimentos','#4caf50', '#4caf50', permiteNovoCartao?'recibo':null);
-  if(gastoItems.length)   html += makeRow(gastoItems,   'Pagamentos',  '#ef5350', '#ef5350', permiteNovoCartao?'gasto':null);
+  if(catKey==='compra-imovel'){
+    // Separa Pagamentos em "Compra do Imóvel" (o preço em si — entrada/repasse/
+    // por fora) e "Taxas" (o resto — ITBI, cartório, vistoria, avaliação...),
+    // reaproveitando a mesma classificação já usada nos cards de resumo do topo.
+    const gastoImovelItems = gastoItems.filter(i=>getImovelCardGroup(catKey,i.key)==='valor-imovel');
+    const gastoTaxasItems = gastoItems.filter(i=>getImovelCardGroup(catKey,i.key)!=='valor-imovel');
+    if(gastoImovelItems.length) html += makeRow(gastoImovelItems, 'Compra do Imóvel', '#4caf50', '#4caf50', permiteNovoCartao?'gasto':null);
+    if(gastoTaxasItems.length)  html += makeRow(gastoTaxasItems,  'Taxas',            '#e8b544', '#e8b544', permiteNovoCartao?'gasto':null);
+  } else if(gastoItems.length){
+    html += makeRow(gastoItems, catKey==='venda-imovel' ? 'Taxas' : 'Pagamentos', '#ef5350', '#ef5350', permiteNovoCartao?'gasto':null);
+  }
   if(entregaItems.length) html += makeRow(entregaItems, 'Entregas',    '#42a5f5', '#42a5f5');
 
   el.innerHTML = html;
@@ -8208,6 +8218,13 @@ function renderGeral(){
   const getValCompraAjustado = g => g.subcategoria==='repasse-bancario' ? getVal(g)+compraFgtsTotal : getVal(g);
   const compraPago       = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && g.status==='pago').reduce((s,g)=>s+getValCompraAjustado(g),0);
   const compraAPagar     = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && g.status!=='pago').reduce((s,g)=>s+getValCompraAjustado(g),0);
+  // Quanto do que já foi pago (ou falta pagar) é o imóvel em si (entrada/repasse/
+  // por fora) vs taxas (ITBI, cartório, vistoria, avaliação...) — mesma
+  // classificação usada nos cards "Compra do Imóvel"/"Taxas" da própria etapa.
+  const compraSoImovel = g => getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && getImovelCardGroup('compra-imovel',g.subcategoria)==='valor-imovel';
+  const compraSoTaxas  = g => getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && getImovelCardGroup('compra-imovel',g.subcategoria)!=='valor-imovel';
+  const compraImovelTotal = compraItems.filter(compraSoImovel).reduce((s,g)=>s+getValCompraAjustado(g),0);
+  const compraTaxasTotal  = compraItems.filter(compraSoTaxas).reduce((s,g)=>s+getValCompraAjustado(g),0);
   // FGTS não é financiamento bancário de verdade — é desconto usado dentro da própria
   // entrada. "Financiado" mostra só o que o banco manda direto pro vendedor (Repasse).
   const compraFinanciado = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='financiamento' && g.subcategoria!=='fgts').reduce((s,g)=>s+getVal(g),0);
@@ -8331,6 +8348,11 @@ function renderGeral(){
             <div style="font-size:11px;color:var(--c-secondary)">Financiado (banco + FGTS)</div>
             <div style="font-size:19px;font-weight:700;color:var(--c-secondary)">${fmt(compraFinanciado)}</div>
           </div>
+        </div>
+        <div class="card-sub" style="margin-top:10px;padding-top:8px;border-top:1px solid var(--c-panel6)">
+          <div style="color:var(--c-secondary);font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Imóvel × Taxas (pago + a pagar)</div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span style="color:#4caf50">🟢 Só o imóvel</span><span style="color:#4caf50;font-weight:600">${fmt(compraImovelTotal)}</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span style="color:#e8b544">🟡 Taxas</span><span style="color:#e8b544;font-weight:600">${fmt(compraTaxasTotal)}</span></div>
         </div>
         <div class="card-sub" style="margin-top:10px;padding-top:8px;border-top:1px solid var(--c-panel6)">
           <div style="color:var(--c-secondary);font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">A pagar (seu bolso)</div>
