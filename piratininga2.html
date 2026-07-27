@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 27JUL26 (versão 162)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 27JUL26 (versão 163)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -3389,6 +3389,7 @@ async function loadGastos(){
     removeCompraImvelDuplicateCategory();
     ensureObraBrutaPhases();
     ensureItensCasaAmbienteSubcats();
+    ensureImovelSubcatsPrepopulated();
     migrarDispensaParaDespensaUmaVez();
     restoreOrphanSubcats();
     checkPossibleDuplicates();
@@ -7326,7 +7327,7 @@ try{
 // desde o carregamento — sem isso, o menu só "descobria" os cartões
 // (Proposta, Contrato...) na primeira visita à página, deixando o
 // chevron/duplo-clique sem efeito até algo forçar um recarregamento do menu.
-(function ensureImovelSubcatsPrepopulated(){
+function ensureImovelSubcatsPrepopulated(){
   try{
     const DEFAULTS = {
       'venda-imovel': ['proposta','contrato','sinal','entrada','repasse-bancario','corretagem','taxas'],
@@ -7360,7 +7361,7 @@ try{
     saveSubCats();
     console.log('[piratininga][subcats-debug] venda-imovel:', SUBCATS['venda-imovel'], '| compra-imovel:', SUBCATS['compra-imovel'], '| projeto-arq:', SUBCATS['projeto-arq']);
   }catch(e){ console.warn('Erro ao pré-popular subcats imóvel:', e); }
-})();
+}
 
 const STAGE_COLOR_PRESETS = [
   '#ef5350','#e53935','#ff7043','#fb8c00','#ffca28','#fdd835',
