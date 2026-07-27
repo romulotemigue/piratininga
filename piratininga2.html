@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 27JUL26 (versão 163)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 27JUL26 (versão 164)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -2024,7 +2024,10 @@ let lastNavGroupClickInfo = {key:null, time:0};
 function handleNavGroupClick(k, gName, e){
   if(e) e.stopPropagation();
   const uniqueKey = k+'|'+gName;
-  navigate(faseGroupPageKey(k, gName)); // clique único sempre navega, igual às outras etapas
+  // Venda/Compra do Imóvel: "À vista"/"Financiado" são só organização do menu
+  // lateral — a página principal continua a mesma de sempre (com os cards de
+  // Documentos/Recebimentos/Pagamentos), não uma página genérica de subgrupo.
+  navigate((k==='venda-imovel'||k==='compra-imovel') ? k : faseGroupPageKey(k, gName));
   const now = Date.now();
   if(lastNavGroupClickInfo.key === uniqueKey && (now - lastNavGroupClickInfo.time) < 500){
     toggleSubGroup(k, gName, e);
