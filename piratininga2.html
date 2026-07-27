@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 26JUL26 (versão 156)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 26JUL26 (versão 157)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -6778,7 +6778,12 @@ function renomearCartaoImovel(catKey, key, novoNome){
     localStorage.setItem('imovel-label-overrides-'+catKey, JSON.stringify(overrides));
   }
   renderCatNav();
-  try{ renderImovelCat(catKey, null); }catch(e){}
+  renderImovelCat(catKey, null);
+}
+function promptRenomearCartao(catKey, key){
+  const atual = (getImovelCardDefs(catKey).find(i=>i.key===key)||{}).label || '';
+  const novo = prompt('Novo nome do cartão:', atual);
+  if(novo && novo.trim() && novo.trim()!==atual) renomearCartaoImovel(catKey, key, novo.trim());
 }
 function renomearCartaoImovelDoSelect(selectId, catSelectId){
   const sel = document.getElementById(selectId);
@@ -7781,6 +7786,7 @@ function renderImovelCat(catKey, subKey){
     const pencilBtn = '<button onclick="event.stopPropagation();toggleImovelCardMenu(\''+menuId+'\',event)" title="Opções" style="background:none;border:none;color:var(--c-primary);cursor:pointer;font-size:15px;padding:0 2px"><i class="ti ti-pencil"></i></button>'
       +'<div class="imovel-card-menu" id="'+menuId+'" onclick="event.stopPropagation()">'
       +(editarAction ? '<button onclick="'+editarAction+'">✏️ Editar</button>' : '')
+      +'<button onclick="promptRenomearCartao(\''+catKey+'\',\''+item.key+'\')">🏷️ Renomear cartão</button>'
       +'<button onclick="if(confirm(\'Remover cartão?\'))deleteImovelCard(\''+catKey+'\',\''+item.key+'\')">🗑️ Remover cartão</button>'
       +'</div>';
     const dBadge = dateBadge(item), dias = diasBadge(item);
