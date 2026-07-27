@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 27JUL26 (versão 160)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 27JUL26 (versão 162)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -2098,6 +2098,21 @@ async function insertEtapaAsNewSubsAt(srcKey, refSk, position){
   await mergeCategoriaIntoObraBruta(srcKey, grupoName, true, faseBase+novoIdx);
 }
 
+function getImovelGrupoAtivoMap(catKey){
+  try{ return JSON.parse(localStorage.getItem('imovel-grupo-ativo-'+catKey)||'{}'); }catch(e){ return {}; }
+}
+function isImovelGrupoAtivo(catKey, gName){
+  const map = getImovelGrupoAtivoMap(catKey);
+  return map[gName] !== false;
+}
+function toggleImovelGrupoAtivo(catKey, gName, e){
+  if(e) e.stopPropagation();
+  const map = getImovelGrupoAtivoMap(catKey);
+  map[gName] = !isImovelGrupoAtivo(catKey, gName);
+  localStorage.setItem('imovel-grupo-ativo-'+catKey, JSON.stringify(map));
+  renderCatNav();
+  if(currentPage===catKey || currentPage.split('__')[0]===catKey) render();
+}
 function toggleFaseAtivo(k, skList, e){
   if(e) e.stopPropagation();
   if(!SUBCATS[k]) return;
@@ -2125,7 +2140,9 @@ function miniToggleHtml(ativo, onclickAttr){
 
 function renderFlatSubcatRow(k, sk, subColor, indentLevel){
   const isObra = k==='obra-bruta';
-  const ativo = isObra ? isSubAtivo(k, sk) : true;
+  const isImovelGrupoToggle = (k==='venda-imovel'||k==='compra-imovel');
+  const grupoDoItem = SUBCATS[k]?.[sk]?.grupo;
+  const ativo = isObra ? isSubAtivo(k, sk) : ((isImovelGrupoToggle && grupoDoItem) ? isImovelGrupoAtivo(k, grupoDoItem) : true);
   const lvl = (indentLevel===true) ? 1 : (indentLevel===false ? 0 : (indentLevel||0));
   const padLeft = (1 + lvl*0.9) + 'rem';
   return `
@@ -2180,10 +2197,17 @@ function buildSubcatRowsHtml(k){
     const gName = entry.grupo || '';
     (groups[gName]=groups[gName]||[]).push({sk, ...entry});
   });
-  const groupNames = Object.keys(groups).sort((a,b)=>{
+  const groupNamesOrdenados = Object.keys(groups).sort((a,b)=>{
     const oa = Math.min(...groups[a].map(e=>e.ordem??0)), ob = Math.min(...groups[b].map(e=>e.ordem??0));
     return oa-ob;
   });
+  // Venda/Compra do Imóvel sempre mostram "À vista" e "Financiado", mesmo
+  // vazios — a pessoa que for usar o app pode não saber ainda qual vai usar,
+  // então os dois precisam estar visíveis desde o início (não só quando tiver
+  // algum cartão dentro).
+  const ehImovelDuasFormas = (k==='venda-imovel' || k==='compra-imovel');
+  if(ehImovelDuasFormas){ ['À vista','Financiado'].forEach(gFixo=>{ if(!groups[gFixo]) groups[gFixo] = []; }); }
+  const groupNames = ehImovelDuasFormas ? ['À vista','Financiado'] : groupNamesOrdenados;
   const expandedSub = getExpandedSub();
   return groupNames.map((gName,gIdx)=>{
     if(!gName) return groups[gName].map(e=>renderFlatSubcatRow(k, e.sk, subColor, false)).join('');
@@ -2191,7 +2215,7 @@ function buildSubcatRowsHtml(k){
     const groupKey = k+'__grp__'+gName;
     const safeId = subGroupSafeId(groupKey);
     const isOpen = !!expandedSub[groupKey];
-    const faseAtiva = items.some(e=>isSubAtivo(k, e.sk));
+    const faseAtiva = ehImovelDuasFormas ? isImovelGrupoAtivo(k, gName) : items.some(e=>isSubAtivo(k, e.sk));
     const skListJson = items.map(e=>e.sk);
     const gNameEsc = gName.replace(/'/g,"\\'");
     const groupRow = `
@@ -2212,7 +2236,7 @@ function buildSubcatRowsHtml(k){
         </span>
         <span style="font-size:10px;color:var(--c-muted3);background:var(--c-panel3);border-radius:8px;padding:1px 6px;flex-shrink:0">${items.length}</span>
         <button onclick="toggleAllSubgroupsInFase('${k}','${gNameEsc}',event)" title="Expandir/recolher todos os subgrupos desta fase" style="background:none;border:none;color:var(--c-primary);cursor:pointer;font-size:13px;padding:0 4px;line-height:1;flex-shrink:0" onmouseover="this.style.color='${subColor}'" onmouseout="this.style.color='var(--c-primary)'"><i class="ti ti-chevrons-down"></i></button>
-        ${miniToggleHtml(faseAtiva, `toggleFaseAtivo('${k}',${JSON.stringify(skListJson).replace(/"/g,'&quot;')},event)`)}
+        ${ehImovelDuasFormas ? miniToggleHtml(faseAtiva, `toggleImovelGrupoAtivo('${k}','${gNameEsc}',event)`) : miniToggleHtml(faseAtiva, `toggleFaseAtivo('${k}',${JSON.stringify(skListJson).replace(/"/g,'&quot;')},event)`)}
         <button class="subcat-dots-btn" style="background:none;border:none;color:var(--c-primary);cursor:pointer;padding:4px 6px;font-size:14px;flex-shrink:0;opacity:1" onclick="toggleFaseMenu('${k}','${gNameEsc}',event)"><i class="ti ti-dots-vertical"></i></button>
       </div>`;
     const itemRows = renderSubgroupedOrFlatRows(k, items, subColor, groupKey, expandedSub, gName);
@@ -2674,8 +2698,8 @@ function openEdit(id){
     }
     // Investimento (Perpétuo/Transferível/Pessoal/Taxas) não faz sentido pra
     // recebimentos, nem pra Compra do Imóvel inteira (lá é tudo taxa mesmo).
-    document.getElementById('e-invest-wrap').style.display = (ehRecebimentoVenda || g.categoria==='compra-imovel') ? 'none' : '';
-    if(g.categoria==='compra-imovel') setInvestimentoValue('e','taxas');
+    document.getElementById('e-invest-wrap').style.display = (ehRecebimentoVenda || g.categoria==='compra-imovel' || g.categoria==='venda-imovel') ? 'none' : '';
+    if(g.categoria==='compra-imovel' || (g.categoria==='venda-imovel' && !ehRecebimentoVenda)) setInvestimentoValue('e','taxas');
     statusSelect.value = g.status||'pago';
     document.getElementById('btn-confirm-edit').style.background='#e8b544';
 
@@ -6192,8 +6216,8 @@ function refreshObraExtraFields(prefix){
 function openModal(cat, subcat){
   document.getElementById('f-invest-wrap').innerHTML = investimentoPickerHtml('f');
   const fInvestWrap = document.getElementById('f-invest-wrap');
-  fInvestWrap.style.display = (cat==='compra-imovel') ? 'none' : '';
-  if(cat==='compra-imovel') setInvestimentoValue('f','taxas');
+  fInvestWrap.style.display = (cat==='compra-imovel' || cat==='venda-imovel') ? 'none' : '';
+  if(cat==='compra-imovel' || cat==='venda-imovel') setInvestimentoValue('f','taxas');
   ambienteData['f-form'] = {};
   ambienteModoUnico['f-form'] = false;
   ambienteModoUnicoData['f-form'] = {m2:'',valorM2:'',tipo:''};
@@ -7321,6 +7345,16 @@ try{
       if(!SUBCATS[catKey]) SUBCATS[catKey] = {};
       DEFAULTS[catKey].forEach(key=>{
         if(!SUBCATS[catKey][key]) SUBCATS[catKey][key] = {label: LABELS[key]};
+      });
+    });
+    saveSubCats();
+    // Todo cartão de Venda/Compra do Imóvel que ainda não tiver um "grupo"
+    // (À vista / Financiado) cai em Financiado por padrão — cobre tanto os
+    // cartões padrão quanto qualquer um criado sem essa marcação.
+    ['venda-imovel','compra-imovel'].forEach(catKey=>{
+      if(!SUBCATS[catKey]) return;
+      Object.keys(SUBCATS[catKey]).forEach(key=>{
+        if(!SUBCATS[catKey][key].grupo) SUBCATS[catKey][key].grupo = 'Financiado';
       });
     });
     saveSubCats();
