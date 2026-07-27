@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 27JUL26 (versão 165)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 27JUL26 (versão 166)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -6856,8 +6856,13 @@ function renomearCartaoImovelDoSelect(selectId, catSelectId){
 // o preço em si) ou "documentação e custos" (o resto: sinal, taxas, ITBI, vistoria, FGTS...).
 // Cartões personalizados sem essa marcação caem em 'documentacao' por padrão, exceto se o
 // nome sugerir claramente que é parte do valor do imóvel (ex.: "por fora").
+function getImovelCardGroupOverrides(){
+  try{ return JSON.parse(localStorage.getItem('imovel-grupo-compra-overrides')||'{}'); }catch(e){ return {}; }
+}
 function getImovelCardGroup(catKey, subKey){
   if(catKey!=='compra-imovel') return null;
+  const overrides = getImovelCardGroupOverrides();
+  if(overrides[subKey]) return overrides[subKey];
   // FGTS não soma separado — o valor dele já está embutido no valor do Repasse Bancário
   if(subKey==='fgts') return null;
   const def = getImovelCardDefs(catKey).find(i=>i.key===subKey);
@@ -6866,6 +6871,16 @@ function getImovelCardGroup(catKey, subKey){
   const nl = (def.label||'').toLowerCase();
   if(nl.includes('por fora')) return 'valor-imovel';
   return 'documentacao';
+}
+// Move um cartão de Compra do Imóvel entre os grupos "Compra do Imóvel" (o
+// preço em si) e "Taxas" — usado pelo menu do lápis de cada cartão.
+function moverGrupoCartaoCompra(subKey){
+  const overrides = getImovelCardGroupOverrides();
+  const atual = getImovelCardGroup('compra-imovel', subKey);
+  overrides[subKey] = (atual==='valor-imovel') ? 'documentacao' : 'valor-imovel';
+  localStorage.setItem('imovel-grupo-compra-overrides', JSON.stringify(overrides));
+  renderCatNav();
+  renderImovelCat('compra-imovel', null);
 }
 
 function getImovelCardKind(catKey, subKey){
@@ -7851,10 +7866,16 @@ function renderImovelCat(catKey, subKey){
     const editarAction = gastoParaEditar
       ? "openEdit("+gastoParaEditar.id+")"
       : (canLaunch ? "openModal('"+catKey+"','"+item.key+"')" : "");
+    const podeMoverGrupo = (catKey==='compra-imovel' && item.tipo!=='doc' && item.tipo!=='entrega');
+    const grupoAtualCartao = podeMoverGrupo ? getImovelCardGroup(catKey, item.key) : null;
+    const moverBtn = podeMoverGrupo
+      ? '<button onclick="moverGrupoCartaoCompra(\''+item.key+'\')">↔️ Mover pra '+(grupoAtualCartao==='valor-imovel'?'Taxas':'Compra do Imóvel')+'</button>'
+      : '';
     const pencilBtn = '<button onclick="event.stopPropagation();toggleImovelCardMenu(\''+menuId+'\',event)" title="Opções" style="background:none;border:none;color:var(--c-primary);cursor:pointer;font-size:15px;padding:0 2px"><i class="ti ti-pencil"></i></button>'
       +'<div class="imovel-card-menu" id="'+menuId+'" onclick="event.stopPropagation()">'
       +(editarAction ? '<button onclick="'+editarAction+'">✏️ Editar</button>' : '')
       +'<button onclick="promptRenomearCartao(\''+catKey+'\',\''+item.key+'\')">🏷️ Renomear cartão</button>'
+      +moverBtn
       +'<button onclick="if(confirm(\'Remover cartão?\'))deleteImovelCard(\''+catKey+'\',\''+item.key+'\')">🗑️ Remover cartão</button>'
       +'</div>';
     const dBadge = dateBadge(item), dias = diasBadge(item);
@@ -7888,7 +7909,7 @@ function renderImovelCat(catKey, subKey){
 
   function makeAddCard(tipo){
     return '<button type="button" onclick="abrirNovoCartaoImovel(\''+catKey+'\',\''+tipo+'\')" title="Adicionar cartão" '
-      +'style="background:var(--c-bg0c);border:1.5px dashed var(--c-panel4);border-radius:8px;min-height:90px;height:100%;box-sizing:border-box;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s" '
+      +'style="background:var(--c-bg0c);border:1.5px dashed var(--c-panel4);border-radius:8px;height:190px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s" '
       +'onmouseover="this.style.background=\'var(--c-panel2)\'" onmouseout="this.style.background=\'var(--c-bg0c)\'">'
       +'<span style="width:34px;height:34px;border-radius:50%;background:#2e7d32;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;line-height:1">+</span>'
       +'</button>';
