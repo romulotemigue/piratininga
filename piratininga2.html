@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 27JUL26 (versão 167)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 27JUL26 (versão 168)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -8021,17 +8021,18 @@ function renderImovelCat(catKey, subKey, grupoFiltro){
   }
 
   const permiteNovoCartao = (catKey==='compra-imovel' || catKey==='venda-imovel');
-  if(docItems.length)     html += makeRow(docItems,     'Documentos',  'var(--c-faint3)',    'var(--c-faint3)', permiteNovoCartao?'doc':null);
-  if(recItems.length)     html += makeRow(recItems,     'Recebimentos','#4caf50', '#4caf50', permiteNovoCartao?'recibo':null);
+  const mostrarVazio = !!grupoFiltro && permiteNovoCartao; // grupo filtrado: sempre mostra a linha (com o "+") mesmo sem nenhum cartão
+  if(docItems.length || mostrarVazio) html += makeRow(docItems, 'Documentos', 'var(--c-faint3)', 'var(--c-faint3)', permiteNovoCartao?'doc':null);
+  if(recItems.length || (mostrarVazio && catKey==='venda-imovel')) html += makeRow(recItems, 'Recebimentos','#4caf50', '#4caf50', permiteNovoCartao?'recibo':null);
   if(catKey==='compra-imovel'){
     // Separa Pagamentos em "Compra do Imóvel" (o preço em si — entrada/repasse/
     // por fora) e "Taxas" (o resto — ITBI, cartório, vistoria, avaliação...),
     // reaproveitando a mesma classificação já usada nos cards de resumo do topo.
     const gastoImovelItems = gastoItems.filter(i=>getImovelCardGroup(catKey,i.key)==='valor-imovel');
     const gastoTaxasItems = gastoItems.filter(i=>getImovelCardGroup(catKey,i.key)!=='valor-imovel');
-    if(gastoImovelItems.length) html += makeRow(gastoImovelItems, 'Compra do Imóvel', '#4caf50', '#4caf50', permiteNovoCartao?'gasto':null);
-    if(gastoTaxasItems.length)  html += makeRow(gastoTaxasItems,  'Taxas',            '#e8b544', '#e8b544', permiteNovoCartao?'gasto':null);
-  } else if(gastoItems.length){
+    if(gastoImovelItems.length || mostrarVazio) html += makeRow(gastoImovelItems, 'Compra do Imóvel', '#4caf50', '#4caf50', permiteNovoCartao?'gasto':null);
+    if(gastoTaxasItems.length || mostrarVazio)  html += makeRow(gastoTaxasItems,  'Taxas',            '#e8b544', '#e8b544', permiteNovoCartao?'gasto':null);
+  } else if(gastoItems.length || mostrarVazio){
     html += makeRow(gastoItems, catKey==='venda-imovel' ? 'Taxas' : 'Pagamentos', '#ef5350', '#ef5350', permiteNovoCartao?'gasto':null);
   }
   if(entregaItems.length) html += makeRow(entregaItems, 'Entregas',    '#42a5f5', '#42a5f5');
