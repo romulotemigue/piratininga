@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 27JUL26 (versão 158)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 27JUL26 (versão 159)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -670,7 +670,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <input type="date" id="e-data">
       </div>
     </div>
-    <div class="form-group">
+    <div class="form-group" id="e-desc-row">
       <label>Descrição</label>
       <input type="text" id="e-desc" spellcheck="true" lang="pt-BR">
     </div>
@@ -2659,18 +2659,30 @@ function openEdit(id){
     // Recebimentos da Venda do Imóvel (Sinal/Entrada/Repasse bancário) são dinheiro
     // ENTRANDO, não um gasto — "Pago/Necessário/Dispensável" não faz sentido aí, e
     // classificar como Investimento (Perpétuo/Transferível/Pessoal) também não.
-    const tipoCartao = g.categoria==='venda-imovel' ? (getImovelCardDefs('venda-imovel').find(i=>i.key===g.subcategoria)?.tipo) : null;
+    const ehImovel = !!IMOVEL_CATS[g.categoria];
+    const tipoCartao = ehImovel ? (getImovelCardDefs(g.categoria).find(i=>i.key===g.subcategoria)?.tipo) : null;
     const ehRecebimentoVenda = ['recibo','recebimento','aporte'].includes(tipoCartao);
     const statusSelect = document.getElementById('e-status');
     if(ehRecebimentoVenda){
       statusSelect.innerHTML = '<option value="pago">Recebido</option><option value="necessario">Aguardando</option>';
-      document.getElementById('e-invest-wrap').style.display = 'none';
+    } else if(ehImovel){
+      // Venda/Compra/Projeto do Imóvel: só Pago/À pagar — "Necessário" e
+      // "Dispensável" não fazem sentido pra essas etapas.
+      statusSelect.innerHTML = '<option value="pago">Pago</option><option value="necessario">À pagar</option>';
     } else {
       statusSelect.innerHTML = '<option value="pago">Pago</option><option value="necessario">Necessário</option><option value="apagar">Dispensável</option>';
-      document.getElementById('e-invest-wrap').style.display = '';
     }
+    // Investimento (Perpétuo/Transferível/Pessoal/Taxas) não faz sentido pra
+    // recebimentos, nem pra Compra do Imóvel inteira (lá é tudo taxa mesmo).
+    document.getElementById('e-invest-wrap').style.display = (ehRecebimentoVenda || g.categoria==='compra-imovel') ? 'none' : '';
+    if(g.categoria==='compra-imovel') setInvestimentoValue('e','taxas');
     statusSelect.value = g.status||'pago';
     document.getElementById('btn-confirm-edit').style.background='#e8b544';
+
+    // Descrição some pros cartões de imóvel — o próprio cartão já tem nome
+    // (Entrada, Repasse Bancário...), então esse campo só duplicava informação.
+    // Observação fica livre pra anotações.
+    document.getElementById('e-desc-row').style.display = ehImovel ? 'none' : '';
 
     const ehItensCasa = getItensCasaChildren().includes(g.categoria);
     document.getElementById('e-subcat-label').textContent = ehItensCasa ? 'Ambiente' : 'Cartão (opcional)';
@@ -4137,6 +4149,9 @@ function investimentoPickerHtml(prefix, compact){
         <button type="button" class="invest-card invest-card-sm" data-inv="pessoal" title="Não tem a ver com o imóvel" onclick="selectInvestimento(this,'${prefix}')">
           <span class="invest-title">Pessoal</span>
         </button>
+        <button type="button" class="invest-card invest-card-sm" data-inv="taxas" title="Taxas do imóvel — cartório, ITBI, corretagem, etc." onclick="selectInvestimento(this,'${prefix}')">
+          <span class="invest-title">Taxas</span>
+        </button>
       </div>
       <input type="hidden" id="${prefix}-investimento">
     </div>`;
@@ -4155,6 +4170,10 @@ function investimentoPickerHtml(prefix, compact){
       <button type="button" class="invest-card" data-inv="pessoal" onclick="selectInvestimento(this,'${prefix}')">
         <span class="invest-title">Pessoal</span>
         <span class="invest-desc">Não tem a ver com o imóvel</span>
+      </button>
+      <button type="button" class="invest-card" data-inv="taxas" onclick="selectInvestimento(this,'${prefix}')">
+        <span class="invest-title">Taxas</span>
+        <span class="invest-desc">Taxas do imóvel — cartório, ITBI, corretagem, etc.</span>
       </button>
     </div>
     <input type="hidden" id="${prefix}-investimento">
@@ -6171,6 +6190,9 @@ function refreshObraExtraFields(prefix){
 
 function openModal(cat, subcat){
   document.getElementById('f-invest-wrap').innerHTML = investimentoPickerHtml('f');
+  const fInvestWrap = document.getElementById('f-invest-wrap');
+  fInvestWrap.style.display = (cat==='compra-imovel') ? 'none' : '';
+  if(cat==='compra-imovel') setInvestimentoValue('f','taxas');
   ambienteData['f-form'] = {};
   ambienteModoUnico['f-form'] = false;
   ambienteModoUnicoData['f-form'] = {m2:'',valorM2:'',tipo:''};
@@ -7758,6 +7780,13 @@ function renderImovelCat(catKey, subKey){
     const itemGastos = lista.filter(g=>g.subcategoria===item.key);
     const itemTotal = itemGastos.reduce((s,g)=>s+getVal(g),0);
     const hasData = itemTotal > 0;
+    // Cor do card: Documentos mantêm a cor própria de cada tipo (ajuda a
+    // diferenciar Proposta/Contrato/etc. mesmo sem valor lançado). Os demais
+    // (Pagamentos/Recebimentos) agora usam a cor pra indicar status — verde
+    // se já pago/recebido, amarelo se ainda à pagar/aguardando — em vez de
+    // uma cor arbitrária por item que não significava nada.
+    const algumPago = itemGastos.some(g=>g.status==='pago');
+    const corCard = item.tipo==='doc' ? item.color : (!hasData ? 'var(--c-panel4)' : (algumPago ? '#4caf50' : '#e8b544'));
     const isUpload = item.tipo==='doc' || item.tipo==='recibo' || item.tipo==='gasto' || item.tipo==='aporte' || item.tipo==='recebimento' || item.recibo;
     const uploadLabel = item.tipo==='doc' ? 'documento' : 'recibo';
     const inputId = 'upload-'+catKey+'-'+item.key;
@@ -7767,10 +7796,10 @@ function renderImovelCat(catKey, subKey){
     // mesma altura tenha ou não anexo/valor/data preenchidos.
     const uploadZone = (isUpload && item.tipo!=='entrega') ? (
       '<div onclick="event.stopPropagation();document.getElementById(\''+inputId+'\').click()" '
-      +'ondragover="event.preventDefault();event.stopPropagation();this.style.borderColor=\''+item.color+'\'" '
+      +'ondragover="event.preventDefault();event.stopPropagation();this.style.borderColor=\''+corCard+'\'" '
       +'ondragleave="this.style.borderColor=\'transparent\'" '
       +'ondrop="event.preventDefault();event.stopPropagation();handleImovelDocFiles(event.dataTransfer.files,\''+catKey+'\',\''+item.key+'\')" '
-      +'style="margin-top:6px;flex:1;min-height:32px;display:flex;align-items:center;justify-content:center;border:1.5px dashed '+item.color+(item.color==='var(--c-muted)'?'':'88')+';border-radius:6px;padding:8px;cursor:pointer;transition:border-color .15s;text-align:center">'
+      +'style="margin-top:6px;flex:1;min-height:32px;display:flex;align-items:center;justify-content:center;border:1.5px dashed '+corCard+(corCard==='var(--c-panel4)'?'':'88')+';border-radius:6px;padding:8px;cursor:pointer;transition:border-color .15s;text-align:center">'
       +'<span style="font-size:12px;color:var(--c-primary)">☁ arraste ou clique para adicionar '+uploadLabel+'</span>'
       +'<input type="file" id="'+inputId+'" style="display:none" multiple onchange="handleImovelDocFiles(this.files,\''+catKey+'\',\''+item.key+'\');this.value=\'\'">'
       +'</div>'
@@ -7802,7 +7831,7 @@ function renderImovelCat(catKey, subKey){
 
     // ── LINHA 3: valor — só reserva espaço em cartões que podem ter valor
     // (Documentos nunca têm R$, então não faz sentido sobrar espaço vazio ali) ──
-    const valueRow = item.tipo==='doc' ? '' : '<div style="font-size:16px;font-weight:700;color:'+(hasData?item.color:'var(--c-panel4)')+';margin-top:6px;height:20px;line-height:20px">'+(hasData?fmt(itemTotal):'—')+'</div>';
+    const valueRow = item.tipo==='doc' ? '' : '<div style="font-size:16px;font-weight:700;color:'+corCard+';margin-top:6px;height:20px;line-height:20px">'+(hasData?fmt(itemTotal):'—')+'</div>';
 
     // anexo (opcional, não reserva espaço quando ausente — fica entre o valor e o upload)
     const anexoRow = itemGastos.length&&itemGastos[0].link
@@ -7812,7 +7841,8 @@ function renderImovelCat(catKey, subKey){
         +'</div>'
       : '';
 
-    return '<div data-card-key="'+item.key+'" draggable="true" ondragstart="cardDragStart(event,\''+catKey+'\',\''+item.key+'\')" ondragover="cardDragOver(event,\''+catKey+'\',\''+item.key+'\')" ondrop="cardDragDrop(event,\''+catKey+'\',\''+item.key+'\')" ondragend="cardDragEnd(event)" onclick="navigate(\''+catKey+'__'+item.key+'\')" style="background:var(--c-bg0c);border:1px solid '+(hasData?item.color:'var(--c-panel4)')+';border-top:3px solid '+item.color+';border-radius:8px;padding:12px 14px;cursor:pointer;height:190px;box-sizing:border-box;display:flex;flex-direction:column;position:relative;transition:all .15s" onmouseover="this.style.background=\'var(--c-panel2)\'" onmouseout="this.style.background=\'var(--c-bg0c)\'">'
+    const bordaExterna = item.tipo==='doc' ? (hasData?item.color:'var(--c-panel4)') : corCard;
+    return '<div data-card-key="'+item.key+'" draggable="true" ondragstart="cardDragStart(event,\''+catKey+'\',\''+item.key+'\')" ondragover="cardDragOver(event,\''+catKey+'\',\''+item.key+'\')" ondrop="cardDragDrop(event,\''+catKey+'\',\''+item.key+'\')" ondragend="cardDragEnd(event)" onclick="navigate(\''+catKey+'__'+item.key+'\')" style="background:var(--c-bg0c);border:1px solid '+bordaExterna+';border-top:3px solid '+corCard+';border-radius:8px;padding:12px 14px;cursor:pointer;height:190px;box-sizing:border-box;display:flex;flex-direction:column;position:relative;transition:all .15s" onmouseover="this.style.background=\'var(--c-panel2)\'" onmouseout="this.style.background=\'var(--c-bg0c)\'">'
       +topRow+labelRow+valueRow+anexoRow+uploadZone
       +'</div>';
   }
