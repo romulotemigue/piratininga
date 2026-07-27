@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 27JUL26 (versão 166)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 27JUL26 (versão 167)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -2024,10 +2024,10 @@ let lastNavGroupClickInfo = {key:null, time:0};
 function handleNavGroupClick(k, gName, e){
   if(e) e.stopPropagation();
   const uniqueKey = k+'|'+gName;
-  // Venda/Compra do Imóvel: "À vista"/"Financiado" são só organização do menu
-  // lateral — a página principal continua a mesma de sempre (com os cards de
-  // Documentos/Recebimentos/Pagamentos), não uma página genérica de subgrupo.
-  navigate((k==='venda-imovel'||k==='compra-imovel') ? k : faseGroupPageKey(k, gName));
+  // Venda/Compra do Imóvel: "À vista"/"Financiado" mostram a mesma página de
+  // sempre, só que filtrada pros cartões daquele grupo (e com os "+" certos
+  // pra criar cartão já dentro dele).
+  navigate((k==='venda-imovel'||k==='compra-imovel') ? (k+'__grupoview:'+encodeURIComponent(gName)) : faseGroupPageKey(k, gName));
   const now = Date.now();
   if(lastNavGroupClickInfo.key === uniqueKey && (now - lastNavGroupClickInfo.time) < 500){
     toggleSubGroup(k, gName, e);
@@ -2700,9 +2700,12 @@ function openEdit(id){
       statusSelect.innerHTML = '<option value="pago">Pago</option><option value="necessario">Necessário</option><option value="apagar">Dispensável</option>';
     }
     // Investimento (Perpétuo/Transferível/Pessoal/Taxas) não faz sentido pra
-    // recebimentos, nem pra Compra do Imóvel inteira (lá é tudo taxa mesmo).
+    // recebimentos, nem pra Compra do Imóvel inteira (lá é tudo taxa mesmo,
+    // EXCETO o preço em si do imóvel — esse não entra em tag nenhuma).
+    const ehValorImovelCompra = g.categoria==='compra-imovel' && getImovelCardGroup('compra-imovel', g.subcategoria)==='valor-imovel';
     document.getElementById('e-invest-wrap').style.display = (ehRecebimentoVenda || g.categoria==='compra-imovel' || g.categoria==='venda-imovel') ? 'none' : '';
-    if(g.categoria==='compra-imovel' || (g.categoria==='venda-imovel' && !ehRecebimentoVenda)) setInvestimentoValue('e','taxas');
+    if(ehValorImovelCompra) setInvestimentoValue('e','');
+    else if(g.categoria==='compra-imovel' || (g.categoria==='venda-imovel' && !ehRecebimentoVenda)) setInvestimentoValue('e','taxas');
     statusSelect.value = g.status||'pago';
     document.getElementById('btn-confirm-edit').style.background='#e8b544';
 
@@ -2827,13 +2830,16 @@ function selectGrupoCartao(tipo){
 // Abre o modal de "Novo cartão" já pré-selecionado no tipo certo (usado pelos
 // botões "+" no final de cada linha — Documentos/Recebimentos/Pagamentos — em
 // Venda e Compra do Imóvel).
-function abrirNovoCartaoImovel(catKey, tipoInicial){
+let addingSubCatGrupoImovel = null;
+function abrirNovoCartaoImovel(catKey, tipoInicial, grupoImovel){
   openModalAddSubCat(catKey);
   selectGrupoCartao(tipoInicial);
+  addingSubCatGrupoImovel = grupoImovel || null;
 }
 function openModalAddSubCat(catKey){
   addingSubCatFor = catKey;
   addingSubCatGrupo = null;
+  addingSubCatGrupoImovel = null;
   document.getElementById('nsc-nome').value = '';
   const isImovel = !!IMOVEL_CATS[catKey];
   const grupoGroup = document.getElementById('nsc-grupo-group');
@@ -2871,6 +2877,7 @@ function addSubCat(){
     if(!customCards.find(c=>c.key===key))
       customCards.push({label:nome, key, color:colors[tipo]||'var(--c-muted)', icon:icons[tipo]||'📋', tipo, recibo:tipo==='recibo'||undefined});
     localStorage.setItem('imovel-custom-cards-'+addingSubCatFor, JSON.stringify(customCards));
+    if(addingSubCatGrupoImovel) SUBCATS[addingSubCatFor][key].grupo = addingSubCatGrupoImovel;
   }
   saveSubCats();
   const expanded = JSON.parse(localStorage.getItem('pirati_expanded')||'{}');
@@ -3381,6 +3388,22 @@ function migrarDispensaParaDespensaUmaVez(){
     migrarNomeAmbienteEmLancamentos('Dispensa','Despensa');
   }catch(e){ console.error('migrarDispensaParaDespensaUmaVez error:', e); }
 }
+// O preço em si do imóvel (Entrada/Repasse Bancário/Por fora, em Compra do
+// Imóvel) não deve ter tag de Investimento nenhuma — só as taxas. Uma versão
+// anterior chegou a marcar tudo como "Taxas" por padrão; limpa isso uma vez.
+async function limparInvestimentoValorImovelUmaVez(){
+  try{
+    if(localStorage.getItem('pirati_fix_investimento_valor_imovel_v1')) return;
+    localStorage.setItem('pirati_fix_investimento_valor_imovel_v1','1');
+    const afetados = gastos.filter(g=>g.categoria==='compra-imovel' && g.investimento && getImovelCardGroup('compra-imovel', g.subcategoria)==='valor-imovel');
+    for(const g of afetados){
+      g.investimento = '';
+      try{
+        await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${g.id}`,{method:'PATCH', headers:{...HEADERS}, body: JSON.stringify({investimento: ''})});
+      }catch(e){ console.error('limparInvestimentoValorImovelUmaVez error:', e); }
+    }
+  }catch(e){ console.error('limparInvestimentoValorImovelUmaVez outer error:', e); }
+}
 async function loadGastos(){
   try{
     gastos = await sbFetch();
@@ -3394,6 +3417,7 @@ async function loadGastos(){
     ensureItensCasaAmbienteSubcats();
     ensureImovelSubcatsPrepopulated();
     migrarDispensaParaDespensaUmaVez();
+    limparInvestimentoValorImovelUmaVez();
     restoreOrphanSubcats();
     checkPossibleDuplicates();
     renderCatNav();
@@ -6221,7 +6245,9 @@ function openModal(cat, subcat){
   document.getElementById('f-invest-wrap').innerHTML = investimentoPickerHtml('f');
   const fInvestWrap = document.getElementById('f-invest-wrap');
   fInvestWrap.style.display = (cat==='compra-imovel' || cat==='venda-imovel') ? 'none' : '';
-  if(cat==='compra-imovel' || cat==='venda-imovel') setInvestimentoValue('f','taxas');
+  const ehValorImovelCompraNovo = cat==='compra-imovel' && subcat && getImovelCardGroup('compra-imovel', subcat)==='valor-imovel';
+  if(ehValorImovelCompraNovo) setInvestimentoValue('f','');
+  else if(cat==='compra-imovel' || cat==='venda-imovel') setInvestimentoValue('f','taxas');
   ambienteData['f-form'] = {};
   ambienteModoUnico['f-form'] = false;
   ambienteModoUnicoData['f-form'] = {m2:'',valorM2:'',tipo:''};
@@ -6687,7 +6713,8 @@ function render(){
   else if(currentPage==='projeto-arq') renderImovelCat('projeto-arq', null);
   else if(currentPage.includes('__')){
     const [catKey, subKey] = currentPage.split('__');
-    if(subKey.startsWith('grupo:')) renderFaseGroup(catKey, decodeURIComponent(subKey.slice(6)));
+    if(subKey.startsWith('grupoview:')) renderImovelCat(catKey, null, decodeURIComponent(subKey.slice(10)));
+    else if(subKey.startsWith('grupo:')) renderFaseGroup(catKey, decodeURIComponent(subKey.slice(6)));
     else if(subKey.startsWith('subgrupo:')){
       const [gNameEnc, sgNameEnc] = subKey.slice(9).split('|');
       renderSubgrupoGroup(catKey, decodeURIComponent(gNameEnc), decodeURIComponent(sgNameEnc));
@@ -7679,7 +7706,7 @@ function imovelDragEnd(e){
 }
 
 // ── IMÓVEL CATS ──────────────────────────────────────────────────
-function renderImovelCat(catKey, subKey){
+function renderImovelCat(catKey, subKey, grupoFiltro){
   const info = IMOVEL_CATS[catKey];
   const lista = gastos.filter(g=>g.categoria===catKey);
   const getVal = g=>gastoValor(g);
@@ -7688,7 +7715,7 @@ function renderImovelCat(catKey, subKey){
 
   // filter out hidden (deleted) cards
   const hiddenCards = JSON.parse(localStorage.getItem('imovel-hidden-cards-'+catKey)||'[]');
-  const visibleItems = summaryItems.filter(i=>!hiddenCards.includes(i.key));
+  let visibleItems = summaryItems.filter(i=>!hiddenCards.includes(i.key));
 
   // apply saved card order
   const savedCardOrder = JSON.parse(localStorage.getItem('imovel-card-order-'+catKey)||'null');
@@ -7704,6 +7731,12 @@ function renderImovelCat(catKey, subKey){
   // only add missing summaryItems, never delete manually created subcats
   visibleItems.forEach(item=>{ if(!SUBCATS[catKey][item.key]) SUBCATS[catKey][item.key]={label:item.label}; });
   saveSubCats();
+
+  // "À vista"/"Financiado": filtra só os cartões daquele sub-grupo — a página
+  // continua com o mesmo layout de sempre, só mostra menos (ou só os "+").
+  if(grupoFiltro && (catKey==='venda-imovel'||catKey==='compra-imovel')){
+    visibleItems = visibleItems.filter(i=>(SUBCATS[catKey][i.key]?.grupo||'Financiado')===grupoFiltro);
+  }
 
   const el = document.getElementById('content');
 
@@ -7866,16 +7899,10 @@ function renderImovelCat(catKey, subKey){
     const editarAction = gastoParaEditar
       ? "openEdit("+gastoParaEditar.id+")"
       : (canLaunch ? "openModal('"+catKey+"','"+item.key+"')" : "");
-    const podeMoverGrupo = (catKey==='compra-imovel' && item.tipo!=='doc' && item.tipo!=='entrega');
-    const grupoAtualCartao = podeMoverGrupo ? getImovelCardGroup(catKey, item.key) : null;
-    const moverBtn = podeMoverGrupo
-      ? '<button onclick="moverGrupoCartaoCompra(\''+item.key+'\')">↔️ Mover pra '+(grupoAtualCartao==='valor-imovel'?'Taxas':'Compra do Imóvel')+'</button>'
-      : '';
     const pencilBtn = '<button onclick="event.stopPropagation();toggleImovelCardMenu(\''+menuId+'\',event)" title="Opções" style="background:none;border:none;color:var(--c-primary);cursor:pointer;font-size:15px;padding:0 2px"><i class="ti ti-pencil"></i></button>'
       +'<div class="imovel-card-menu" id="'+menuId+'" onclick="event.stopPropagation()">'
       +(editarAction ? '<button onclick="'+editarAction+'">✏️ Editar</button>' : '')
       +'<button onclick="promptRenomearCartao(\''+catKey+'\',\''+item.key+'\')">🏷️ Renomear cartão</button>'
-      +moverBtn
       +'<button onclick="if(confirm(\'Remover cartão?\'))deleteImovelCard(\''+catKey+'\',\''+item.key+'\')">🗑️ Remover cartão</button>'
       +'</div>';
     const dBadge = dateBadge(item), dias = diasBadge(item);
@@ -7908,7 +7935,7 @@ function renderImovelCat(catKey, subKey){
   }
 
   function makeAddCard(tipo){
-    return '<button type="button" onclick="abrirNovoCartaoImovel(\''+catKey+'\',\''+tipo+'\')" title="Adicionar cartão" '
+    return '<button type="button" onclick="abrirNovoCartaoImovel(\''+catKey+'\',\''+tipo+'\''+(grupoFiltro?(",'"+grupoFiltro.replace(/'/g,"\\'")+"'"):'')+')" title="Adicionar cartão" '
       +'style="background:var(--c-bg0c);border:1.5px dashed var(--c-panel4);border-radius:8px;height:190px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s" '
       +'onmouseover="this.style.background=\'var(--c-panel2)\'" onmouseout="this.style.background=\'var(--c-bg0c)\'">'
       +'<span style="width:34px;height:34px;border-radius:50%;background:#2e7d32;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;line-height:1">+</span>'
@@ -7984,6 +8011,13 @@ function renderImovelCat(catKey, subKey){
     if(valorImovelKeys.length) html += '<div style="padding-right:2rem"><div style="font-size:11px;color:#4caf50;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Valor do imóvel</div><div style="font-size:19px;font-weight:700;color:#4caf50">'+fmt(totalValorImovel)+'</div></div>';
     if(documentacaoKeys.length) html += '<div style="border-left:1px solid var(--c-panel3);padding:0 2rem"><div style="font-size:11px;color:#e8b544;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Documentação e custos</div><div style="font-size:19px;font-weight:700;color:#e8b544">'+fmt(totalDocumentacao)+'</div></div>';
     html += '</div>';
+  }
+
+  if(grupoFiltro && (catKey==='venda-imovel'||catKey==='compra-imovel')){
+    html += '<div style="background:var(--c-panel3);border:1px solid var(--c-border2);border-radius:8px;padding:8px 14px;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;font-size:13px">'
+      +'<span>Mostrando só os cartões de <b style="color:'+info.color+'">'+grupoFiltro+'</b></span>'
+      +'<span onclick="navigate(\''+catKey+'\')" style="color:var(--c-primary);cursor:pointer;text-decoration:underline">ver todos</span>'
+      +'</div>';
   }
 
   const permiteNovoCartao = (catKey==='compra-imovel' || catKey==='venda-imovel');
