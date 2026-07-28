@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 27JUL26 (versão 168)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 27JUL26 (versão 170)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -2827,14 +2827,26 @@ function selectGrupoCartao(tipo){
   if(el) el.style.cssText = 'background:var(--c-panel3);border:2px solid '+colors[tipo]+';border-radius:8px;padding:10px;cursor:pointer;text-align:center';
 }
 
-// Abre o modal de "Novo cartão" já pré-selecionado no tipo certo (usado pelos
-// botões "+" no final de cada linha — Documentos/Recebimentos/Pagamentos — em
-// Venda e Compra do Imóvel).
+// Abre direto o modal principal de lançamento, com o campo de nome do
+// cartão aberto ali dentro — sem passar pelo modal separado "Novo cartão"
+// (Romulo achou dois passos desnecessário pra uma coisa só). Usado pelos
+// botões "+" no final de cada linha — Documentos/Recebimentos/Pagamentos —
+// em Venda e Compra do Imóvel.
 let addingSubCatGrupoImovel = null;
+let pendingImovelNovoCartaoTipo = null;
+let pendingImovelNovoCartaoGrupo = null;
 function abrirNovoCartaoImovel(catKey, tipoInicial, grupoImovel){
-  openModalAddSubCat(catKey);
-  selectGrupoCartao(tipoInicial);
-  addingSubCatGrupoImovel = grupoImovel || null;
+  openModal(catKey, null);
+  pendingImovelNovoCartaoTipo = tipoInicial;
+  pendingImovelNovoCartaoGrupo = grupoImovel || null;
+  setTimeout(()=>{
+    const grupoWrap = document.getElementById('f-subcat-group');
+    if(grupoWrap) grupoWrap.style.display = 'none';
+    const inline = document.getElementById('f-new-subcat-inline');
+    if(inline) inline.style.display = '';
+    const el = document.getElementById('f-new-subcat-nome2');
+    if(el) el.focus();
+  }, 150);
 }
 function openModalAddSubCat(catKey){
   addingSubCatFor = catKey;
@@ -4514,14 +4526,31 @@ function createSubcatInline2(){
   const cat = document.getElementById('f-cat').value;
   const key = nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');
   if(!SUBCATS[cat]) SUBCATS[cat] = {};
-  SUBCATS[cat][key] = {label:nome};
+  if(pendingImovelNovoCartaoTipo){
+    // veio do "+" de uma linha específica (Documentos/Recebimentos/Pagamentos)
+    // em Venda/Compra do Imóvel — já sabe o tipo e o grupo (À vista/Financiado)
+    SUBCATS[cat][key] = pendingImovelNovoCartaoGrupo ? {label:nome, grupo:pendingImovelNovoCartaoGrupo} : {label:nome};
+    const tipo = pendingImovelNovoCartaoTipo;
+    const colors = {doc:'var(--c-muted)', recibo:'#4caf50', gasto:'#ef5350', aporte:'#26c6da'};
+    const icons = {doc:'📋', recibo:'💵', gasto:'💸', aporte:'🟢'};
+    const customCards = JSON.parse(localStorage.getItem('imovel-custom-cards-'+cat)||'[]');
+    if(!customCards.find(c=>c.key===key))
+      customCards.push({label:nome, key, color:colors[tipo]||'var(--c-muted)', icon:icons[tipo]||'📋', tipo, recibo:tipo==='recibo'||undefined});
+    localStorage.setItem('imovel-custom-cards-'+cat, JSON.stringify(customCards));
+    pendingImovelNovoCartaoTipo = null;
+    pendingImovelNovoCartaoGrupo = null;
+  } else {
+    SUBCATS[cat][key] = {label:nome};
+  }
   saveSubCats();
   populateSubCatSelect('f-cat','f-subcat');
   document.getElementById('f-subcat').value = key;
   document.getElementById('f-new-subcat-nome2').value = '';
   document.getElementById('f-new-subcat-inline').style.display = 'none';
+  const grupoWrap = document.getElementById('f-subcat-group');
+  if(grupoWrap) grupoWrap.style.display = '';
   renderCatNav();
-  toast('Subcategoria "'+nome+'" criada!');
+  toast('Cartão "'+nome+'" criado!');
 }
 
 function openCreateSubcatFromModal(){
@@ -7990,12 +8019,13 @@ function renderImovelCat(catKey, subKey, grupoFiltro){
   if(recItems.length){
     html += '<div style="padding-right:2rem"><div style="font-size:11px;color:#4caf50;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Recebido</div><div style="font-size:23px;font-weight:800;color:#4caf50">'+fmt(totalRecebido)+'</div><div style="font-size:11px;color:#42a5f5;margin-top:3px">depois que receber tudo: '+fmt(totalRecebido+totalAReceber)+'</div></div>';
     html += '<div style="border-left:1px solid var(--c-panel6);padding:0 2rem"><div style="font-size:11px;color:#42a5f5;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">A receber</div><div style="font-size:23px;font-weight:800;color:#42a5f5">'+fmt(totalAReceber)+'</div></div>';
-    html += '<div style="border-left:1px solid var(--c-panel6);padding:0 2rem"><div style="font-size:11px;color:#ef5350;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Gastos</div><div style="font-size:23px;font-weight:800;color:#ef5350">'+fmt(totalGasto)+'</div></div>';
+    html += '<div style="border-left:1px solid var(--c-panel6);padding:0 2rem"><div style="font-size:11px;color:#e8b544;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Taxas</div><div style="font-size:23px;font-weight:800;color:#e8b544">'+fmt(totalGasto)+'</div></div>';
     html += '<div style="border-left:1px solid var(--c-panel6);padding:0 2rem"><div style="font-size:11px;color:var(--c-primary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Líquido</div><div style="font-size:23px;font-weight:800;color:'+(liquido>=0?'#4caf50':'#ef5350')+'">'+fmt(liquido)+'</div><div style="font-size:11px;color:#42a5f5;margin-top:3px">depois que receber tudo: '+fmt(liquido+totalAReceber-totalAPagar)+'</div></div>';
   } else {
     html += '<div style="padding-right:2rem"><div style="font-size:11px;color:var(--c-primary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Já pago (seu bolso)</div><div style="font-size:23px;font-weight:800;color:'+info.color+'">'+fmt(totalGasto)+'</div><div style="font-size:11px;color:#e8b544;margin-top:3px">depois de pagar tudo: '+fmt(totalGasto+totalAPagar)+'</div></div>';
     if(totalAPagar>0) html += '<div style="border-left:1px solid var(--c-panel6);padding:0 2rem"><div style="font-size:11px;color:#e8b544;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">A pagar (seu bolso)</div><div style="font-size:23px;font-weight:800;color:#e8b544">'+fmt(totalAPagar)+'</div></div>';
     if(totalFinanciado>0) html += '<div style="border-left:1px solid var(--c-panel6);padding:0 2rem"><div style="font-size:11px;color:var(--c-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Financiado (banco/FGTS)</div><div style="font-size:23px;font-weight:800;color:var(--c-primary)">'+fmt(totalFinanciado)+'</div><div style="font-size:10px;color:var(--c-secondary);margin-top:3px">não é seu dinheiro</div></div>';
+    html += '<div style="border-left:1px solid var(--c-panel6);padding:0 2rem"><div style="font-size:11px;color:#e8b544;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Taxas</div><div style="font-size:23px;font-weight:800;color:#e8b544">'+fmt(totalDocumentacao)+'</div></div>';
   }
   html += '</div>';
 
