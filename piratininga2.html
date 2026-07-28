@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 28JUL26 (versão 174)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 28JUL26 (versão 176)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1578,6 +1578,7 @@ function getStatusDetailList(status, scope){
 let statusModalDisabledGroups = new Set();
 let statusModalCurrentStatus = null;
 let statusModalCurrentScope = null;
+let statusModalInvestimentoTag = null;
 
 function renderStatusDetailGrouped(list){
   const getValSd = g=>gastoValor(g);
@@ -1618,12 +1619,23 @@ function renderStatusDetailGrouped(list){
 }
 
 function refreshStatusDetailModal(){
-  const status = statusModalCurrentStatus, scope = statusModalCurrentScope;
-  const list = getStatusDetailList(status, scope);
   const getValSd = g=>gastoValor(g);
-  const titles = {pago:'Já Pago', necessario:'Necessários', apagar:'Dispensáveis'};
-  const colors = {pago:'#4caf50', necessario:'#42a5f5', apagar:'#e8b544'};
-  document.getElementById('status-detail-title').textContent = (titles[status] || status) + (scope==='reforma' ? ' (só reforma)' : '');
+  let list, title, color;
+  if(statusModalInvestimentoTag!==null){
+    const tag = statusModalInvestimentoTag;
+    list = gastos.filter(g=>g.categoria!=='ganho' && (tag==='' ? !g.investimento : g.investimento===tag));
+    const titlesInv = {perpetuo:'Perpétuo', transferivel:'Transferível', pessoal:'Pessoal', taxas:'Taxas', '':'Ainda sem tag de investimento'};
+    title = titlesInv[tag] !== undefined ? titlesInv[tag] : tag;
+    color = tag==='' ? '#fff' : ((INVEST_INFO[tag]||{}).color || '#fff');
+  } else {
+    const status = statusModalCurrentStatus, scope = statusModalCurrentScope;
+    list = getStatusDetailList(status, scope);
+    const titles = {pago:'Já Pago', necessario:'Necessários', apagar:'Dispensáveis'};
+    const colors = {pago:'#4caf50', necessario:'#42a5f5', apagar:'#e8b544'};
+    title = (titles[status] || status) + (scope==='reforma' ? ' (só reforma)' : '');
+    color = colors[status]||'#fff';
+  }
+  document.getElementById('status-detail-title').textContent = title;
   const total = list.reduce((s,g)=>{
     const displayKey = CAT_MERGE_ALIASES[g.categoria] || g.categoria;
     if(statusModalDisabledGroups.has(displayKey)) return s;
@@ -1631,7 +1643,7 @@ function refreshStatusDetailModal(){
   },0);
   const totalEl = document.getElementById('status-detail-total');
   totalEl.textContent = fmt(total);
-  totalEl.style.color = colors[status]||'#fff';
+  totalEl.style.color = color;
   document.getElementById('status-detail-tbody').innerHTML = list.length
     ? renderStatusDetailGrouped(list)
     : '<tr><td colspan="6" style="padding:1.5rem;text-align:center;color:var(--c-primary);font-size:13px">Nenhum lançamento</td></tr>';
@@ -1647,6 +1659,18 @@ function openStatusDetailModal(status, scope){
   statusModalDisabledGroups = new Set();
   statusModalCurrentStatus = status;
   statusModalCurrentScope = scope;
+  statusModalInvestimentoTag = null;
+  refreshStatusDetailModal();
+  document.getElementById('status-detail-overlay').classList.add('open');
+}
+// Clicar no gráfico de Investimento (pizza ou legenda) abre a mesma janela
+// de detalhe, só que filtrando por tag de investimento em vez de status.
+// tag='' mostra os lançamentos ainda sem nenhuma tag.
+function openInvestimentoDetailModal(tag){
+  statusModalDisabledGroups = new Set();
+  statusModalCurrentStatus = null;
+  statusModalCurrentScope = null;
+  statusModalInvestimentoTag = tag;
   refreshStatusDetailModal();
   document.getElementById('status-detail-overlay').classList.add('open');
 }
@@ -3460,14 +3484,13 @@ async function limparInvestimentoValorImovelUmaVez(){
 // retroativamente, uma vez só.
 async function marcarTaxasVendaCompraUmaVez(){
   try{
-    if(localStorage.getItem('pirati_fix_taxas_venda_compra_v1')) return;
-    localStorage.setItem('pirati_fix_taxas_venda_compra_v1','1');
+    if(localStorage.getItem('pirati_fix_taxas_venda_compra_v2')) return;
+    localStorage.setItem('pirati_fix_taxas_venda_compra_v2','1');
     const afetados = gastos.filter(g=>{
-      if(g.investimento) return false; // já tem alguma tag, não mexe
-      if(g.categoria==='compra-imovel') return getImovelCardGroup('compra-imovel', g.subcategoria)!=='valor-imovel';
+      if(g.categoria==='compra-imovel') return getImovelCardGroup('compra-imovel', g.subcategoria)!=='valor-imovel' && g.investimento!=='taxas';
       if(g.categoria==='venda-imovel'){
         const tipoCartao = getImovelCardDefs('venda-imovel').find(i=>i.key===g.subcategoria)?.tipo;
-        return !['recibo','recebimento','aporte'].includes(tipoCartao); // não é recebimento
+        return !['recibo','recebimento','aporte'].includes(tipoCartao) && g.investimento!=='taxas';
       }
       return false;
     });
@@ -8228,6 +8251,8 @@ function buildInvestPieChart(){
     type:'doughnut',
     data:{labels:hasData?labels:['Sem dados'],datasets:[{data:hasData?values:[1],backgroundColor:hasData?colors:['var(--c-border)'],borderWidth:2,borderColor:'var(--c-material-bg2)'}]},
     options:{responsive:true,maintainAspectRatio:false,
+      onClick:(evt,elements)=>{ if(hasData && elements.length) openInvestimentoDetailModal(keys[elements[0].index]); },
+      onHover:(evt,elements)=>{ evt.native.target.style.cursor = (hasData && elements.length) ? 'pointer' : 'default'; },
       plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>hasData?ctx.label+': '+fmt(ctx.raw):''}}}}
   });
 }
@@ -8552,12 +8577,12 @@ function renderGeral(){
 
   const htmlReforma = `
     <div class="card" style="border-left:3px solid #ab47bc;background:var(--c-material-bg2);height:100%">
-      <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding-right:70px" onclick="openStatusDetailModal('necessario','reforma')">
+      <div style="cursor:pointer" onclick="openStatusDetailModal('necessario','reforma')">
         <div class="card-label"><i class="ti ti-chart-pie" style="font-size:14px;color:#ab47bc"></i> ${gcTitles['reforma']||'REFORMA: TOTAL GASTO'}</div>
-        <div class="card-value" style="color:#ab47bc;margin:0">${fmt(necessario)}</div>
+        <div class="card-value" style="color:#ab47bc;margin-top:6px">${fmt(necessario)}</div>
+        <div style="margin-top:4px;color:var(--c-primary);font-size:11px">clique pra ver todos os lançamentos</div>
       </div>
-      <div style="margin-top:6px;color:var(--c-primary);font-size:11px;cursor:pointer" onclick="openStatusDetailModal('necessario','reforma')">clique pra ver todos os lançamentos</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px;align-items:center">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:22px;align-items:center">
         <div style="position:relative;height:200px"><canvas id="reformaPieChart"></canvas></div>
         <div id="reforma-pie-legend" style="display:flex;flex-direction:column;gap:7px;font-size:13px"></div>
       </div>
@@ -8570,23 +8595,23 @@ function renderGeral(){
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px;align-items:center">
         <div style="position:relative;height:200px"><canvas id="investPieChart"></canvas></div>
         <div style="display:flex;flex-direction:column;gap:10px">
-          <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="openInvestimentoDetailModal('perpetuo')">
             <span style="font-size:13px;color:#4caf50">🟢 Perpétuo</span>
             <span style="font-size:16px;font-weight:700;color:#4caf50">${fmt(investTotais.perpetuo)}</span>
           </div>
-          <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="openInvestimentoDetailModal('transferivel')">
             <span style="font-size:13px;color:#42a5f5">🔵 Transferível</span>
             <span style="font-size:16px;font-weight:700;color:#42a5f5">${fmt(investTotais.transferivel)}</span>
           </div>
-          <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="openInvestimentoDetailModal('pessoal')">
             <span style="font-size:13px;color:#c77dea">🟣 Pessoal</span>
             <span style="font-size:16px;font-weight:700;color:#c77dea">${fmt(investTotais.pessoal)}</span>
           </div>
-          <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="openInvestimentoDetailModal('taxas')">
             <span style="font-size:13px;color:#e8b544">🟡 Taxas</span>
             <span style="font-size:16px;font-weight:700;color:#e8b544">${fmt(investTotais.taxas)}</span>
           </div>
-          ${investSemTag>0 ? `<div style="font-size:11px;color:var(--c-muted2);margin-top:2px;padding-top:8px;border-top:1px solid var(--c-border)">${fmt(investSemTag)} ainda sem essa tag</div>` : ''}
+          ${investSemTag>0 ? `<div style="font-size:11px;color:var(--c-muted2);margin-top:2px;padding-top:8px;border-top:1px solid var(--c-border);cursor:pointer" onclick="openInvestimentoDetailModal('')">${fmt(investSemTag)} ainda sem essa tag</div>` : ''}
         </div>
       </div>
     </div>`;
