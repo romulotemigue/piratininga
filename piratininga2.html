@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 28JUL26 (versão 176)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 28JUL26 (versão 177)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1623,7 +1623,7 @@ function refreshStatusDetailModal(){
   let list, title, color;
   if(statusModalInvestimentoTag!==null){
     const tag = statusModalInvestimentoTag;
-    list = gastos.filter(g=>g.categoria!=='ganho' && (tag==='' ? !g.investimento : g.investimento===tag));
+    list = gastos.filter(g=>g.categoria!=='ganho' && (tag==='' ? !g.investimento : g.investimento===tag) && getValSd(g)>0);
     const titlesInv = {perpetuo:'Perpétuo', transferivel:'Transferível', pessoal:'Pessoal', taxas:'Taxas', '':'Ainda sem tag de investimento'};
     title = titlesInv[tag] !== undefined ? titlesInv[tag] : tag;
     color = tag==='' ? '#fff' : ((INVEST_INFO[tag]||{}).color || '#fff');
