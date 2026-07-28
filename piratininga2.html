@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 28JUL26 (versão 172)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 28JUL26 (versão 174)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -719,7 +719,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
       <label>Observação</label>
       <input type="text" id="e-obs" spellcheck="true" lang="pt-BR">
     </div>
-    <div class="form-group">
+    <div class="form-group" id="e-link-row">
       <label>Link</label>
       <input type="url" id="e-link" placeholder="https://...">
     </div>
@@ -2711,6 +2711,8 @@ function openEdit(id){
     document.getElementById('btn-confirm-edit').style.background='#e8b544';
 
     const ehVendaOuCompra = g.categoria==='venda-imovel' || g.categoria==='compra-imovel';
+    const linkRowEdit = document.getElementById('e-link-row');
+    if(linkRowEdit) linkRowEdit.style.display = ehVendaOuCompra ? 'none' : '';
     const subcatSelectEl = document.getElementById('e-subcat');
     const subcatNomeEl = document.getElementById('e-subcat-nome');
     const subcatRenameBtnEl = document.getElementById('e-subcat-rename-btn');
@@ -3452,6 +3454,32 @@ async function limparInvestimentoValorImovelUmaVez(){
     }
   }catch(e){ console.error('limparInvestimentoValorImovelUmaVez outer error:', e); }
 }
+// A marcação automática de "Taxas" (v161) só roda quando um lançamento é
+// editado/criado — lançamentos de taxa de Venda/Compra do Imóvel de ANTES
+// disso ficaram sem tag nenhuma, sumindo do gráfico de Investimento. Marca
+// retroativamente, uma vez só.
+async function marcarTaxasVendaCompraUmaVez(){
+  try{
+    if(localStorage.getItem('pirati_fix_taxas_venda_compra_v1')) return;
+    localStorage.setItem('pirati_fix_taxas_venda_compra_v1','1');
+    const afetados = gastos.filter(g=>{
+      if(g.investimento) return false; // já tem alguma tag, não mexe
+      if(g.categoria==='compra-imovel') return getImovelCardGroup('compra-imovel', g.subcategoria)!=='valor-imovel';
+      if(g.categoria==='venda-imovel'){
+        const tipoCartao = getImovelCardDefs('venda-imovel').find(i=>i.key===g.subcategoria)?.tipo;
+        return !['recibo','recebimento','aporte'].includes(tipoCartao); // não é recebimento
+      }
+      return false;
+    });
+    for(const g of afetados){
+      g.investimento = 'taxas';
+      try{
+        await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${g.id}`,{method:'PATCH', headers:{...HEADERS}, body: JSON.stringify({investimento: 'taxas'})});
+      }catch(e){ console.error('marcarTaxasVendaCompraUmaVez error:', e); }
+    }
+    if(afetados.length) render();
+  }catch(e){ console.error('marcarTaxasVendaCompraUmaVez outer error:', e); }
+}
 async function loadGastos(){
   try{
     gastos = await sbFetch();
@@ -3466,6 +3494,7 @@ async function loadGastos(){
     ensureImovelSubcatsPrepopulated();
     migrarDispensaParaDespensaUmaVez();
     limparInvestimentoValorImovelUmaVez();
+    marcarTaxasVendaCompraUmaVez();
     restoreOrphanSubcats();
     checkPossibleDuplicates();
     renderCatNav();
