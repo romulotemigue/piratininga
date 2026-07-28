@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 28JUL26 (versão 171)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 28JUL26 (versão 172)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -657,6 +657,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
       <select id="e-subcat">
         <option value="">— Nenhuma —</option>
       </select>
+      <input type="text" id="e-subcat-nome" style="display:none">
     </div>
     <div id="e-cat-row" class="modal-row">
       <div class="form-group">
@@ -2709,6 +2710,22 @@ function openEdit(id){
     statusSelect.value = g.status||'pago';
     document.getElementById('btn-confirm-edit').style.background='#e8b544';
 
+    const ehVendaOuCompra = g.categoria==='venda-imovel' || g.categoria==='compra-imovel';
+    const subcatSelectEl = document.getElementById('e-subcat');
+    const subcatNomeEl = document.getElementById('e-subcat-nome');
+    const subcatRenameBtnEl = document.getElementById('e-subcat-rename-btn');
+    if(ehVendaOuCompra){
+      subcatSelectEl.style.display = 'none';
+      if(subcatRenameBtnEl) subcatRenameBtnEl.style.display = 'none';
+      subcatNomeEl.style.display = '';
+      subcatNomeEl.value = (getImovelCardDefs(g.categoria).find(i=>i.key===g.subcategoria)||{}).label || '';
+      subcatNomeEl.dataset.catkey = g.categoria;
+      subcatNomeEl.dataset.key = g.subcategoria || '';
+    } else {
+      subcatSelectEl.style.display = '';
+      subcatNomeEl.style.display = 'none';
+    }
+
     // Descrição some pros cartões de imóvel — o próprio cartão já tem nome
     // (Entrada, Repasse Bancário...), então esse campo só duplicava informação.
     // Observação fica livre pra anotações.
@@ -2744,6 +2761,15 @@ async function saveEdit(){
 
   const elink = document.getElementById('e-link').value.trim();
   const esubcat = document.getElementById('e-subcat') ? document.getElementById('e-subcat').value : '';
+  const esubcatNomeEl = document.getElementById('e-subcat-nome');
+  if(esubcatNomeEl && esubcatNomeEl.style.display!=='none' && esubcatNomeEl.dataset.key){
+    const novoNomeCartao = esubcatNomeEl.value.trim();
+    const catKeyCartao = esubcatNomeEl.dataset.catkey;
+    const nomeAtualCartao = (getImovelCardDefs(catKeyCartao).find(i=>i.key===esubcatNomeEl.dataset.key)||{}).label || '';
+    if(novoNomeCartao && novoNomeCartao!==nomeAtualCartao){
+      renomearCartaoImovel(catKeyCartao, esubcatNomeEl.dataset.key, novoNomeCartao);
+    }
+  }
   let row = {descricao:desc, valor:val, obs, link:elink, subcategoria:esubcat};
   if(editingIsGanho){
     row.data = document.getElementById('e-data-ganho').value;
