@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 27JUL26 (versão 170)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 28JUL26 (versão 171)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -379,7 +379,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
       <button class="modal-close" onclick="closeModal()"><i class="ti ti-x"></i></button>
     </div>
     <div id="f-tipo-banner" style="display:none;font-size:12px;color:#e8b544;background:var(--c-apagar-bg2);border:1px solid var(--c-apagar-strong);border-radius:6px;padding:6px 10px;margin-bottom:12px"></div>
-    <div class="modal-row">
+    <div class="modal-row" id="f-desc-cat-row">
       <div class="form-group">
         <label>Descrição</label>
         <input type="text" id="f-desc" spellcheck="true" lang="pt-BR" placeholder="Ex: Piso porcelanato sala">
@@ -433,7 +433,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         </button>
       </div>
     </div>
-    <div class="modal-row">
+    <div class="modal-row" id="f-valor-data-row">
       <div class="form-group">
         <label>Valor (R$)</label>
         <input type="text" id="f-valor" placeholder="0,00" oninput="maskMoney(this)" inputmode="numeric">
@@ -520,7 +520,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
       <label>Observação (opcional)</label>
       <input type="text" id="f-obs" spellcheck="true" lang="pt-BR" placeholder="Fornecedor, nota, detalhe...">
     </div>
-    <div class="form-group">
+    <div class="form-group" id="f-link-row">
       <label>Link (opcional)</label>
       <input type="url" id="f-link" placeholder="https://...">
     </div>
@@ -2842,8 +2842,18 @@ function abrirNovoCartaoImovel(catKey, tipoInicial, grupoImovel){
   setTimeout(()=>{
     const grupoWrap = document.getElementById('f-subcat-group');
     if(grupoWrap) grupoWrap.style.display = 'none';
+    const descCatRow = document.getElementById('f-desc-cat-row');
+    if(descCatRow) descCatRow.style.display = 'none';
+    const linkRow = document.getElementById('f-link-row');
+    if(linkRow) linkRow.style.display = 'none';
     const inline = document.getElementById('f-new-subcat-inline');
-    if(inline) inline.style.display = '';
+    if(inline){
+      inline.style.display = '';
+      inline.style.marginTop = '0';
+      const modalEl = document.querySelector('.modal');
+      const banner = document.getElementById('f-tipo-banner');
+      if(modalEl && banner) modalEl.insertBefore(inline, banner);
+    }
     const el = document.getElementById('f-new-subcat-nome2');
     if(el) el.focus();
   }, 150);
@@ -4545,6 +4555,8 @@ function createSubcatInline2(){
   saveSubCats();
   populateSubCatSelect('f-cat','f-subcat');
   document.getElementById('f-subcat').value = key;
+  const descEl = document.getElementById('f-desc');
+  if(descEl && !descEl.value) descEl.value = nome;
   document.getElementById('f-new-subcat-nome2').value = '';
   document.getElementById('f-new-subcat-inline').style.display = 'none';
   const grupoWrap = document.getElementById('f-subcat-group');
@@ -6271,6 +6283,21 @@ function refreshObraExtraFields(prefix){
 }
 
 function openModal(cat, subcat){
+  // Restaura o layout padrão (caso a última abertura tenha sido pelo fluxo
+  // direto de "novo cartão" de Venda/Compra do Imóvel, que esconde/move campos)
+  pendingImovelNovoCartaoTipo = null;
+  pendingImovelNovoCartaoGrupo = null;
+  const descCatRowReset = document.getElementById('f-desc-cat-row');
+  if(descCatRowReset) descCatRowReset.style.display = '';
+  const linkRowReset = document.getElementById('f-link-row');
+  if(linkRowReset) linkRowReset.style.display = '';
+  const inlineReset = document.getElementById('f-new-subcat-inline');
+  const valorDataRow = document.getElementById('f-valor-data-row');
+  if(inlineReset && valorDataRow && inlineReset.nextElementSibling !== valorDataRow){
+    valorDataRow.parentNode.insertBefore(inlineReset, valorDataRow);
+  }
+  if(inlineReset) inlineReset.style.display = 'none';
+
   document.getElementById('f-invest-wrap').innerHTML = investimentoPickerHtml('f');
   const fInvestWrap = document.getElementById('f-invest-wrap');
   fInvestWrap.style.display = (cat==='compra-imovel' || cat==='venda-imovel') ? 'none' : '';
