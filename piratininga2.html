@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 28JUL26 (versão 177)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 28JUL26 (versão 178)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -6863,6 +6863,14 @@ function render(){
 
 function getCardDate(catKey, key){ return localStorage.getItem('imovel-date-'+catKey+'-'+key)||''; }
 function setCardDate(catKey, key, val){ localStorage.setItem('imovel-date-'+catKey+'-'+key, val); console.log('setCardDate',catKey,key,val,localStorage.getItem('imovel-date-'+catKey+'-'+key)); renderImovelCat(catKey, null); }
+// Trava (ou destrava) a contagem de "dias corridos" de um cartão — ex: pagou o
+// cartório, marca como concluído e o número para de subir sozinho.
+function toggleImovelDiasConcluido(catKey, key, diasAtuais){
+  const chave = 'imovel-dias-congelados-'+catKey+'-'+key;
+  if(localStorage.getItem(chave)!==null) localStorage.removeItem(chave);
+  else localStorage.setItem(chave, String(diasAtuais));
+  renderImovelCat(catKey, null);
+}
 
 function deleteImovelCard(catKey, key){
   // remove from custom cards if it's there
@@ -7984,16 +7992,26 @@ function renderImovelCat(catKey, subKey, grupoFiltro){
       +hiddenInput;
   }
 
-  // bloquinho vertical do mesmo tamanho da data, com os dias corridos desde ela
+  // bloquinho vertical do mesmo tamanho da data, com os dias corridos desde ela.
+  // Ao lado, um botão pra "concluir" e travar a contagem (ex: pagou o cartório,
+  // não precisa mais ver os dias subindo pra sempre).
   function diasBadge(item){
     const d = getCardDate(catKey, item.key);
     if(!d) return '';
-    const dias = Math.max(0, Math.round((new Date()-new Date(d+'T12:00:00'))/(1000*60*60*24)));
-    return '<div title="Dias corridos" '
-      +'style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--c-panel3);border:1px solid var(--c-border2);border-radius:5px;padding:2px 6px;line-height:1.2;min-width:30px">'
-      +'<span style="font-size:11px;font-weight:700;color:var(--c-primary)">'+dias+'</span>'
+    const diasVivo = Math.max(0, Math.round((new Date()-new Date(d+'T12:00:00'))/(1000*60*60*24)));
+    const congeladoChave = 'imovel-dias-congelados-'+catKey+'-'+item.key;
+    const congeladoValor = localStorage.getItem(congeladoChave);
+    const congelado = congeladoValor !== null;
+    const dias = congelado ? parseInt(congeladoValor,10) : diasVivo;
+    return '<div style="display:flex;align-items:center;gap:3px">'
+      +'<div title="Dias corridos" '
+      +'style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--c-panel3);border:1px solid '+(congelado?'#4caf50':'var(--c-border2)')+';border-radius:5px;padding:2px 6px;line-height:1.2;min-width:30px">'
+      +'<span style="font-size:11px;font-weight:700;color:'+(congelado?'#4caf50':'var(--c-primary)')+'">'+dias+'</span>'
       +'<span style="font-size:9px;color:var(--c-primary)">dias</span>'
-      +'<span style="font-size:9px;color:var(--c-primary)">corridos</span>'
+      +'<span style="font-size:9px;color:var(--c-primary)">'+(congelado?'parado':'corridos')+'</span>'
+      +'</div>'
+      +'<button onclick="event.stopPropagation();toggleImovelDiasConcluido(\''+catKey+'\',\''+item.key+'\','+diasVivo+')" title="'+(congelado?'Reativar a contagem de dias':'Marcar como concluído — trava a contagem de dias aqui')+'" '
+      +'style="background:none;border:none;color:'+(congelado?'#4caf50':'var(--c-primary)')+';cursor:pointer;font-size:15px;padding:0 2px;line-height:1">'+(congelado?'✅':'⬜')+'</button>'
       +'</div>';
   }
 
