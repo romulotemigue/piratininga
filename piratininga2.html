@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 28JUL26 (versão 178)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 28JUL26 (versão 179)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -6871,6 +6871,17 @@ function toggleImovelDiasConcluido(catKey, key, diasAtuais){
   else localStorage.setItem(chave, String(diasAtuais));
   renderImovelCat(catKey, null);
 }
+// Tira o bloco de dias corridos de vista de vez (ex: foi tudo no mesmo dia,
+// não faz sentido mostrar "0 dias"). Fica só um 📅 apagado no lugar, pra
+// trazer de volta quando quiser.
+function esconderImovelDiasCorridos(catKey, key){
+  localStorage.setItem('imovel-dias-escondidos-'+catKey+'-'+key, '1');
+  renderImovelCat(catKey, null);
+}
+function mostrarImovelDiasCorridos(catKey, key){
+  localStorage.removeItem('imovel-dias-escondidos-'+catKey+'-'+key);
+  renderImovelCat(catKey, null);
+}
 
 function deleteImovelCard(catKey, key){
   // remove from custom cards if it's there
@@ -7998,6 +8009,11 @@ function renderImovelCat(catKey, subKey, grupoFiltro){
   function diasBadge(item){
     const d = getCardDate(catKey, item.key);
     if(!d) return '';
+    const escondidoChave = 'imovel-dias-escondidos-'+catKey+'-'+item.key;
+    if(localStorage.getItem(escondidoChave)!==null){
+      return '<button onclick="event.stopPropagation();mostrarImovelDiasCorridos(\''+catKey+'\',\''+item.key+'\')" title="Mostrar dias corridos de novo" '
+        +'style="background:none;border:none;color:var(--c-primary);cursor:pointer;font-size:14px;padding:0 2px;opacity:.5">📅</button>';
+    }
     const diasVivo = Math.max(0, Math.round((new Date()-new Date(d+'T12:00:00'))/(1000*60*60*24)));
     const congeladoChave = 'imovel-dias-congelados-'+catKey+'-'+item.key;
     const congeladoValor = localStorage.getItem(congeladoChave);
@@ -8012,6 +8028,7 @@ function renderImovelCat(catKey, subKey, grupoFiltro){
       +'</div>'
       +'<button onclick="event.stopPropagation();toggleImovelDiasConcluido(\''+catKey+'\',\''+item.key+'\','+diasVivo+')" title="'+(congelado?'Reativar a contagem de dias':'Marcar como concluído — trava a contagem de dias aqui')+'" '
       +'style="background:none;border:none;color:'+(congelado?'#4caf50':'var(--c-primary)')+';cursor:pointer;font-size:15px;padding:0 2px;line-height:1">'+(congelado?'✅':'⬜')+'</button>'
+      +(congelado ? '<button onclick="event.stopPropagation();esconderImovelDiasCorridos(\''+catKey+'\',\''+item.key+'\')" title="Tirar os dias corridos daqui (ex: foi no mesmo dia)" style="background:none;border:none;color:var(--c-primary);cursor:pointer;font-size:12px;padding:0 2px;opacity:.6">✕</button>' : '')
       +'</div>';
   }
 
