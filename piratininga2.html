@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 16AGO26 (versão 183)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 16AGO26 (versão 186)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1443,7 +1443,7 @@ function getItensCasaExtraChildren(){
 }
 function saveItensCasaExtraChildren(arr){ localStorage.setItem('itens_casa_extra_children', JSON.stringify(arr)); }
 function getItensCasaChildren(){
-  return getItensCasaExtraChildren().filter(k=>CATS[k] && k!=='itens-casa');
+  return getItensCasaExtraChildren().filter(k=>CATS[k] && k!=='itens-casa' && k!=='mudanca');
 }
 // Só roda uma vez (marcado por essa flag): garante que as 4 categorias que
 // já existiam antes desse recurso comecem dentro de "Itens para Casa", sem
@@ -3515,6 +3515,29 @@ async function limparInvestimentoValorImovelUmaVez(){
 // errado (localStorage) — corrige só os que claramente são preço do imóvel
 // (ex: "Por fora") e que ficaram em Taxas por engano. Não mexe em nada que
 // foi movido de propósito (ex: FGTS, que o Romulo moveu por decisão própria).
+// "Mudança" virou etapa própria (fora de Execução de Obra) — move os
+// lançamentos antigos que estavam dentro da fase removida "Instalação de
+// Eletrodomésticos e Mudança" (item "Mudança") pra lá. Busca por texto em vez
+// de um slug fixo, pra não depender de adivinhar exatamente como o slug foi
+// calculado antes da fase ser removida.
+async function migrarMudancaParaEtapaPropriaUmaVez(){
+  try{
+    if(localStorage.getItem('pirati_fix_mudanca_etapa_v1')) return;
+    localStorage.setItem('pirati_fix_mudanca_etapa_v1','1');
+    const afetados = gastos.filter(g=>g.categoria==='obra-bruta' && (
+      /mudan[çc]a|carreto/i.test(g.subcategoria||'') ||
+      /mudan[çc]a|carreto/i.test(g.descricao||'')
+    ));
+    for(const g of afetados){
+      g.categoria = 'mudanca';
+      g.subcategoria = '';
+      try{
+        await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${g.id}`,{method:'PATCH', headers:{...HEADERS}, body: JSON.stringify({categoria:'mudanca', subcategoria:''})});
+      }catch(e){ console.error('migrarMudancaParaEtapaPropriaUmaVez error:', e); }
+    }
+    if(afetados.length) render();
+  }catch(e){ console.error('migrarMudancaParaEtapaPropriaUmaVez outer error:', e); }
+}
 function corrigirPorForaTaxasUmaVez(){
   try{
     if(localStorage.getItem('pirati_fix_por_fora_taxas_v1')) return;
@@ -3572,6 +3595,7 @@ async function loadGastos(){
     limparInvestimentoValorImovelUmaVez();
     marcarTaxasVendaCompraUmaVez();
     corrigirPorForaTaxasUmaVez();
+    migrarMudancaParaEtapaPropriaUmaVez();
     restoreOrphanSubcats();
     checkPossibleDuplicates();
     renderCatNav();
@@ -3774,19 +3798,13 @@ const FASES_TEMPLATE = [
       {fase:'Louças, Metais e Vidros', itens:['Vasos sanitários','Cubas','Torneiras','Chuveiros','Registros','Box','Espelhos']},
       {fase:'Iluminação e Acabamentos Elétricos', itens:['Luminárias','Spots','Pendentes','Trilhos','Perfis de LED','Espelhos de tomada','Interruptores']},
       {fase:'Pintura Final e Limpeza Pós-Obra', itens:['Última demão de tinta','Retoques','Silicone','Calafetação','Limpeza fina']},
-      {fase:'Instalação de Eletrodomésticos e Mudança', itens:['Geladeira','Cooktop','Forno','Coifa','Lava-louças','Máquina de lavar','Ar-condicionado','Mudança','Montagem dos móveis soltos','Decoração']},
     ];
 
 function ensureObraBrutaPhases(){
   try{
-    // Cada fase tem OU 'itens' (lista plana de nomes — formato antigo, ainda
-    // usado pelas fases que não foram refinadas) OU 'subgrupos' (lista de
-    // {nome, itens:[{label, de?}]} — formato novo, com um nível a mais).
-    // 'de' é opcional: quando um item é RENOMEADO, colocar o nome antigo em
-    // 'de' faz o identificador interno (slug) continuar sendo calculado a
-    // partir do nome antigo — ou seja, lançamentos já salvos continuam
-    // linkados automaticamente ao item, mesmo com o nome novo na tela. Só o
-    // texto exibido muda; o "endereço" por baixo dos panos é preservado.
+    // Cada fase agora tem UM CARTÃO POR AMBIENTE ativo (igual já acontecia em
+    // Itens para Casa) — em vez dos itens fixos genéricos de antes. A lista
+    // de ambientes/ordem vem de "Definir Ambientes" (getAmbientesAtivosOrdenados).
     const FASES = FASES_TEMPLATE;
     // Fonte fixa da ordem dos SUBGRUPOS (Preparação/Execução/Finalização) de cada
     // fase — usada no render pra não depender de 'ordem'/localStorage bagunçado.
@@ -3828,23 +3846,18 @@ function ensureObraBrutaPhases(){
     const slugify = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
 
     let totalEsperado = 0;
+    const ambientesOrdenados = getAmbientesAtivosOrdenados();
     FASES.forEach((f,fi)=>{
-      // Normaliza pra sempre trabalhar com uma lista de subgrupos — fases
-      // ainda no formato antigo (só 'itens') viram um único subgrupo sem nome.
-      const subgruposNorm = f.subgrupos || [{nome:null, itens:(f.itens||[]).map(t=>({label:t}))}];
-      subgruposNorm.forEach((sg, si)=>{
-        sg.itens.forEach((item, ii)=>{
-          totalEsperado++;
-          const slugSeed = item.de || item.label; // preserva o slug antigo se foi renomeado
-          const slug = slugify(f.fase+'-'+slugSeed);
-          const ordemPadrao = fi*1000 + si*100 + ii;
-          SUBCATS['obra-bruta'][slug] = {
-            label:item.label, grupo:f.fase, subgrupo: sg.nome || undefined, auto:true,
-            ordem: ordemCustomizada[slug]!=null ? ordemCustomizada[slug] : ordemPadrao,
-            ordemCustom: ordemCustomizada[slug]!=null ? ordemCustomizada[slug] : undefined,
-            ativo: ativoCustomizado[slug]===false ? false : undefined
-          };
-        });
+      ambientesOrdenados.forEach((amb, ai)=>{
+        totalEsperado++;
+        const slug = slugify(f.fase+'-'+amb);
+        const ordemPadrao = fi*1000 + ai;
+        SUBCATS['obra-bruta'][slug] = {
+          label:amb, grupo:f.fase, auto:true,
+          ordem: ordemCustomizada[slug]!=null ? ordemCustomizada[slug] : ordemPadrao,
+          ordemCustom: ordemCustomizada[slug]!=null ? ordemCustomizada[slug] : undefined,
+          ativo: ativoCustomizado[slug]===false ? false : undefined
+        };
       });
     });
 
@@ -4640,7 +4653,11 @@ function populateSubCatSelect(catSelectId, subSelectId){
   const sel = document.getElementById(subSelectId);
   if(!sel) return;
   const subs = SUBCATS[catKey] ? Object.keys(SUBCATS[catKey]) : [];
-  sel.innerHTML = '<option value="">— Nenhuma —</option>' + subs.map(sk=>`<option value="${sk}">${SUBCATS[catKey][sk].label}</option>`).join('');
+  sel.innerHTML = '<option value="">— Nenhuma —</option>' + subs.map(sk=>{
+    const entry = SUBCATS[catKey][sk];
+    const label = (catKey==='obra-bruta' && entry.grupo) ? entry.grupo+' — '+entry.label : entry.label;
+    return `<option value="${sk}">${label}</option>`;
+  }).join('');
   const renameBtn = document.getElementById('e-subcat-rename-btn');
   if(renameBtn) renameBtn.style.display = (IMOVEL_CATS[catKey] && subs.length>0) ? '' : 'none';
   // edit modal
@@ -7168,7 +7185,7 @@ function getPinnedStageKeys(){
   // Ordem FIXA, sem arrastar — decidida direto pelo Romulo depois de muita
   // dor de cabeça com o drag. Não lê mais 'pinned_stage_order' nem depende
   // de nenhuma lógica de arrastar/soltar pras etapas principais.
-  const ordemFixa = ['venda-imovel','compra-imovel','projeto-arq','obra-bruta','itens-casa','outroscustos'];
+  const ordemFixa = ['venda-imovel','compra-imovel','projeto-arq','obra-bruta','mudanca','itens-casa','outroscustos'];
   const allPinned = [...Object.keys(IMOVEL_CATS), ...EXTRA_PINNED_STAGES.filter(k=>CATS[k])];
   const filhos = getItensCasaExtraChildren();
   const order = [];
@@ -9331,20 +9348,27 @@ function toggleObraEtapaItem(itemKey){
 function renderObraEtapasChecklist(){
   const check = getObraEtapasCheck();
   const cor = '#db4368'; // cor da Execução de Obra
-  const ambientes = getAmbientesAtivosOrdenados();
   let totalItens = 0, totalFeitos = 0;
   const faseCards = FASES_TEMPLATE.map((f,fi)=>{
+    // normaliza pro mesmo formato (subgrupos), tratando o formato antigo
+    // (só 'itens' plano) como um único subgrupo sem nome
+    const subgrupos = f.subgrupos || [{nome:'', itens:(f.itens||[]).map(nome=>({label:nome}))}];
     let faseItens = 0, faseFeitos = 0;
-    const itensHtml = ambientes.length ? ambientes.map(amb=>{
-      const itemKey = slugifyEtapaItem(f.fase)+'__amb__'+slugifyEtapaItem(amb);
-      const feito = !!check[itemKey];
-      totalItens++; faseItens++;
-      if(feito){ totalFeitos++; faseFeitos++; }
-      return `<label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:13px;color:${feito?'var(--c-muted3)':'var(--c-primary)'};text-decoration:${feito?'line-through':'none'}">
-        <input type="checkbox" ${feito?'checked':''} onchange="toggleObraEtapaItem('${itemKey}')" style="width:15px;height:15px;accent-color:${cor};cursor:pointer;flex-shrink:0">
-        ${amb}
-      </label>`;
-    }).join('') : `<div style="font-size:12px;color:var(--c-secondary);padding:4px 0">Nenhum ambiente ativo ainda — defina em "Definir Ambientes" lá em cima.</div>`;
+    const subgruposHtml = subgrupos.map(sg=>{
+      const itensHtml = sg.itens.map(it=>{
+        const itemKey = slugifyEtapaItem(f.fase)+'__'+slugifyEtapaItem(sg.nome)+'__'+slugifyEtapaItem(it.de||it.label);
+        const feito = !!check[itemKey];
+        totalItens++; faseItens++;
+        if(feito){ totalFeitos++; faseFeitos++; }
+        return `<label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:13px;color:${feito?'var(--c-muted3)':'var(--c-primary)'};text-decoration:${feito?'line-through':'none'}">
+          <input type="checkbox" ${feito?'checked':''} onchange="toggleObraEtapaItem('${itemKey}')" style="width:15px;height:15px;accent-color:${cor};cursor:pointer;flex-shrink:0">
+          ${it.label}
+        </label>`;
+      }).join('');
+      return sg.nome
+        ? `<div style="margin-top:8px"><div style="font-size:10px;color:var(--c-secondary);text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px">${sg.nome}</div>${itensHtml}</div>`
+        : itensHtml;
+    }).join('');
     const faseCompleta = faseItens>0 && faseFeitos===faseItens;
     const faseIniciada = faseFeitos>0;
     return {html:`
@@ -9356,7 +9380,7 @@ function renderObraEtapasChecklist(){
           </div>
           <span style="font-size:11px;color:var(--c-secondary)">${faseFeitos}/${faseItens}</span>
         </div>
-        <div style="margin-top:8px">${itensHtml}</div>
+        ${subgruposHtml}
       </div>`, completa:faseCompleta, iniciada:faseIniciada};
   });
   // "onde a pessoa está": a primeira fase que não está 100% concluída
@@ -9366,7 +9390,7 @@ function renderObraEtapasChecklist(){
   document.getElementById('content').innerHTML = `
     <div style="margin-bottom:1.5rem">
       <h2 style="margin:0 0 4px">📋 Etapas da Obra</h2>
-      <div style="font-size:13px;color:var(--c-primary)">Acompanhamento do início ao fim, por ambiente — marque o que já foi feito em cada um.</div>
+      <div style="font-size:13px;color:var(--c-primary)">Acompanhamento do início ao fim, separado dos lançamentos — marque o que já foi feito.</div>
     </div>
     <div style="background:var(--c-panel2);border:1px solid var(--c-border);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.25rem">
       <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--c-primary);margin-bottom:6px">
