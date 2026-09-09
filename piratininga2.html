@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 16AGO26 (versão 196)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 16AGO26 (versão 197)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -9510,6 +9510,14 @@ function getAmbientesAtivosOrdenados(){
   const ativos = getAmbientesAtivos();
   return catalogo.filter(c=>ativos.some(a=>a.toLowerCase()===c.toLowerCase()));
 }
+// Cor consistente por ambiente, em qualquer lugar do app — mesma ordem/cor
+// já usada em "Definir Ambientes" (índice na lista de ativos → subGroupColor).
+function corDoAmbiente(nome){
+  if(!nome) return 'var(--c-faint2)';
+  const lista = getAmbientesAtivosOrdenados();
+  const idx = lista.findIndex(a=>a.toLowerCase()===nome.toLowerCase());
+  return idx>=0 ? subGroupColor(idx) : 'var(--c-faint2)';
+}
 function slugifyEtapaItem(s){
   return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
 }
@@ -10080,7 +10088,7 @@ function tableCardHeader(label, color, icon, status, catKey){
 const SUBCAT_GROUP_PALETTE = ['#42a5f5','#e8b544','#ab47bc','#4caf50','#ef5350','#26c6da','#ff7043','#8d6e63','#7cb342','#5c6bc0','#ec407a','#26a69a'];
 function subGroupColor(idx){ return SUBCAT_GROUP_PALETTE[idx % SUBCAT_GROUP_PALETTE.length]; }
 
-function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKeyOverride, ambienteOverride, multiSubKeys, groupColor){
+function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKeyOverride, ambienteOverride, ambienteList){
   const effSub = subKeyOverride || g.subcategoria;
   const baseCat = catKey && catKey.includes('__') ? catKey.split('__')[0] : (catKey||g.categoria);
   const subLabelText = effSub && SUBCATS[baseCat]?.[effSub]?.label || '';
@@ -10117,11 +10125,11 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
         ? `<span onclick="event.stopPropagation();navigate('${baseCat}__${effSub}')" title="Ver essa sub-etapa" style="font-size:11px;color:#7aa7d9;cursor:pointer;text-decoration:underline;text-decoration-color:transparent;transition:text-decoration-color .15s" onmouseover="this.style.textDecorationColor='#7aa7d9'" onmouseout="this.style.textDecorationColor='transparent'">${subLabelText}</span>`
         : `<span style="font-size:11px;color:var(--c-primary)">${subLabelText}</span>`}</div>`
     : '';
-  // Pacote com mais de um serviço no MESMO ambiente: em vez de repetir a
-  // linha inteira uma vez por serviço, lista os nomes juntos, na cor do
-  // ambiente (a mesma que já separa os grupos de ambiente na tela).
-  const multiSubLineHtml = (multiSubKeys && multiSubKeys.length)
-    ? `<div style="margin-top:2px;font-size:11px;color:${groupColor||'var(--c-primary)'}">${multiSubKeys.map(sk=>SUBCATS[baseCat]?.[sk]?.label||sk).join(' · ')}</div>`
+  // Ambiente(s) que esse lançamento cobre — listados aqui embaixo, cada um na
+  // cor já usada pra esse ambiente em "Definir Ambientes", em vez de virar
+  // uma seção/cabeçalho separado (e sem repetir a linha toda por ambiente).
+  const multiSubLineHtml = (ambienteList && ambienteList.length)
+    ? `<div style="margin-top:2px;font-size:11px">${ambienteList.map(amb=>`<span style="color:${corDoAmbiente(amb)}">${amb}</span>`).join(' <span style="color:var(--c-faint3)">·</span> ')}</div>`
     : '';
   // Link material <-> pacote sem material: cada lado mostra o próprio valor E o
   // total somado, nunca só a soma (senão perde-se de vista quanto é de cada um).
@@ -10226,43 +10234,19 @@ function renderRowsFiltered(list, status, catKey, borderColor, groupBy, relevant
   // — evita mostrar ambientes de OUTRO serviço do mesmo pacote quando a pessoa
   // está olhando só uma sub ou uma fase específica.
   if(groupBy==='ambiente'){
-    const groupMap = {};
-    sorted.forEach(g=>{
-      let entries = [];
+    return sorted.map(g=>{
+      let ambientes = [];
       if(g.pacote_subs){
         let parsed = parsePacoteSubs(g.pacote_subs);
         if(relevantSubs) parsed = parsed.filter(p=>relevantSubs.includes(p.sub));
-        entries = parsed.map(p=>({ambiente:p.ambiente||'', sub:p.sub}));
+        ambientes = [...new Set(parsed.map(p=>p.ambiente).filter(Boolean))];
       }
-      if(!entries.length) entries = [{ambiente: g.ambiente || (getItensCasaChildren().includes(g.categoria) ? (g.subcategoria||'') : ''), sub:g.subcategoria}];
-      // Várias sub-tarefas do MESMO pacote caindo no mesmo ambiente viravam
-      // uma linha inteira repetida por sub-tarefa — agrupa por gasto+ambiente
-      // primeiro, pra sobrar 1 linha só, com as sub-tarefas listadas juntas.
-      const porAmbiente = {};
-      entries.forEach(en=>{ (porAmbiente[en.ambiente] = porAmbiente[en.ambiente] || []).push(en.sub); });
-      Object.keys(porAmbiente).forEach(amb=>{
-        if(!groupMap[amb]) groupMap[amb] = { label: amb || 'Sem ambiente', items: [] };
-        groupMap[amb].items.push({g, subs: porAmbiente[amb]});
-      });
-    });
-    const groupNames = Object.keys(groupMap).sort((a,b)=>{
-      if(!a) return 1; if(!b) return -1;
-      return a.localeCompare(b);
-    });
-    if(groupNames.length >= 1){
-      return groupNames.map((gk,i)=>{
-        const grp = groupMap[gk];
-        const color = gk ? subGroupColor(i) : 'var(--c-faint2)';
-        const header = `<tr class="subcat-group-header"><td colspan="6" style="padding:5px 8px;background:${color}1c;border-top:1px solid ${color}55;border-bottom:1px solid ${color}33">
-          <span style="display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.09em">
-            <span style="width:6px;height:6px;border-radius:50%;background:${color};display:inline-block"></span>${grp.label}
-          </span>
-        </td></tr>`;
-        const rows = grp.items.map(({g,subs})=>renderOneRow(g,status,catKey,rowBorder,false,false,subs.length===1?subs[0]:null,gk,subs.length>1?subs:null,color)).join('');
-        return header + rows;
-      }).join('');
-    }
-    return sorted.map(g=>renderOneRow(g,status,catKey,rowBorder,true,false,g.subcategoria,g.ambiente)).join('');
+      if(!ambientes.length){
+        const amb = g.ambiente || (getItensCasaChildren().includes(g.categoria) ? (g.subcategoria||'') : '');
+        if(amb) ambientes = [amb];
+      }
+      return renderOneRow(g,status,catKey,rowBorder,false,false,null,null,ambientes.length?ambientes:null);
+    }).join('');
   }
 
   // Agrupa por subcategoria (ambiente), seguindo a mesma ordem em Pago/Necessário/Dispensável
