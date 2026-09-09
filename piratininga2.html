@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 16AGO26 (versão 187)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 16AGO26 (versão 188)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -3522,17 +3522,23 @@ async function limparInvestimentoValorImovelUmaVez(){
 // calculado antes da fase ser removida.
 async function migrarMudancaParaEtapaPropriaUmaVez(){
   try{
-    if(localStorage.getItem('pirati_fix_mudanca_etapa_v1')) return;
-    localStorage.setItem('pirati_fix_mudanca_etapa_v1','1');
+    if(localStorage.getItem('pirati_fix_mudanca_etapa_v2')) return;
+    localStorage.setItem('pirati_fix_mudanca_etapa_v2','1');
     const afetados = gastos.filter(g=>g.categoria==='obra-bruta' && (
       /mudan[çc]a|carreto/i.test(g.subcategoria||'') ||
-      /mudan[çc]a|carreto/i.test(g.descricao||'')
+      /mudan[çc]a|carreto/i.test(g.descricao||'') ||
+      /mudan[çc]a|carreto/i.test(g.pacote_subs||'')
     ));
     for(const g of afetados){
       g.categoria = 'mudanca';
       g.subcategoria = '';
+      // "Mudança" é uma categoria simples — não usa a estrutura de
+      // pacote/empreitada (sub-itens, ambiente linkado, etc.), então tira
+      // isso do lançamento ao mover pra lá.
+      const patchBody = {categoria:'mudanca', subcategoria:'', pacote_subs:null, tipo_contratacao:null, ambiente:null};
+      g.pacote_subs = null; g.tipo_contratacao = null; g.ambiente = null;
       try{
-        await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${g.id}`,{method:'PATCH', headers:{...HEADERS}, body: JSON.stringify({categoria:'mudanca', subcategoria:''})});
+        await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${g.id}`,{method:'PATCH', headers:{...HEADERS}, body: JSON.stringify(patchBody)});
       }catch(e){ console.error('migrarMudancaParaEtapaPropriaUmaVez error:', e); }
     }
     if(afetados.length) render();
