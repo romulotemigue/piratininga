@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 28JUL26 (versão 179)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 16AGO26 (versão 181)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1567,12 +1567,12 @@ function isReformaGasto(g){
 // reforma inteira + só os itens de "pagamento" (não recebimento/financiamento) da venda/compra
 function getStatusDetailList(status, scope){
   if(status==='apagar'){
-    return gastos.filter(g=>g.status==='apagar'&&isReformaGasto(g));
+    return gastos.filter(g=>g.status==='apagar'&&isReformaGasto(g)&&isCategoriaGlobalAtiva(g.categoria));
   }
-  const reforma = gastos.filter(g=>g.status===status && isReformaGasto(g));
+  const reforma = gastos.filter(g=>g.status===status && isReformaGasto(g) && isCategoriaGlobalAtiva(g.categoria));
   if(scope==='reforma') return reforma;
-  const venda   = gastos.filter(g=>g.categoria==='venda-imovel'  && g.status===status && getImovelCardKind('venda-imovel',g.subcategoria)==='pagamento');
-  const compra  = gastos.filter(g=>g.categoria==='compra-imovel' && g.status===status && getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento');
+  const venda   = gastos.filter(g=>g.categoria==='venda-imovel'  && g.status===status && getImovelCardKind('venda-imovel',g.subcategoria)==='pagamento' && isCategoriaGlobalAtiva(g.categoria));
+  const compra  = gastos.filter(g=>g.categoria==='compra-imovel' && g.status===status && getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && isCategoriaGlobalAtiva(g.categoria));
   return [...reforma, ...venda, ...compra];
 }
 let statusModalDisabledGroups = new Set();
@@ -1623,7 +1623,7 @@ function refreshStatusDetailModal(){
   let list, title, color;
   if(statusModalInvestimentoTag!==null){
     const tag = statusModalInvestimentoTag;
-    list = gastos.filter(g=>g.categoria!=='ganho' && (tag==='' ? !g.investimento : g.investimento===tag) && getValSd(g)>0);
+    list = gastos.filter(g=>g.categoria!=='ganho' && (tag==='' ? !g.investimento : g.investimento===tag) && getValSd(g)>0 && isCategoriaGlobalAtiva(g.categoria));
     const titlesInv = {perpetuo:'Perpétuo', transferivel:'Transferível', pessoal:'Pessoal', taxas:'Taxas', '':'Ainda sem tag de investimento'};
     title = titlesInv[tag] !== undefined ? titlesInv[tag] : tag;
     color = tag==='' ? '#fff' : ((INVEST_INFO[tag]||{}).color || '#fff');
@@ -1765,7 +1765,7 @@ function agruparItensCasaNoDOM(){
 
   const grupo = document.createElement('div');
   grupo.id = 'itens-casa-group-wrap';
-  grupo.style.cssText = `background:${cor}10;border:1px solid ${cor}30;border-left:3px solid ${cor};border-radius:8px;margin:4px 6px;overflow:hidden`;
+  grupo.style.cssText = `background:${cor}10;border:1px solid ${cor}30;border-left:3px solid ${cor};border-radius:8px;margin:4px 6px;overflow:hidden;${isEtapaGlobalAtiva('itens-casa')?'':'opacity:.45'}`;
   grupo.innerHTML = `
     <div class="nav-item-wrap" id="itens-casa-header-row">
       <button id="chev-itens-casa-group" style="background:none;border:none;color:var(--c-secondary);cursor:pointer;padding:4px 2px;font-size:12px;transition:transform .2s;transform:rotate(${isOpen?90:0}deg)" onclick="toggleItensCasaGroup(event)"><i class="ti ti-chevron-right"></i></button>
@@ -1773,6 +1773,7 @@ function agruparItensCasaNoDOM(){
         ${numeroGrupo ? `<span style="width:16px;height:16px;border-radius:50%;background:${cor};color:var(--c-panel);font-size:10px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">${numeroGrupo}</span>` : ''}🏠 Itens para Casa
       </div>
       <button onclick="ocultarEtapa('itens-casa',event)" title="Esconder essa etapa (continua somando na Visão Geral)" style="background:none;border:none;color:var(--c-muted2);cursor:pointer;font-size:13px;padding:0 2px"><i class="ti ti-chevron-left"></i></button>
+      ${miniToggleHtml(isEtapaGlobalAtiva('itens-casa'), `toggleEtapaGlobalAtiva('itens-casa',event)`)}
       <button onclick="toggleAllItensCasaChildren(event)" title="Expandir/recolher todos" style="background:none;border:none;color:var(--c-faint2);cursor:pointer;font-size:13px;padding:0 4px;line-height:1" onmouseover="this.style.color='${cor}'" onmouseout="this.style.color='var(--c-faint2)'"><i class="ti ti-chevrons-down"></i></button>
       <button class="nav-dots" onclick="toggleCatMenu('itens-casa',false,true,event)" title="Opções"><i class="ti ti-dots-vertical"></i></button>
     </div>
@@ -1928,6 +1929,28 @@ function mostrarEtapa(k, e){
   saveEtapasOcultas(ocultas);
   renderCatNav();
 }
+function getEtapasGlobalInativas(){
+  try{ return JSON.parse(localStorage.getItem('pirati_etapas_globais_inativas')||'[]'); }catch(e){ return []; }
+}
+function isEtapaGlobalAtiva(catKey){ return !getEtapasGlobalInativas().includes(catKey); }
+// Resolve o estado ativo/inativo de QUALQUER categoria — inclusive as filhas
+// de "Itens para Casa" (que não têm toggle próprio, seguem o do grupo todo).
+function isCategoriaGlobalAtiva(catKey){
+  if(getItensCasaChildren().includes(catKey)) return isEtapaGlobalAtiva('itens-casa');
+  return isEtapaGlobalAtiva(catKey);
+}
+// Liga/desliga uma etapa inteira das contas gerais (Visão Geral) — ela some
+// dos totais/gráficos como se não existisse, mas continua no menu (só fica
+// esmaecida) e continua clicável normalmente.
+function toggleEtapaGlobalAtiva(catKey, event){
+  if(event) event.stopPropagation();
+  const lista = getEtapasGlobalInativas();
+  const idx = lista.indexOf(catKey);
+  if(idx>-1) lista.splice(idx,1); else lista.push(catKey);
+  localStorage.setItem('pirati_etapas_globais_inativas', JSON.stringify(lista));
+  renderCatNav();
+  if(typeof render==='function') render();
+}
 function renderCatNav(){
   try{
   const list = document.getElementById('cat-nav-list');
@@ -1988,7 +2011,7 @@ function renderCatNav(){
 
     const subs = hasSubs ? buildSubcatRowsHtml(k) : '';
 
-    const imovelStyle = isPinnedStage ? `background:${info.color}18;border:1px solid ${info.color}44;border-left:3px solid ${info.color};border-radius:8px;margin:4px 6px;` : '';
+    const imovelStyle = isPinnedStage ? `background:${info.color}18;border:1px solid ${info.color}44;border-left:3px solid ${info.color};border-radius:8px;margin:4px 6px;${isEtapaGlobalAtiva(k)?'':'opacity:.45'}` : '';
     const imovelNavStyle = isPinnedStage ? `color:${info.color};font-weight:600;font-size:13px;` : '';
 
     // Etapa "escondida" — vira só uma bolinha com o número, pra sair de cena
@@ -2012,6 +2035,7 @@ function renderCatNav(){
         </div>
         ${k==='obra-bruta' ? `<button id="btn-expand-all-${k}" onclick="toggleAllFaseGroups('${k}',event)" title="Expandir/recolher todas as fases" style="background:none;border:none;color:var(--c-primary);cursor:pointer;font-size:13px;padding:0 4px;line-height:1" onmouseover="this.style.color='${info.color}'" onmouseout="this.style.color='var(--c-faint2)'"><i class="ti ti-chevrons-down"></i></button>` : ''}
         ${(isPinnedStage && !getItensCasaChildren().includes(k)) ? `<button onclick="ocultarEtapa('${k}',event)" title="Esconder essa etapa (continua somando na Visão Geral)" style="background:none;border:none;color:var(--c-muted2);cursor:pointer;font-size:13px;padding:0 2px"><i class="ti ti-chevron-left"></i></button>` : ''}
+        ${(isPinnedStage && !getItensCasaChildren().includes(k)) ? miniToggleHtml(isEtapaGlobalAtiva(k), `toggleEtapaGlobalAtiva('${k}',event)`) : ''}
         <button class="nav-dots" onclick="toggleCatMenu('${k}',${isImovel},${isPinnedStage},event)" title="Opções"><i class="ti ti-dots-vertical"></i></button>
       </div>
       <div id="subcat-list-${k}" style="overflow:hidden;max-height:${isOpen?'none':'0'}">${subs}</div>
@@ -3467,8 +3491,8 @@ function migrarDispensaParaDespensaUmaVez(){
 // anterior chegou a marcar tudo como "Taxas" por padrão; limpa isso uma vez.
 async function limparInvestimentoValorImovelUmaVez(){
   try{
-    if(localStorage.getItem('pirati_fix_investimento_valor_imovel_v1')) return;
-    localStorage.setItem('pirati_fix_investimento_valor_imovel_v1','1');
+    if(localStorage.getItem('pirati_fix_investimento_valor_imovel_v2')) return;
+    localStorage.setItem('pirati_fix_investimento_valor_imovel_v2','1');
     const afetados = gastos.filter(g=>g.categoria==='compra-imovel' && g.investimento && getImovelCardGroup('compra-imovel', g.subcategoria)==='valor-imovel');
     for(const g of afetados){
       g.investimento = '';
@@ -3482,6 +3506,30 @@ async function limparInvestimentoValorImovelUmaVez(){
 // editado/criado — lançamentos de taxa de Venda/Compra do Imóvel de ANTES
 // disso ficaram sem tag nenhuma, sumindo do gráfico de Investimento. Marca
 // retroativamente, uma vez só.
+// A extinta função de "mover cartão" deixou alguns itens presos num grupo
+// errado (localStorage) — corrige só os que claramente são preço do imóvel
+// (ex: "Por fora") e que ficaram em Taxas por engano. Não mexe em nada que
+// foi movido de propósito (ex: FGTS, que o Romulo moveu por decisão própria).
+function corrigirPorForaTaxasUmaVez(){
+  try{
+    if(localStorage.getItem('pirati_fix_por_fora_taxas_v1')) return;
+    localStorage.setItem('pirati_fix_por_fora_taxas_v1','1');
+    const overrides = getImovelCardGroupOverrides();
+    const keysCorrigidas = [];
+    Object.keys(overrides).forEach(key=>{
+      if(overrides[key]!=='documentacao') return;
+      const def = getImovelCardDefs('compra-imovel').find(i=>i.key===key);
+      const label = (def?.label||key||'').toLowerCase();
+      if(label.includes('por fora')){
+        delete overrides[key];
+        keysCorrigidas.push(key);
+      }
+    });
+    if(keysCorrigidas.length){
+      localStorage.setItem('imovel-grupo-compra-overrides', JSON.stringify(overrides));
+    }
+  }catch(e){ console.error('corrigirPorForaTaxasUmaVez error:', e); }
+}
 async function marcarTaxasVendaCompraUmaVez(){
   try{
     if(localStorage.getItem('pirati_fix_taxas_venda_compra_v2')) return;
@@ -3518,6 +3566,7 @@ async function loadGastos(){
     migrarDispensaParaDespensaUmaVez();
     limparInvestimentoValorImovelUmaVez();
     marcarTaxasVendaCompraUmaVez();
+    corrigirPorForaTaxasUmaVez();
     restoreOrphanSubcats();
     checkPossibleDuplicates();
     renderCatNav();
@@ -5441,7 +5490,7 @@ function ambCardDrop(e, nomeAlvo){
 // contar o mesmo dinheiro mais de uma vez na soma total.
 function computeGastoPorAmbiente(){
   const somas = {};
-  gastos.filter(g=>g.categoria==='obra-bruta' && g.status!=='cancel').forEach(g=>{
+  gastos.filter(g=>g.categoria==='obra-bruta' && g.status!=='cancel' && isCategoriaGlobalAtiva(g.categoria)).forEach(g=>{
     const val = gastoValor(g);
     let ambientesGasto = [];
     if(g.ambiente) ambientesGasto = g.ambiente.split(MAT_AMB_SEP).map(s=>s.trim()).filter(Boolean);
@@ -8238,7 +8287,7 @@ function buildReformaPieChart(){
   const canvas = document.getElementById('reformaPieChart');
   if(!canvas) return;
   const getVal = g=>gastoValor(g);
-  const items = gastos.filter(g=>g.status==='necessario' && isReformaGasto(g));
+  const items = gastos.filter(g=>g.status==='necessario' && isReformaGasto(g) && isCategoriaGlobalAtiva(g.categoria));
   const byCat = {};
   items.forEach(g=>{ byCat[g.categoria] = (byCat[g.categoria]||0) + getVal(g); });
   const catKeys = Object.keys(byCat).filter(k=>byCat[k]>0).sort((a,b)=>byCat[b]-byCat[a]);
@@ -8274,6 +8323,7 @@ function buildInvestPieChart(){
   const totais = {perpetuo:0, transferivel:0, pessoal:0, taxas:0};
   gastos.forEach(g=>{
     if(g.categoria==='ganho') return;
+    if(!isCategoriaGlobalAtiva(g.categoria)) return;
     if(INVEST_INFO[g.investimento]) totais[g.investimento] += getVal(g);
   });
   const keys = ['perpetuo','transferivel','pessoal','taxas'].filter(k=>totais[k]>0);
@@ -8384,6 +8434,7 @@ function wrapGeralCard(id, innerHtml, onEdit, extraStyle){
 }
 
 function renderGeral(){
+  const gastosG = gastos.filter(g=>g.categoria==='ganho' || isCategoriaGlobalAtiva(g.categoria));
   // Venda/Compra do Imóvel são transações imobiliárias, não orçamento de reforma —
   // ficam de fora dos totais/gráficos de reforma pra não distorcer os números
   const REAL_ESTATE_CATS = ['venda-imovel','compra-imovel'];
@@ -8396,11 +8447,11 @@ function renderGeral(){
   // Diagnóstico: mostra no console qualquer categoria "órfã" usada em lançamentos
   // que não corresponde a nenhuma categoria/etapa válida hoje
   try{
-    const categoriasUsadas = [...new Set(gastos.map(g=>g.categoria))];
+    const categoriasUsadas = [...new Set(gastosG.map(g=>g.categoria))];
     const orfas = categoriasUsadas.filter(c=>c && c!=='ganho' && c!=='compra-imvel' && !CATS[c] && !IMOVEL_CATS[c]);
     if(orfas.length){
       console.warn('[piratininga][categorias-orfas] Essas categorias aparecem em lançamentos mas não existem mais:', orfas,
-        '— exemplos de lançamentos:', orfas.map(c=>gastos.filter(g=>g.categoria===c).slice(0,2).map(g=>({id:g.id,descricao:g.descricao,valor:g.valor,status:g.status}))));
+        '— exemplos de lançamentos:', orfas.map(c=>gastosG.filter(g=>g.categoria===c).slice(0,2).map(g=>({id:g.id,descricao:g.descricao,valor:g.valor,status:g.status}))));
     }
   }catch(e){ console.warn('Erro no diagnóstico de categorias órfãs:', e); }
   const getVal = g => gastoValor(g);
@@ -8408,27 +8459,27 @@ function renderGeral(){
   // Resumo por tipo de Investimento (Perpétuo/Transferível/Pessoal) — considera
   // qualquer lançamento com essa tag, em qualquer categoria (exceto ganhos)
   const investTotais = {perpetuo:0, transferivel:0, pessoal:0, taxas:0};
-  gastos.forEach(g=>{
+  gastosG.forEach(g=>{
     if(g.categoria==='ganho') return;
     if(INVEST_INFO[g.investimento]) investTotais[g.investimento] += getVal(g);
   });
-  const investSemTag = gastos.filter(g=>g.categoria!=='ganho' && isReforma(g) && !INVEST_INFO[g.investimento]).reduce((s,g)=>s+getVal(g),0);
+  const investSemTag = gastosG.filter(g=>g.categoria!=='ganho' && isReforma(g) && !INVEST_INFO[g.investimento]).reduce((s,g)=>s+getVal(g),0);
 
-  const ganhos  = gastos.filter(g=>g.categoria==='ganho');
+  const ganhos  = gastosG.filter(g=>g.categoria==='ganho');
   const totalGanhos = ganhos.reduce((s,g)=>s+(g.valor||0),0);
   // Só disponível conta como base real — direcionado/a receber não passa pela conta
   const dispGanhos = ganhos.filter(g=>g.subcategoria==='disponivel'||!g.subcategoria).reduce((s,g)=>s+gastoValor(g),0);
   const aReceberGanhos = ganhos.filter(g=>g.subcategoria==='areceber').reduce((s,g)=>s+gastoValor(g),0);
-  const ativos = gastos.filter(g=>g.status==='pago'&&isReforma(g));
+  const ativos = gastosG.filter(g=>g.status==='pago'&&isReforma(g));
   const total  = ativos.reduce((s,g)=>s+getVal(g),0);
-  const pago   = gastos.filter(g=>g.status==='pago'&&isReforma(g)).reduce((s,g)=>s+getVal(g),0);
-  const dispensavel = gastos.filter(g=>g.status==='apagar'&&isReforma(g)).reduce((s,g)=>s+getVal(g),0);
-  const necessario  = gastos.filter(g=>g.status==='necessario'&&isReforma(g)).reduce((s,g)=>s+getVal(g),0);
+  const pago   = gastosG.filter(g=>g.status==='pago'&&isReforma(g)).reduce((s,g)=>s+getVal(g),0);
+  const dispensavel = gastosG.filter(g=>g.status==='apagar'&&isReforma(g)).reduce((s,g)=>s+getVal(g),0);
+  const necessario  = gastosG.filter(g=>g.status==='necessario'&&isReforma(g)).reduce((s,g)=>s+getVal(g),0);
   const pct    = dispGanhos>0?Math.round(total/dispGanhos*100):0;
   const barColor = pct>90?'#ef5350':pct>70?'#e8b544':'#4caf50';
 
   // Venda do Imóvel: recebimento/aporte (Sinal/Entrada/Repasse/etc) x pagamento (Corretagem/Taxas/etc — inclusive cartões criados por você, como Laudêmio)
-  const vendaItems = gastos.filter(g=>g.categoria==='venda-imovel');
+  const vendaItems = gastosG.filter(g=>g.categoria==='venda-imovel');
   const vendaRecebido   = vendaItems.filter(g=>isIncomeKind(getImovelCardKind('venda-imovel',g.subcategoria)) && g.status==='pago').reduce((s,g)=>s+getVal(g),0);
   const vendaAReceber   = vendaItems.filter(g=>isIncomeKind(getImovelCardKind('venda-imovel',g.subcategoria)) && g.status!=='pago').reduce((s,g)=>s+getVal(g),0);
   const vendaTotalPrevisto = vendaRecebido + vendaAReceber;
@@ -8439,7 +8490,7 @@ function renderGeral(){
 
   // Compra do Imóvel: pagamento do seu bolso (Sinal/Entrada/Taxas) x financiamento (Repasse bancário —
   // não passa pela sua conta corrente, vai direto pro vendedor, não é "seu dinheiro" saindo)
-  const compraItems = gastos.filter(g=>g.categoria==='compra-imovel');
+  const compraItems = gastosG.filter(g=>g.categoria==='compra-imovel');
   // O FGTS chega junto com o Repasse Bancário do financiamento — soma
   // automaticamente ali (a pessoa não precisa fazer essa conta na mão)
   const compraFgtsTotal = compraItems.filter(g=>g.subcategoria==='fgts').reduce((s,g)=>s+getVal(g),0);
@@ -8691,7 +8742,7 @@ function renderGeral(){
   if(!ambienteChart){ const v = document.getElementById('ambienteChartGeralVazio'); if(v) v.style.display = ''; }
 
   function buildCharts(canvasBarId, canvasPieId, barLegendId, pieLegendId, filterStatuses){
-    const items = gastos.filter(g=>filterStatuses.includes(g.status)&&isReforma(g));
+    const items = gastosG.filter(g=>filterStatuses.includes(g.status)&&isReforma(g));
     const values = Object.keys(CATS).map(k=>items.filter(g=>g.categoria===k).reduce((s,g)=>s+gastoValor(g),0));
     const colors = Object.values(CATS).map(c=>c.color);
     const labels = Object.values(CATS).map(c=>c.label.split('/')[0].trim());
