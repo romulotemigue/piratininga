@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 16AGO26 (versão 182)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 16AGO26 (versão 183)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -9308,6 +9308,14 @@ function openModalWithSubCat(catKey, subKey){
 let obraFaseModalData = null;
 // ── "Etapas" — checklist limpo das 17 fases da obra, do início ao fim,
 // separado da parte de dinheiro/lançamentos (que fica na visão normal). ──
+// Ambientes ativos, na MESMA ordem do catálogo (que é o que dá pra arrastar
+// em "Definir Ambientes") — usado pra fazer o checklist de cada fase seguir
+// a sequência de ambientes automaticamente, inclusive quando ela muda.
+function getAmbientesAtivosOrdenados(){
+  const catalogo = getAmbienteCatalog();
+  const ativos = getAmbientesAtivos();
+  return catalogo.filter(c=>ativos.some(a=>a.toLowerCase()===c.toLowerCase()));
+}
 function slugifyEtapaItem(s){
   return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
 }
@@ -9322,28 +9330,21 @@ function toggleObraEtapaItem(itemKey){
 }
 function renderObraEtapasChecklist(){
   const check = getObraEtapasCheck();
-  const cor = IMOVEL_CATS['obra-bruta'] ? '#db4368' : '#db4368'; // cor da Execução de Obra
+  const cor = '#db4368'; // cor da Execução de Obra
+  const ambientes = getAmbientesAtivosOrdenados();
   let totalItens = 0, totalFeitos = 0;
   const faseCards = FASES_TEMPLATE.map((f,fi)=>{
-    // normaliza pro mesmo formato (subgrupos), tratando o formato antigo
-    // (só 'itens' plano) como um único subgrupo sem nome
-    const subgrupos = f.subgrupos || [{nome:'', itens:(f.itens||[]).map(nome=>({label:nome}))}];
     let faseItens = 0, faseFeitos = 0;
-    const subgruposHtml = subgrupos.map(sg=>{
-      const itensHtml = sg.itens.map(it=>{
-        const itemKey = slugifyEtapaItem(f.fase)+'__'+slugifyEtapaItem(sg.nome)+'__'+slugifyEtapaItem(it.de||it.label);
-        const feito = !!check[itemKey];
-        totalItens++; faseItens++;
-        if(feito){ totalFeitos++; faseFeitos++; }
-        return `<label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:13px;color:${feito?'var(--c-muted3)':'var(--c-primary)'};text-decoration:${feito?'line-through':'none'}">
-          <input type="checkbox" ${feito?'checked':''} onchange="toggleObraEtapaItem('${itemKey}')" style="width:15px;height:15px;accent-color:${cor};cursor:pointer;flex-shrink:0">
-          ${it.label}
-        </label>`;
-      }).join('');
-      return sg.nome
-        ? `<div style="margin-top:8px"><div style="font-size:10px;color:var(--c-secondary);text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px">${sg.nome}</div>${itensHtml}</div>`
-        : itensHtml;
-    }).join('');
+    const itensHtml = ambientes.length ? ambientes.map(amb=>{
+      const itemKey = slugifyEtapaItem(f.fase)+'__amb__'+slugifyEtapaItem(amb);
+      const feito = !!check[itemKey];
+      totalItens++; faseItens++;
+      if(feito){ totalFeitos++; faseFeitos++; }
+      return `<label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:13px;color:${feito?'var(--c-muted3)':'var(--c-primary)'};text-decoration:${feito?'line-through':'none'}">
+        <input type="checkbox" ${feito?'checked':''} onchange="toggleObraEtapaItem('${itemKey}')" style="width:15px;height:15px;accent-color:${cor};cursor:pointer;flex-shrink:0">
+        ${amb}
+      </label>`;
+    }).join('') : `<div style="font-size:12px;color:var(--c-secondary);padding:4px 0">Nenhum ambiente ativo ainda — defina em "Definir Ambientes" lá em cima.</div>`;
     const faseCompleta = faseItens>0 && faseFeitos===faseItens;
     const faseIniciada = faseFeitos>0;
     return {html:`
@@ -9355,7 +9356,7 @@ function renderObraEtapasChecklist(){
           </div>
           <span style="font-size:11px;color:var(--c-secondary)">${faseFeitos}/${faseItens}</span>
         </div>
-        ${subgruposHtml}
+        <div style="margin-top:8px">${itensHtml}</div>
       </div>`, completa:faseCompleta, iniciada:faseIniciada};
   });
   // "onde a pessoa está": a primeira fase que não está 100% concluída
@@ -9365,7 +9366,7 @@ function renderObraEtapasChecklist(){
   document.getElementById('content').innerHTML = `
     <div style="margin-bottom:1.5rem">
       <h2 style="margin:0 0 4px">📋 Etapas da Obra</h2>
-      <div style="font-size:13px;color:var(--c-primary)">Acompanhamento do início ao fim, separado dos lançamentos — marque o que já foi feito.</div>
+      <div style="font-size:13px;color:var(--c-primary)">Acompanhamento do início ao fim, por ambiente — marque o que já foi feito em cada um.</div>
     </div>
     <div style="background:var(--c-panel2);border:1px solid var(--c-border);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.25rem">
       <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--c-primary);margin-bottom:6px">
