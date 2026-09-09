@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 16AGO26 (versão 188)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 16AGO26 (versão 189)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1420,6 +1420,11 @@ const DEFAULT_CATS = {
 let _savedCats = localStorage.getItem('pirati_cats');
 let CATS = _savedCats ? JSON.parse(_savedCats) : JSON.parse(JSON.stringify(DEFAULT_CATS));
 if(Object.keys(CATS).length === 0) CATS = JSON.parse(JSON.stringify(DEFAULT_CATS));
+// Uma CATS salva antigamente nunca ganha sozinha categorias novas que foram
+// adicionadas no DEFAULT_CATS depois (ex: "Mudança") — sem isso, a categoria
+// existe no código mas fica invisível pra quem já tinha uma CATS salva.
+Object.keys(DEFAULT_CATS).forEach(k=>{ if(!CATS[k]) CATS[k] = JSON.parse(JSON.stringify(DEFAULT_CATS[k])); });
+localStorage.setItem('pirati_cats', JSON.stringify(CATS));
 // "Itens para Casa" — etapa-container que reúne Cama/Mesa/Banho, Decoração,
 // Móveis e Utilidades Domésticas (e o que for adicionado depois) como
 // sub-itens dentro dela, igual as fases dentro de Execução de Obra. Ela em
