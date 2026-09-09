@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 16AGO26 (versão 195)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 16AGO26 (versão 196)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -5262,7 +5262,7 @@ function openObraEmpreitadaModal(material, presetSub, isUnico){
   empreitadaIsUnico = !!isUnico;
   refreshEmpMaterialFields();
   const isSoItem = material==='sem-mao-de-obra';
-  const icon = isSoItem ? '🏷️' : (material==='com-material' ? (isUnico?'🔧🧱':'📦🧱') : (isUnico?'🔧':'📦'));
+  const icon = isSoItem ? '🛒' : (isUnico ? '👷' : '📦');
   const tipoLabel = isSoItem ? 'item' : (isUnico ? 'serviço' : 'pacote de empreitada');
   const materialLabel = isSoItem ? 'sem mão de obra' : (material==='com-material'?'com material':'sem material');
   document.getElementById('empreitada-title').textContent = icon+' Novo '+tipoLabel;
@@ -5333,7 +5333,7 @@ function openObraEmpreitadaModalForEdit(g){
   empreitadaShowAllFases = true; // editando um lançamento existente, mostra tudo (pode abranger várias fases)
   const isSoItem = empreitadaMaterial==='sem-mao-de-obra';
   const tipoLabel = isSoItem ? 'item' : (empreitadaIsUnico ? 'serviço' : 'pacote de empreitada');
-  const icon = isSoItem ? '🏷️' : (empreitadaMaterial==='com-material' ? (empreitadaIsUnico?'🔧🧱':'📦🧱') : (empreitadaIsUnico?'🔧':'📦'));
+  const icon = isSoItem ? '🛒' : (empreitadaIsUnico ? '👷' : '📦');
   const materialLabel = isSoItem ? 'sem mão de obra' : (empreitadaMaterial==='com-material'?'com material':'sem material');
   document.getElementById('empreitada-title').textContent = icon+' Editar '+tipoLabel;
   document.getElementById('emp-desc').value = g.descricao||'';
@@ -9727,7 +9727,7 @@ function openPacoteModal(gastoId){
   const isUnico = tipoRaw.startsWith('unico-');
   const material = tipoRaw.replace('unico-','');
   const isSoItem = material==='sem-mao-de-obra';
-  const headerIcon = isSoItem ? '🏷️' : (material==='com-material' ? (isUnico?'🔧🧱':'📦🧱') : (isUnico?'🔧':'📦'));
+  const headerIcon = isSoItem ? '🛒' : (isUnico ? '👷' : '📦');
   document.getElementById('status-detail-title').textContent = headerIcon+' '+g.descricao;
   const totalEl = document.getElementById('status-detail-total');
   totalEl.textContent = fmt(val);
@@ -10080,7 +10080,7 @@ function tableCardHeader(label, color, icon, status, catKey){
 const SUBCAT_GROUP_PALETTE = ['#42a5f5','#e8b544','#ab47bc','#4caf50','#ef5350','#26c6da','#ff7043','#8d6e63','#7cb342','#5c6bc0','#ec407a','#26a69a'];
 function subGroupColor(idx){ return SUBCAT_GROUP_PALETTE[idx % SUBCAT_GROUP_PALETTE.length]; }
 
-function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKeyOverride, ambienteOverride){
+function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKeyOverride, ambienteOverride, multiSubKeys, groupColor){
   const effSub = subKeyOverride || g.subcategoria;
   const baseCat = catKey && catKey.includes('__') ? catKey.split('__')[0] : (catKey||g.categoria);
   const subLabelText = effSub && SUBCATS[baseCat]?.[effSub]?.label || '';
@@ -10092,8 +10092,10 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
   const badgeIsUnico = tipoRaw.startsWith('unico-');
   const badgeMaterial = tipoRaw.replace('unico-','');
   const isSoItem = badgeMaterial==='sem-mao-de-obra';
-  const badgeIcon = isSoItem ? '🏷️' : (badgeMaterial==='com-material' ? (badgeIsUnico?'🔧🧱':'📦🧱') : (badgeIsUnico?'🔧':'📦'));
-  const badgeLabel = isSoItem ? 'item' : (badgeIsUnico ? 'serviço' : 'pacote');
+  // Padrão novo, mais simples: 🛒 compra/material, 👷 um serviço só (uma
+  // pessoa), 📦 pacote que cobre mais de um serviço.
+  const badgeIcon = isSoItem ? '🛒' : (badgeIsUnico ? '👷' : '📦');
+  const badgeLabel = isSoItem ? 'compra' : (badgeIsUnico ? 'serviço' : 'pacote');
   const badgeColor = isSoItem ? '#c77dea' : (badgeIsUnico ? '#42a5f5' : '#e8b544');
   const badgeBg = isSoItem ? 'var(--c-material-bg)' : (badgeIsUnico ? 'var(--c-necessario-bg)' : 'var(--c-apagar-bg2)');
   const badgeBorder = isSoItem ? '#7d4a94' : (badgeIsUnico ? 'var(--c-necessario-border2)' : 'var(--c-apagar-strong)');
@@ -10114,6 +10116,12 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
     ? `<div style="margin-top:2px">${canNavSub
         ? `<span onclick="event.stopPropagation();navigate('${baseCat}__${effSub}')" title="Ver essa sub-etapa" style="font-size:11px;color:#7aa7d9;cursor:pointer;text-decoration:underline;text-decoration-color:transparent;transition:text-decoration-color .15s" onmouseover="this.style.textDecorationColor='#7aa7d9'" onmouseout="this.style.textDecorationColor='transparent'">${subLabelText}</span>`
         : `<span style="font-size:11px;color:var(--c-primary)">${subLabelText}</span>`}</div>`
+    : '';
+  // Pacote com mais de um serviço no MESMO ambiente: em vez de repetir a
+  // linha inteira uma vez por serviço, lista os nomes juntos, na cor do
+  // ambiente (a mesma que já separa os grupos de ambiente na tela).
+  const multiSubLineHtml = (multiSubKeys && multiSubKeys.length)
+    ? `<div style="margin-top:2px;font-size:11px;color:${groupColor||'var(--c-primary)'}">${multiSubKeys.map(sk=>SUBCATS[baseCat]?.[sk]?.label||sk).join(' · ')}</div>`
     : '';
   // Link material <-> pacote sem material: cada lado mostra o próprio valor E o
   // total somado, nunca só a soma (senão perde-se de vista quanto é de cada um).
@@ -10150,6 +10158,7 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
       ${prazoLineHtml}
       ${linkedInfoHtml}
       ${subLabelLineHtml}
+      ${multiSubLineHtml}
     </td>
     <td style="text-align:right;font-weight:500;font-size:12px;white-space:nowrap;padding:4px">${fmtShort(val)}</td>
     <td style="padding:4px 2px">${isPacote
@@ -10226,10 +10235,14 @@ function renderRowsFiltered(list, status, catKey, borderColor, groupBy, relevant
         entries = parsed.map(p=>({ambiente:p.ambiente||'', sub:p.sub}));
       }
       if(!entries.length) entries = [{ambiente: g.ambiente || (getItensCasaChildren().includes(g.categoria) ? (g.subcategoria||'') : ''), sub:g.subcategoria}];
-      entries.forEach(en=>{
-        const amb = en.ambiente;
+      // Várias sub-tarefas do MESMO pacote caindo no mesmo ambiente viravam
+      // uma linha inteira repetida por sub-tarefa — agrupa por gasto+ambiente
+      // primeiro, pra sobrar 1 linha só, com as sub-tarefas listadas juntas.
+      const porAmbiente = {};
+      entries.forEach(en=>{ (porAmbiente[en.ambiente] = porAmbiente[en.ambiente] || []).push(en.sub); });
+      Object.keys(porAmbiente).forEach(amb=>{
         if(!groupMap[amb]) groupMap[amb] = { label: amb || 'Sem ambiente', items: [] };
-        groupMap[amb].items.push({g, sub:en.sub});
+        groupMap[amb].items.push({g, subs: porAmbiente[amb]});
       });
     });
     const groupNames = Object.keys(groupMap).sort((a,b)=>{
@@ -10245,7 +10258,7 @@ function renderRowsFiltered(list, status, catKey, borderColor, groupBy, relevant
             <span style="width:6px;height:6px;border-radius:50%;background:${color};display:inline-block"></span>${grp.label}
           </span>
         </td></tr>`;
-        const rows = grp.items.map(({g,sub})=>renderOneRow(g,status,catKey,rowBorder,false,false,sub,gk)).join('');
+        const rows = grp.items.map(({g,subs})=>renderOneRow(g,status,catKey,rowBorder,false,false,subs.length===1?subs[0]:null,gk,subs.length>1?subs:null,color)).join('');
         return header + rows;
       }).join('');
     }
