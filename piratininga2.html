@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 16AGO26 (versão 194)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 16AGO26 (versão 195)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -8962,8 +8962,13 @@ async function confirmDiagMover(){
   if(!g) return;
   const etapaSel = document.getElementById('diag-mover-etapa').value;
   const isItensCasa = etapaSel==='itens-casa';
+  const isObra = etapaSel==='obra-bruta';
   const categoria = isItensCasa ? document.getElementById('diag-mover-categoria').value : etapaSel;
   const subcategoria = document.getElementById('diag-mover-sub').value || '';
+  if((isObra || isItensCasa) && !subcategoria){
+    alert('Escolha o ambiente antes de mover — sem isso o lançamento fica "sumido", sem aparecer em nenhuma fase.');
+    return;
+  }
   g.categoria = categoria;
   g.subcategoria = subcategoria;
   try{
@@ -9008,7 +9013,14 @@ function renderDiagnostico(){
   gastos.forEach(g=>{
     if(g.categoria==='ganho') return;
     if(!(CATS[g.categoria] || IMOVEL_CATS[g.categoria])) return;
-    if(!g.subcategoria) return;
+    const precisaDeAmbiente = g.categoria==='obra-bruta' || getItensCasaChildren().includes(g.categoria);
+    if(!g.subcategoria){
+      if(precisaDeAmbiente){
+        const key = g.categoria+'|(sem ambiente)';
+        (orfaSubGroups[key] = orfaSubGroups[key] || []).push(g);
+      }
+      return;
+    }
     // Venda/Compra do Imóvel/Projeto de Arquitetura validam os cartões por
     // getImovelCardDefs (padrão + personalizados), não pela SUBCATS genérica
     const isValid = IMOVEL_CATS[g.categoria]
