@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 16AGO26 (versão 192)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 16AGO26 (versão 193)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -4093,7 +4093,7 @@ function refreshMbulkLinkPacote(){
   });
   if(!candidatos.length){ group.style.display='none'; sel.innerHTML='<option value="">— nenhum —</option>'; return; }
   group.style.display = '';
-  sel.innerHTML = '<option value="">— nenhum —</option>' + candidatos.map(g=>`<option value="${g.id}">${nomeExibicaoGasto(g).replace(/</g,'&lt;')} — ${fmtShort(gastoValor(g))}</option>`).join('');
+  sel.innerHTML = '<option value="">— nenhum —</option>' + candidatos.map(g=>`<option value="${g.id}">${nomeExibicaoGasto(g,true).replace(/</g,'&lt;')} — ${fmtShort(gastoValor(g))}</option>`).join('');
 }
 function addMbulkItemRow(){
   mbulkItemCount++;
@@ -4238,9 +4238,13 @@ function closeMaterialModal(){
 // Nome pra mostrar em listas/selects — prefere o fornecedor/loja (ex: "Rogério
 // Pedreiro"), que é o que realmente identifica quem é, em vez da descrição
 // genérica (que às vezes só diz o tipo, tipo "Empreitada (obra)").
-function nomeExibicaoGasto(g){
+function nomeExibicaoGasto(g, plain){
   const loja = parseMaterialObs(g.obs)?.loja;
-  return (loja && loja.trim()) ? loja.trim() : (g.descricao||'');
+  const desc = g.descricao||'';
+  if(loja && loja.trim() && desc.trim() && loja.trim().toLowerCase()!==desc.trim().toLowerCase()){
+    return plain ? `${desc} — ${loja.trim()}` : `${desc} <span style="color:var(--c-muted3);font-weight:400">— ${loja.trim()}</span>`;
+  }
+  return (loja && loja.trim()) ? loja.trim() : desc;
 }
 function parseMaterialObs(obs){
   const result = {marca:'',loja:'',pagamento:'',garantia:'',modelo:'',contato:'',endereco:'',entregue:false,livre:''};
@@ -4415,7 +4419,7 @@ function populateMatLinkPacoteSelect(presetId){
   });
   if(!candidatos.length){ group.style.display='none'; sel.innerHTML='<option value="">— nenhum —</option>'; return; }
   group.style.display = '';
-  sel.innerHTML = '<option value="">— nenhum —</option>' + candidatos.map(g=>`<option value="${g.id}">${nomeExibicaoGasto(g).replace(/</g,'&lt;')} — ${fmtShort(gastoValor(g))}</option>`).join('');
+  sel.innerHTML = '<option value="">— nenhum —</option>' + candidatos.map(g=>`<option value="${g.id}">${nomeExibicaoGasto(g,true).replace(/</g,'&lt;')} — ${fmtShort(gastoValor(g))}</option>`).join('');
   if(presetId && candidatos.some(g=>g.id===presetId)) sel.value = presetId;
 }
 // ── Pílulas de forma de pagamento (clicáveis, com parcelas se for crédito) ──
