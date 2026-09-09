@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 16AGO26 (versão 193)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 16AGO26 (versão 194)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1365,6 +1365,33 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
     <div style="font-size:12px;color:var(--c-primary);margin-bottom:8px">Marque os serviços cobertos por esse pacote e, se quiser, escreva o ambiente de cada um:</div>
     <div id="emp-service-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:12px;align-content:start;padding-bottom:8px"></div>
     <button class="btn-confirm" id="emp-btn-confirm" onclick="confirmEmpreitada()" style="margin-top:14px">Confirmar pacote</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="diag-mover-overlay" onclick="if(event.target===this) closeDiagMoverModal()">
+  <div class="modal" style="max-width:420px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+      <h3 style="margin:0">↔️ Mover lançamento</h3>
+      <button onclick="closeDiagMoverModal()" style="background:none;border:none;color:var(--c-primary);font-size:21px;cursor:pointer;line-height:1">&times;</button>
+    </div>
+    <div id="diag-mover-desc" style="font-size:13px;color:var(--c-primary);margin-bottom:14px"></div>
+    <div class="form-group">
+      <label>Etapa</label>
+      <select id="diag-mover-etapa" onchange="onDiagMoverEtapaChange()"></select>
+    </div>
+    <div class="form-group" id="diag-mover-categoria-group" style="display:none">
+      <label>Categoria</label>
+      <select id="diag-mover-categoria" onchange="onDiagMoverCategoriaChange()"></select>
+    </div>
+    <div class="form-group" id="diag-mover-fase-group" style="display:none">
+      <label>Fase</label>
+      <select id="diag-mover-fase" onchange="onDiagMoverFaseChange()"></select>
+    </div>
+    <div class="form-group" id="diag-mover-sub-group" style="display:none">
+      <label id="diag-mover-sub-label">Ambiente</label>
+      <select id="diag-mover-sub"></select>
+    </div>
+    <button class="btn-confirm" onclick="confirmDiagMover()">Mover pra cá</button>
   </div>
 </div>
 
@@ -8876,6 +8903,76 @@ const GANHO_TIPOS = {
   comprometido:{label:'Comprometido',   emoji:'⚫', color:'var(--c-faint3)',    bg:'var(--c-panel2)', border:'var(--c-border)', desc:'Já foi usado ou reservado'},
 };
 
+// ── "Mover lançamento" (Diagnóstico) — jeito simples e isolado de reatribuir
+// um lançamento pra qualquer categoria/fase/ambiente, sem depender do modal
+// complexo de empreitada/pacote. Etapa → (Categoria, se Itens para Casa /
+// Fase, se Execução de Obra) → Ambiente/Cartão.
+let diagMoverGastoId = null;
+function abrirMoverDiagnostico(id){
+  diagMoverGastoId = id;
+  const g = gastos.find(x=>x.id===id);
+  document.getElementById('diag-mover-desc').textContent = g ? (g.descricao||'(sem descrição)') : '';
+  const sel = document.getElementById('diag-mover-etapa');
+  sel.innerHTML = todasEtapasParaSelect().map(e=>`<option value="${e.key}">${e.label}</option>`).join('');
+  onDiagMoverEtapaChange();
+  document.getElementById('diag-mover-overlay').classList.add('open');
+}
+function closeDiagMoverModal(){ document.getElementById('diag-mover-overlay').classList.remove('open'); }
+function onDiagMoverEtapaChange(){
+  const catKey = document.getElementById('diag-mover-etapa').value;
+  const isObra = catKey==='obra-bruta';
+  const isItensCasa = catKey==='itens-casa';
+  document.getElementById('diag-mover-categoria-group').style.display = isItensCasa ? '' : 'none';
+  document.getElementById('diag-mover-fase-group').style.display = isObra ? '' : 'none';
+  document.getElementById('diag-mover-sub-label').textContent = (isObra || isItensCasa) ? 'Ambiente' : 'Cartão (opcional)';
+  if(isItensCasa){
+    const catSel = document.getElementById('diag-mover-categoria');
+    const filhos = getItensCasaChildren();
+    catSel.innerHTML = filhos.map(fk=>`<option value="${fk}">${CATS[fk]?.label||fk}</option>`).join('');
+    onDiagMoverCategoriaChange();
+  } else if(isObra){
+    const fases = [...new Set(Object.values(SUBCATS['obra-bruta']||{}).map(s=>s.grupo).filter(Boolean))];
+    const faseSel = document.getElementById('diag-mover-fase');
+    faseSel.innerHTML = fases.map(f=>`<option value="${f}">${f}</option>`).join('');
+    onDiagMoverFaseChange();
+  } else {
+    const subs = SUBCATS[catKey]||{};
+    const subSel = document.getElementById('diag-mover-sub');
+    subSel.innerHTML = '<option value="">— nenhuma —</option>'+Object.keys(subs).map(sk=>`<option value="${sk}">${subs[sk].label}</option>`).join('');
+    document.getElementById('diag-mover-sub-group').style.display = '';
+  }
+}
+function onDiagMoverCategoriaChange(){
+  const categoria = document.getElementById('diag-mover-categoria').value;
+  const subs = SUBCATS[categoria]||{};
+  const subSel = document.getElementById('diag-mover-sub');
+  subSel.innerHTML = '<option value="">— nenhum —</option>'+Object.keys(subs).map(sk=>`<option value="${sk}">${subs[sk].label}</option>`).join('');
+  document.getElementById('diag-mover-sub-group').style.display = '';
+}
+function onDiagMoverFaseChange(){
+  const fase = document.getElementById('diag-mover-fase').value;
+  const subs = SUBCATS['obra-bruta']||{};
+  const filtrados = Object.keys(subs).filter(sk=>subs[sk].grupo===fase);
+  const subSel = document.getElementById('diag-mover-sub');
+  subSel.innerHTML = '<option value="">— nenhum —</option>'+filtrados.map(sk=>`<option value="${sk}">${subs[sk].label}</option>`).join('');
+  document.getElementById('diag-mover-sub-group').style.display = '';
+}
+async function confirmDiagMover(){
+  const g = gastos.find(x=>x.id===diagMoverGastoId);
+  if(!g) return;
+  const etapaSel = document.getElementById('diag-mover-etapa').value;
+  const isItensCasa = etapaSel==='itens-casa';
+  const categoria = isItensCasa ? document.getElementById('diag-mover-categoria').value : etapaSel;
+  const subcategoria = document.getElementById('diag-mover-sub').value || '';
+  g.categoria = categoria;
+  g.subcategoria = subcategoria;
+  try{
+    await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${g.id}`,{method:'PATCH', headers:{...HEADERS}, body: JSON.stringify({categoria, subcategoria})});
+    toast('Lançamento movido!');
+  }catch(e){ toast('Erro ao mover: '+e.message,'err'); }
+  closeDiagMoverModal();
+  renderDiagnostico();
+}
 function renderDiagnostico(){
   const getVal = g=>gastoValor(g);
 
@@ -8950,6 +9047,7 @@ function renderDiagnostico(){
       </td>
       <td style="padding:6px 8px;text-align:right;font-size:14px;font-weight:600;color:#e8b544;white-space:nowrap">${fmt(getVal(g))}</td>
       <td style="padding:6px 8px;white-space:nowrap">
+        <button onclick="abrirMoverDiagnostico(${g.id})" title="Mover pra outra etapa/categoria" style="background:none;border:none;color:#e8b544;cursor:pointer;font-size:14px;padding:2px 4px"><i class="ti ti-arrows-right-left"></i></button>
         <button onclick="openEdit(${g.id})" style="background:none;border:none;color:var(--c-primary);cursor:pointer;font-size:14px;padding:2px 4px"><i class="ti ti-pencil"></i></button>
         <button onclick="if(confirm('Excluir este lançamento de vez? Essa ação não pode ser desfeita.'))removeGasto(${g.id})" style="background:none;border:none;color:#ef5350;cursor:pointer;font-size:14px;padding:2px 4px"><i class="ti ti-trash"></i></button>
       </td>
@@ -10604,6 +10702,7 @@ const MODAL_CLOSE_FNS = {
   'materiais-modal-overlay': 'closeMateriaisModal',
   'emp-ambiente-modal-overlay': 'cancelAmbienteModal',
   'obra-empreitada-overlay': 'closeObraEmpreitadaModal',
+  'diag-mover-overlay': 'closeDiagMoverModal',
   'status-detail-overlay': 'closeStatusDetailModal',
 };
 document.addEventListener('keydown', function(e){
