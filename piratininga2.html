@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 16AGO26 (versão 186)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 16AGO26 (versão 187)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -3836,11 +3836,13 @@ function ensureObraBrutaPhases(){
     });
     if(!jaResetouOrdemFases) localStorage.setItem(RESET_ORDEM_FASES_FLAG, '1');
 
-    // Apaga TUDO que essa função criou antes (marcado com auto:true) e recria do
-    // zero, sempre. Isso evita qualquer bug de comparação de texto/acumulação —
-    // é sempre a mesma foto limpa das 17 fases, todo carregamento.
+    // Apaga TUDO que estiver dentro de uma dessas 16 fases — automático OU
+    // criado manualmente (ex: um cartão de material tipo "Granilite" que a
+    // pessoa adicionou à mão antes dessa mudança) — e recria do zero, sempre,
+    // só com os ambientes. É sempre a mesma foto limpa, todo carregamento.
+    const nomesFases = new Set(FASES.map(f=>f.fase));
     Object.keys(SUBCATS['obra-bruta']).forEach(k=>{
-      if(SUBCATS['obra-bruta'][k].auto) delete SUBCATS['obra-bruta'][k];
+      if(SUBCATS['obra-bruta'][k].auto || nomesFases.has(SUBCATS['obra-bruta'][k].grupo)) delete SUBCATS['obra-bruta'][k];
     });
 
     const slugify = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
