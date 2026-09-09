@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 16AGO26 (versão 181)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 16AGO26 (versão 182)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -2010,6 +2010,11 @@ function renderCatNav(){
     }
 
     const subs = hasSubs ? buildSubcatRowsHtml(k) : '';
+    const etapasChecklistRow = k==='obra-bruta'
+      ? `<div class="nav-subitem${currentPage==='obra-bruta__etapas'?' active':''}" onclick="event.stopPropagation();navigate('obra-bruta__etapas')" style="font-weight:600;cursor:pointer">
+          <span class="nav-subitem-label">📋 Etapas</span>
+        </div>`
+      : '';
 
     const imovelStyle = isPinnedStage ? `background:${info.color}18;border:1px solid ${info.color}44;border-left:3px solid ${info.color};border-radius:8px;margin:4px 6px;${isEtapaGlobalAtiva(k)?'':'opacity:.45'}` : '';
     const imovelNavStyle = isPinnedStage ? `color:${info.color};font-weight:600;font-size:13px;` : '';
@@ -2038,7 +2043,7 @@ function renderCatNav(){
         ${(isPinnedStage && !getItensCasaChildren().includes(k)) ? miniToggleHtml(isEtapaGlobalAtiva(k), `toggleEtapaGlobalAtiva('${k}',event)`) : ''}
         <button class="nav-dots" onclick="toggleCatMenu('${k}',${isImovel},${isPinnedStage},event)" title="Opções"><i class="ti ti-dots-vertical"></i></button>
       </div>
-      <div id="subcat-list-${k}" style="overflow:hidden;max-height:${isOpen?'none':'0'}">${subs}</div>
+      <div id="subcat-list-${k}" style="overflow:hidden;max-height:${isOpen?'none':'0'}">${etapasChecklistRow}${subs}</div>
     </div>`;
   }).join('');
 
@@ -3711,17 +3716,10 @@ function restoreOrphanSubcats(){
   }catch(e){ console.warn('Erro ao restaurar ambientes órfãos:', e); }
 }
 
-function ensureObraBrutaPhases(){
-  try{
-    // Cada fase tem OU 'itens' (lista plana de nomes — formato antigo, ainda
-    // usado pelas fases que não foram refinadas) OU 'subgrupos' (lista de
-    // {nome, itens:[{label, de?}]} — formato novo, com um nível a mais).
-    // 'de' é opcional: quando um item é RENOMEADO, colocar o nome antigo em
-    // 'de' faz o identificador interno (slug) continuar sendo calculado a
-    // partir do nome antigo — ou seja, lançamentos já salvos continuam
-    // linkados automaticamente ao item, mesmo com o nome novo na tela. Só o
-    // texto exibido muda; o "endereço" por baixo dos panos é preservado.
-    const FASES = [
+// Modelo fixo das 17 fases da Execução de Obra (nome + subgrupos/itens) —
+// hoisted pra fora de ensureObraBrutaPhases() pra poder ser reaproveitado
+// em outros lugares (ex: a página "Etapas"), não só na criação dos cartões.
+const FASES_TEMPLATE = [
       {fase:'Demolição', subgrupos:[
         {nome:'Preparação', itens:[
           {label:'Remover marcenaria existente'},
@@ -3778,6 +3776,18 @@ function ensureObraBrutaPhases(){
       {fase:'Pintura Final e Limpeza Pós-Obra', itens:['Última demão de tinta','Retoques','Silicone','Calafetação','Limpeza fina']},
       {fase:'Instalação de Eletrodomésticos e Mudança', itens:['Geladeira','Cooktop','Forno','Coifa','Lava-louças','Máquina de lavar','Ar-condicionado','Mudança','Montagem dos móveis soltos','Decoração']},
     ];
+
+function ensureObraBrutaPhases(){
+  try{
+    // Cada fase tem OU 'itens' (lista plana de nomes — formato antigo, ainda
+    // usado pelas fases que não foram refinadas) OU 'subgrupos' (lista de
+    // {nome, itens:[{label, de?}]} — formato novo, com um nível a mais).
+    // 'de' é opcional: quando um item é RENOMEADO, colocar o nome antigo em
+    // 'de' faz o identificador interno (slug) continuar sendo calculado a
+    // partir do nome antigo — ou seja, lançamentos já salvos continuam
+    // linkados automaticamente ao item, mesmo com o nome novo na tela. Só o
+    // texto exibido muda; o "endereço" por baixo dos panos é preservado.
+    const FASES = FASES_TEMPLATE;
     // Fonte fixa da ordem dos SUBGRUPOS (Preparação/Execução/Finalização) de cada
     // fase — usada no render pra não depender de 'ordem'/localStorage bagunçado.
     window.FASE_SUBGRUPOS_ORDEM = {};
@@ -6894,6 +6904,7 @@ function render(){
   else if(currentPage==='venda-imovel') renderImovelCat('venda-imovel', null);
   else if(currentPage==='compra-imovel') renderImovelCat('compra-imovel', null);
   else if(currentPage==='projeto-arq') renderImovelCat('projeto-arq', null);
+  else if(currentPage==='obra-bruta__etapas') renderObraEtapasChecklist();
   else if(currentPage.includes('__')){
     const [catKey, subKey] = currentPage.split('__');
     if(subKey.startsWith('grupoview:')) renderImovelCat(catKey, null, decodeURIComponent(subKey.slice(10)));
@@ -9295,6 +9306,78 @@ function openModalWithSubCat(catKey, subKey){
 // Layout especial de Execução de Obra: fases numeradas, cada uma com barra de
 // progresso e valores — em vez da tabela padrão de Pago/Necessário/Dispensável
 let obraFaseModalData = null;
+// ── "Etapas" — checklist limpo das 17 fases da obra, do início ao fim,
+// separado da parte de dinheiro/lançamentos (que fica na visão normal). ──
+function slugifyEtapaItem(s){
+  return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+}
+function getObraEtapasCheck(){
+  try{ return JSON.parse(localStorage.getItem('pirati_obra_etapas_check')||'{}'); }catch(e){ return {}; }
+}
+function toggleObraEtapaItem(itemKey){
+  const check = getObraEtapasCheck();
+  check[itemKey] = !check[itemKey];
+  localStorage.setItem('pirati_obra_etapas_check', JSON.stringify(check));
+  renderObraEtapasChecklist();
+}
+function renderObraEtapasChecklist(){
+  const check = getObraEtapasCheck();
+  const cor = IMOVEL_CATS['obra-bruta'] ? '#db4368' : '#db4368'; // cor da Execução de Obra
+  let totalItens = 0, totalFeitos = 0;
+  const faseCards = FASES_TEMPLATE.map((f,fi)=>{
+    // normaliza pro mesmo formato (subgrupos), tratando o formato antigo
+    // (só 'itens' plano) como um único subgrupo sem nome
+    const subgrupos = f.subgrupos || [{nome:'', itens:(f.itens||[]).map(nome=>({label:nome}))}];
+    let faseItens = 0, faseFeitos = 0;
+    const subgruposHtml = subgrupos.map(sg=>{
+      const itensHtml = sg.itens.map(it=>{
+        const itemKey = slugifyEtapaItem(f.fase)+'__'+slugifyEtapaItem(sg.nome)+'__'+slugifyEtapaItem(it.de||it.label);
+        const feito = !!check[itemKey];
+        totalItens++; faseItens++;
+        if(feito){ totalFeitos++; faseFeitos++; }
+        return `<label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:13px;color:${feito?'var(--c-muted3)':'var(--c-primary)'};text-decoration:${feito?'line-through':'none'}">
+          <input type="checkbox" ${feito?'checked':''} onchange="toggleObraEtapaItem('${itemKey}')" style="width:15px;height:15px;accent-color:${cor};cursor:pointer;flex-shrink:0">
+          ${it.label}
+        </label>`;
+      }).join('');
+      return sg.nome
+        ? `<div style="margin-top:8px"><div style="font-size:10px;color:var(--c-secondary);text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px">${sg.nome}</div>${itensHtml}</div>`
+        : itensHtml;
+    }).join('');
+    const faseCompleta = faseItens>0 && faseFeitos===faseItens;
+    const faseIniciada = faseFeitos>0;
+    return {html:`
+      <div style="background:var(--c-bg0c);border:1px solid ${faseCompleta?'#4caf50':(faseIniciada?cor:'var(--c-panel4)')};border-radius:10px;padding:14px 16px;margin-bottom:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="width:22px;height:22px;border-radius:50%;background:${faseCompleta?'#4caf50':(faseIniciada?cor:'var(--c-panel4)')};color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">${faseCompleta?'✓':(fi+1)}</span>
+            <span style="font-size:14px;font-weight:700;color:${faseCompleta?'#4caf50':'var(--c-primary)'}">${f.fase}</span>
+          </div>
+          <span style="font-size:11px;color:var(--c-secondary)">${faseFeitos}/${faseItens}</span>
+        </div>
+        ${subgruposHtml}
+      </div>`, completa:faseCompleta, iniciada:faseIniciada};
+  });
+  // "onde a pessoa está": a primeira fase que não está 100% concluída
+  const faseAtualIdx = faseCards.findIndex(fc=>!fc.completa);
+  const pct = totalItens>0 ? Math.round(totalFeitos/totalItens*100) : 0;
+
+  document.getElementById('content').innerHTML = `
+    <div style="margin-bottom:1.5rem">
+      <h2 style="margin:0 0 4px">📋 Etapas da Obra</h2>
+      <div style="font-size:13px;color:var(--c-primary)">Acompanhamento do início ao fim, separado dos lançamentos — marque o que já foi feito.</div>
+    </div>
+    <div style="background:var(--c-panel2);border:1px solid var(--c-border);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.25rem">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--c-primary);margin-bottom:6px">
+        <span>${faseAtualIdx===-1 ? 'Obra concluída! 🎉' : 'Você está em: <b style="color:'+cor+'">'+FASES_TEMPLATE[faseAtualIdx].fase+'</b>'}</span>
+        <span style="font-weight:700;color:${cor}">${pct}%</span>
+      </div>
+      <div style="height:8px;border-radius:4px;background:var(--c-panel3);overflow:hidden"><div style="height:100%;width:${pct}%;background:${cor};border-radius:4px;transition:width .3s"></div></div>
+      <div style="font-size:11px;color:var(--c-secondary);margin-top:6px">${totalFeitos} de ${totalItens} itens marcados · ${faseCards.filter(fc=>fc.completa).length} de ${FASES_TEMPLATE.length} fases completas</div>
+    </div>
+    <div style="max-width:640px">${faseCards.map(fc=>fc.html).join('')}</div>
+  `;
+}
 function renderObraBrutaSteps(){
   const cat = 'obra-bruta';
   const info = CATS[cat];
