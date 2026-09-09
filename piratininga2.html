@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 16AGO26 (versão 191)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 16AGO26 (versão 192)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1166,6 +1166,10 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
           <div class="form-group" id="mat-l-subsub-group" style="margin-bottom:0;display:none">
             <label>Sub da sub-etapa</label>
             <select id="mat-l-subsub"></select>
+          </div>
+          <div class="form-group" id="mat-l-categoria-group" style="margin-bottom:0;display:none">
+            <label>Categoria</label>
+            <select id="mat-l-categoria" onchange="onMatCategoriaChange()"></select>
           </div>
           <div class="form-group" style="margin-bottom:0">
             <label id="mat-l-subetapa-label">Sub-etapa</label>
@@ -4003,10 +4007,19 @@ function runBuscaGeral(){
 let matLancamentoPendingAnexos = {nf:null, comprovante:null};
 
 function todasEtapasParaSelect(){
-  // todas as categorias existentes hoje, imóvel + normais (exceto ganho)
+  // todas as categorias existentes hoje, imóvel + normais (exceto ganho) — os
+  // filhos de "Itens para Casa" (Móveis, Decoração, Eletrodomésticos...) entram
+  // como UM só "Itens para Casa" aqui (a categoria certa se escolhe depois,
+  // num segundo campo) — só nesse modal, o menu lateral continua como está.
   const lista = [];
   Object.keys(IMOVEL_CATS).forEach(k=>lista.push({key:k, label:IMOVEL_CATS[k].label}));
-  Object.keys(CATS).forEach(k=>{ if(k!=='ganho' && k!=='itens-casa') lista.push({key:k, label:CATS[k].label}); });
+  const filhosItensCasa = getItensCasaChildren();
+  Object.keys(CATS).forEach(k=>{
+    if(k==='ganho' || k==='itens-casa') return;
+    if(filhosItensCasa.includes(k)) return; // aparecem agrupados abaixo
+    lista.push({key:k, label:CATS[k].label});
+  });
+  if(filhosItensCasa.length) lista.push({key:'itens-casa', label:'Itens para Casa'});
   return lista;
 }
 
@@ -4209,8 +4222,9 @@ function openMaterialModal(presetCat, presetFase, presetSub, presetLinkPacote){
 
   const etapaSel = document.getElementById('mat-l-etapa');
   etapaSel.innerHTML = todasEtapasParaSelect().map(e=>`<option value="${e.key}">${e.label}</option>`).join('');
-  etapaSel.value = presetCat || 'obra-bruta';
-  onMatEtapaChange(presetFase, presetSub, undefined, presetLinkPacote);
+  const presetEhFilhoItensCasa = presetCat && getItensCasaChildren().includes(presetCat);
+  etapaSel.value = presetEhFilhoItensCasa ? 'itens-casa' : (presetCat || 'obra-bruta');
+  onMatEtapaChange(presetEhFilhoItensCasa ? presetCat : presetFase, presetSub, undefined, presetLinkPacote);
   document.getElementById('material-lancamento-overlay').classList.add('open');
   setTimeout(()=>document.getElementById('mat-l-desc').focus(), 80);
 }
@@ -4279,9 +4293,10 @@ function openMaterialModalForEdit(g){
 
   const etapaSel = document.getElementById('mat-l-etapa');
   etapaSel.innerHTML = todasEtapasParaSelect().map(e=>`<option value="${e.key}">${e.label}</option>`).join('');
-  etapaSel.value = g.categoria;
+  const ehFilhoItensCasa = getItensCasaChildren().includes(g.categoria);
+  etapaSel.value = ehFilhoItensCasa ? 'itens-casa' : g.categoria;
   const subEntry = g.categoria==='obra-bruta' ? SUBCATS['obra-bruta']?.[g.subcategoria] : null;
-  onMatEtapaChange(subEntry?.grupo, g.subcategoria, g.ambiente, g.linked_pacote_id);
+  onMatEtapaChange(ehFilhoItensCasa ? g.categoria : subEntry?.grupo, g.subcategoria, g.ambiente, g.linked_pacote_id);
   document.getElementById('mat-l-btn-confirm').textContent = 'Salvar alterações';
   document.getElementById('material-lancamento-overlay').classList.add('open');
 }
@@ -4305,26 +4320,52 @@ async function converterParaMaterial(id){
 function onMatEtapaChange(presetFase, presetSub, presetAmbiente, presetLinkPacote){
   const catKey = document.getElementById('mat-l-etapa').value;
   const isObra = catKey==='obra-bruta';
+  const isItensCasa = catKey==='itens-casa';
   const subEl = document.getElementById('mat-l-subetapa');
   const subsubGroup = document.getElementById('mat-l-subsub-group');
+  const categoriaGroup = document.getElementById('mat-l-categoria-group');
   const ambienteGroup = document.getElementById('mat-l-ambiente-group');
-  document.getElementById('mat-l-subetapa-label').textContent = isObra ? 'Sub-etapa (fase)' : 'Sub-etapa';
+  document.getElementById('mat-l-subetapa-label').textContent = isObra ? 'Sub-etapa (fase)' : (isItensCasa ? 'Ambiente' : 'Sub-etapa');
   if(isObra){
     const fases = [...new Set(Object.values(SUBCATS['obra-bruta']||{}).map(s=>s.grupo).filter(Boolean))];
     subEl.innerHTML = fases.map(f=>`<option value="${f}">${f}</option>`).join('');
     if(presetFase && fases.includes(presetFase)) subEl.value = presetFase;
     subsubGroup.style.display = '';
+    categoriaGroup.style.display = 'none';
     ambienteGroup.style.display = '';
     populateMatAmbienteChecklist(presetAmbiente);
     onMatSubEtapaChange(presetSub, presetLinkPacote);
+  } else if(isItensCasa){
+    // Itens para Casa: primeiro escolhe a CATEGORIA de verdade (Móveis,
+    // Decoração...), e só depois o ambiente — o "Sub-etapa" vira "Ambiente".
+    subsubGroup.style.display = 'none';
+    ambienteGroup.style.display = 'none';
+    document.getElementById('mat-l-linkpacote-group').style.display = 'none';
+    categoriaGroup.style.display = '';
+    const categoriaSel = document.getElementById('mat-l-categoria');
+    const filhos = getItensCasaChildren();
+    categoriaSel.innerHTML = filhos.map(fk=>`<option value="${fk}">${CATS[fk]?.label||fk}</option>`).join('');
+    if(presetFase && filhos.includes(presetFase)) categoriaSel.value = presetFase;
+    onMatCategoriaChange(presetSub);
   } else {
     const subs = SUBCATS[catKey] || {};
     subEl.innerHTML = '<option value="">— nenhuma —</option>' + Object.keys(subs).map(sk=>`<option value="${sk}">${subs[sk].label}</option>`).join('');
     if(presetSub && subs[presetSub]) subEl.value = presetSub;
     subsubGroup.style.display = 'none';
+    categoriaGroup.style.display = 'none';
     ambienteGroup.style.display = 'none';
     document.getElementById('mat-l-linkpacote-group').style.display = 'none';
   }
+}
+// Depois de escolher a Categoria dentro de "Itens para Casa", preenche o
+// "Sub-etapa"(agora rotulado "Ambiente") com os ambientes reais daquela
+// categoria — os mesmos cartões automáticos já usados no resto do app.
+function onMatCategoriaChange(presetSub){
+  const categoria = document.getElementById('mat-l-categoria').value;
+  const subEl = document.getElementById('mat-l-subetapa');
+  const subs = SUBCATS[categoria] || {};
+  subEl.innerHTML = '<option value="">— nenhum —</option>' + Object.keys(subs).map(sk=>`<option value="${sk}">${subs[sk].label}</option>`).join('');
+  if(presetSub && subs[presetSub]) subEl.value = presetSub;
 }
 // Ambiente(s) do material — várias "pílulas" clicáveis (multi-seleção, ao
 // contrário do payment/investimento que são de escolha única), porque um
@@ -4547,8 +4588,10 @@ async function confirmMaterialLancamento(){
   const val = parseMoney(document.getElementById('mat-l-valor').value);
   if(!desc){ alert('Preencha a descrição.'); return; }
   if(isNaN(val)||val<=0){ alert('Preencha um valor válido.'); return; }
-  const catKey = document.getElementById('mat-l-etapa').value;
-  const isObra = catKey==='obra-bruta';
+  const catKeySelecionado = document.getElementById('mat-l-etapa').value;
+  const isObra = catKeySelecionado==='obra-bruta';
+  const isItensCasa = catKeySelecionado==='itens-casa';
+  const catKey = isItensCasa ? document.getElementById('mat-l-categoria').value : catKeySelecionado;
   const subKey = isObra ? document.getElementById('mat-l-subsub').value : document.getElementById('mat-l-subetapa').value;
 
   const linhas = [];
