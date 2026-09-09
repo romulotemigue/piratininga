@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 16AGO26 (versão 197)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 16AGO26 (versão 198)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -2925,12 +2925,13 @@ function ensureSubCats(){
   const needed = {
     moveis: [{key:'sala',label:'Sala'},{key:'quarto',label:'Quarto'},{key:'escritorio',label:'Escritório'},{key:'cozinha',label:'Cozinha'}],
     iluminacao: [{key:'cozinha-e-sala',label:'Cozinha e Sala'}],
-    revestimentos: [{key:'sala-cozinha-corredor-dispensa',label:'Sala/Cozinha/Corredor/Dispensa'}],
+    revestimentos: [{key:'sala-cozinha-corredor-dispensa',label:'Sala/Cozinha/Corredor/Despensa'}],
   };
   Object.keys(needed).forEach(cat=>{
     if(!SUBCATS[cat]) SUBCATS[cat]={};
     needed[cat].forEach(({key,label})=>{
       if(!SUBCATS[cat][key]) SUBCATS[cat][key]={label};
+      else if(SUBCATS[cat][key].label==='Sala/Cozinha/Corredor/Dispensa') SUBCATS[cat][key].label = label; // corrige typo salvo antes
     });
   });
   saveSubCats();
