@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 201)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 202)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -6389,6 +6389,14 @@ async function confirmEmpreitada(){
   const status = document.getElementById('emp-status').value;
   if(!desc){ alert('Preencha a descrição/empreiteiro.'); return; }
   if(isNaN(val)||val<=0){ alert('Preencha um valor válido.'); return; }
+  // Garante que o dropdown simples de Fase/Ambiente (o caminho normal agora)
+  // realmente marcou a caixinha por baixo dos panos antes de validar — evita
+  // o aviso chato de "marque um serviço" quando a pessoa só usou o dropdown.
+  const skSimples = document.getElementById('emp-ambiente-simples')?.value;
+  if(skSimples && !document.querySelector(`.emp-sub-check[value="${skSimples}"]:checked`)){
+    const checkElSimples = document.querySelector(`.emp-sub-check[value="${skSimples}"]`);
+    if(checkElSimples){ checkElSimples.checked = true; checkElSimples.dispatchEvent(new Event('change')); }
+  }
   const checks = [...document.querySelectorAll('.emp-sub-check:checked')];
   if(!checks.length && !empreitadaLegacySemGrade){ alert('Marque pelo menos um serviço coberto pelo pacote.'); return; }
   const servicos = [];
