@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 200)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 201)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -864,27 +864,18 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
       <h3 style="margin:0">Novo lançamento em Execução de Obra</h3>
       <button onclick="closeObraTriagemModal()" style="background:none;border:none;color:var(--c-primary);font-size:21px;cursor:pointer;line-height:1">&times;</button>
     </div>
-    <div style="font-size:13px;color:var(--c-primary);margin-bottom:1.25rem">Isso é um pacote de empreitada (vários serviços juntos), um serviço avulso, ou só a compra de um material?</div>
+    <div style="font-size:13px;color:var(--c-primary);margin-bottom:1.25rem">Isso é um serviço (mão de obra) ou a compra de um produto?</div>
     <div id="obra-triagem-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <button onclick="chooseObraTipo('empreitada','sem-material')" style="background:var(--c-apagar-bg2);border:2px solid #e8b544;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#251f00'" onmouseout="this.style.background='var(--c-apagar-bg2)'">
-        <div style="font-size:25px;margin-bottom:8px">📦</div>
-        <div style="font-size:14px;font-weight:700;color:#e8b544">Empreitada</div>
-        <div style="font-size:12px;color:#e8b544;margin-top:2px">vários serviços juntos</div>
-      </button>
       <button onclick="chooseObraTipo('unico','sem-material')" style="background:var(--c-necessario-bg);border:2px solid #42a5f5;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#122535'" onmouseout="this.style.background='var(--c-necessario-bg)'">
-        <div style="font-size:25px;margin-bottom:8px">🔧</div>
-        <div style="font-size:14px;font-weight:700;color:#42a5f5">Serviço único</div>
-        <div style="font-size:12px;color:#42a5f5;margin-top:2px">um serviço avulso</div>
+        <div style="font-size:25px;margin-bottom:8px">👷</div>
+        <div style="font-size:14px;font-weight:700;color:#42a5f5">Serviço</div>
+        <div style="font-size:12px;color:#42a5f5;margin-top:2px">mão de obra, prestação de serviço</div>
       </button>
-      <div style="grid-column:1/-1">
-        <button onclick="chooseObraMaterialEscolha()" style="width:100%;box-sizing:border-box;background:var(--c-material-bg);border:2px solid #b565d8;border-radius:10px;padding:16px 14px;cursor:pointer;text-align:left;transition:background .15s;display:flex;align-items:center;gap:12px" onmouseover="this.style.background='#2a1030'" onmouseout="this.style.background='var(--c-material-bg)'">
-          <div style="font-size:25px">🧱</div>
-          <div>
-            <div style="font-size:14px;font-weight:700;color:#c77dea">Material</div>
-            <div style="font-size:12px;color:#c77dea;margin-top:2px">só a compra do produto — sem instalação nem prestação de serviço</div>
-          </div>
-        </button>
-      </div>
+      <button onclick="chooseObraMaterialEscolha()" style="background:var(--c-material-bg);border:2px solid #b565d8;border-radius:10px;padding:20px 14px;cursor:pointer;text-align:left;transition:background .15s" onmouseover="this.style.background='#2a1030'" onmouseout="this.style.background='var(--c-material-bg)'">
+        <div style="font-size:25px;margin-bottom:8px">🛒</div>
+        <div style="font-size:14px;font-weight:700;color:#c77dea">Compra</div>
+        <div style="font-size:12px;color:#c77dea;margin-top:2px">o produto em si — sem instalação nem serviço</div>
+      </button>
     </div>
   </div>
 </div>
@@ -959,14 +950,14 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
 <div class="modal-overlay" id="mat-entry-choice-overlay" onclick="if(event.target===this) closeMaterialEntryChoice()">
   <div class="modal" style="max-width:460px;width:92vw">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-      <h3 style="margin:0;font-size:16px">🧱 Lançar material</h3>
+      <h3 style="margin:0;font-size:16px">🛒 Lançar compra</h3>
       <button onclick="closeMaterialEntryChoice()" style="background:none;border:none;color:var(--c-primary);font-size:21px;cursor:pointer">×</button>
     </div>
     <div style="display:flex;flex-direction:column;gap:12px">
       <button type="button" onclick="chooseMaterialEntryTipo('unico')" style="text-align:left;background:var(--c-material-bg);border:2px solid #b565d8;border-radius:10px;padding:16px;cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:14px" onmouseover="this.style.background='#2a1030'" onmouseout="this.style.background='var(--c-material-bg)'">
-        <div style="font-size:28px">🧱</div>
+        <div style="font-size:28px">🛒</div>
         <div>
-          <div style="font-weight:700;color:#c77dea;font-size:14px">Material (1 item)</div>
+          <div style="font-weight:700;color:#c77dea;font-size:14px">Compra (1 item)</div>
           <div style="font-size:12px;color:#c77dea;margin-top:2px;opacity:.85">Comprou um produto específico, de uma vez</div>
         </div>
       </button>
@@ -1069,7 +1060,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
 <div class="modal-overlay" id="material-lancamento-overlay" onclick="if(event.target===this) closeMaterialModal()">
   <div class="modal" style="max-width:1040px;width:96vw;max-height:88vh;display:flex;flex-direction:column">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <h3 style="margin:0;font-size:17px">🧱 Lançar material</h3>
+      <h3 style="margin:0;font-size:17px">🛒 Lançar compra</h3>
       <button onclick="closeMaterialModal()" style="background:none;border:none;color:var(--c-secondary);font-size:21px;cursor:pointer">×</button>
     </div>
     <div style="overflow-y:auto;flex:1;padding-right:4px">
