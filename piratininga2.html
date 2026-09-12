@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 16AGO26 (versão 198)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 199)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -3530,8 +3530,8 @@ async function migrateGanhoTipos(gastosList){
 // só e nunca mais.
 function migrarDispensaParaDespensaUmaVez(){
   try{
-    if(localStorage.getItem('pirati_fix_dispensa_despensa_v1')) return;
-    localStorage.setItem('pirati_fix_dispensa_despensa_v1','1');
+    if(localStorage.getItem('pirati_fix_dispensa_despensa_v2')) return;
+    localStorage.setItem('pirati_fix_dispensa_despensa_v2','1');
     migrarNomeAmbienteEmLancamentos('Dispensa','Despensa');
   }catch(e){ console.error('migrarDispensaParaDespensaUmaVez error:', e); }
 }
@@ -5523,6 +5523,26 @@ async function migrarNomeAmbienteEmLancamentos(nomeAntigo, novoNome){
         });
       }catch(e){ console.error('migrarNomeAmbienteEmLancamentos (itens-casa) error:', e); }
     }
+  }
+  renderCatNav();
+  if(typeof render==='function') render();
+
+  // 3) ambiente escrito dentro dos pacote_subs (texto livre por sub-serviço,
+  // nunca coberto pelas correções acima)
+  const afetadosPacote = gastos.filter(g=>g.pacote_subs && new RegExp(nomeAntigo,'i').test(g.pacote_subs));
+  for(const g of afetadosPacote){
+    let parsed;
+    try{ parsed = parsePacoteSubs(g.pacote_subs); }catch(e){ continue; }
+    let mudou = false;
+    parsed.forEach(p=>{
+      if(p.ambiente && p.ambiente.toLowerCase()===nomeAntigo.toLowerCase()){ p.ambiente = novoNome; mudou = true; }
+    });
+    if(!mudou) continue;
+    const novoJson = JSON.stringify(parsed);
+    g.pacote_subs = novoJson;
+    try{
+      await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${g.id}`,{method:'PATCH', headers:{...HEADERS}, body: JSON.stringify({pacote_subs: novoJson})});
+    }catch(e){ console.error('migrarNomeAmbienteEmLancamentos (pacote_subs) error:', e); }
   }
   renderCatNav();
   if(typeof render==='function') render();
@@ -9699,25 +9719,12 @@ function renderObraBrutaSteps(){
       <div style="height:8px;border-radius:4px;background:var(--c-panel3);overflow:hidden"><div style="height:100%;width:${Math.min(pctGeral,100)}%;background:${pctGeral>=100?'#4caf50':info.color};border-radius:4px;transition:width .3s"></div></div>
     </div>
 
-    <div style="display:flex;align-items:center;justify-content:space-between;margin:1.25rem 0 8px">
-      <span style="font-size:12px;color:var(--c-primary);text-transform:uppercase;letter-spacing:.06em">${viewMode==='fase' ? `Fases da obra (${faseNomes.filter(fn=>fases[fn].subs.some(sk=>isSubAtivo(cat,sk))).length} de ${faseNomes.length} ativas)` : viewMode==='pacote' ? 'Por pacotes' : 'Por ambiente'}</span>
-      <div style="display:flex;background:var(--c-panel);border:1px solid var(--c-border);border-radius:7px;overflow:hidden">
-        <button onclick="setObraViewMode('fase')" style="background:${viewMode==='fase'?info.color:'transparent'};color:${viewMode==='fase'?'var(--c-panel)':'var(--c-muted)'};border:none;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s">Por fase</button>
-        <button onclick="setObraViewMode('ambiente')" style="background:${viewMode==='ambiente'?info.color:'transparent'};color:${viewMode==='ambiente'?'var(--c-panel)':'var(--c-muted)'};border:none;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s">Por ambiente</button>
-        <button onclick="setObraViewMode('pacote')" style="background:${viewMode==='pacote'?info.color:'transparent'};color:${viewMode==='pacote'?'var(--c-panel)':'var(--c-muted)'};border:none;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s">Por pacotes</button>
-      </div>
+    <div style="margin:1.25rem 0 8px">
+      <span style="font-size:12px;color:var(--c-primary);text-transform:uppercase;letter-spacing:.06em">Lançamentos</span>
     </div>
 
-    ${viewMode==='fase' ? `
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;align-items:start">${stepsHtml}</div>
-      <div style="font-size:11px;color:var(--c-primary);margin-top:10px">Clique no item pra lançar um gasto nele diretamente, ou no cabeçalho da fase pra ver tudo junto.</div>
-    ` : viewMode==='pacote' ? `
-      ${renderColGrid(lista, cat, 'pacote', null, info.label)}
-      <div style="font-size:11px;color:var(--c-primary);margin-top:10px">Agrupado por pacote/fornecedor — cada um mostra todos os serviços que cobre.</div>
-    ` : `
-      ${renderColGrid(lista, cat, 'ambiente', null, info.label)}
-      <div style="font-size:11px;color:var(--c-primary);margin-top:10px">Agrupado pelo ambiente de cada lançamento. Arraste um item entre as colunas pra mudar o status.</div>
-    `}
+    ${renderColGrid(lista, cat, 'ambiente', null, info.label)}
+    <div style="font-size:11px;color:var(--c-primary);margin-top:10px">Arraste um item entre as colunas pra mudar o status.</div>
   `;
 
   obraFaseModalData = {lista, fases, faseNomes, info};
@@ -9779,10 +9786,9 @@ function openPacoteModal(gastoId){
   const prazoBadge = prazoBadgeHtml(meta);
   const prazoLine = meta.dataInicio ? `<div style="font-size:12px;color:var(--c-primary);margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b>Início:</b> ${fmtDateTxt(meta.dataInicio)} ${meta.prazoDias?` &nbsp;·&nbsp; <b>Prazo:</b> ${meta.prazoDias} dias`:''} ${prazoBadge}</div>` : '';
   const materiaisVinculados = gastos.filter(x=>x.linked_pacote_id===g.id);
-  const materiaisLine = `<div style="font-size:12px;color:var(--c-primary);margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-    <b>Material vinculado:</b> ${materiaisVinculados.length ? `${materiaisVinculados.length} item(ns) · ${fmt(materiaisVinculados.reduce((s,x)=>s+gastoValor(x),0))}` : 'nenhum ainda'}
-    <button onclick="abrirVincularMaterial(${g.id})" style="background:var(--c-panel2);border:1px solid var(--c-border3);color:var(--c-muted4);border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer">🔗 ${materiaisVinculados.length?'ver/adicionar':'+ vincular'}</button>
-  </div>`;
+  const materiaisLine = materiaisVinculados.length ? `<div style="font-size:12px;color:var(--c-primary);margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <b>Material vinculado:</b> ${materiaisVinculados.length} item(ns) · ${fmt(materiaisVinculados.reduce((s,x)=>s+gastoValor(x),0))}
+  </div>` : '';
   const infoRow = `<tr><td colspan="6" style="padding:12px;border-top:1px solid var(--c-border)">
     <div style="font-size:12px;color:var(--c-primary);display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b>Data:</b> ${fmtDate(g.data)} &nbsp;·&nbsp; <b>Status:</b> ${getColLabel(g.status)} ${tipoTag}</div>
     ${prazoLine}
@@ -10111,7 +10117,7 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
   const materialLabelStr = isSoItem ? 'sem mão de obra' : (badgeMaterial==='com-material'?'com material':'sem material');
   const pacoteBadge = isPacote ? `<span onclick="event.stopPropagation();openPacoteModal(${g.id})" title="Ver todos os serviços deste ${badgeLabel} (${materialLabelStr})" style="cursor:pointer;color:${badgeColor};font-size:11px;font-weight:700;background:${badgeBg};border:1px solid ${badgeBorder};border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;line-height:1.4;width:88px;flex-shrink:0;box-sizing:border-box">${badgeIcon} ${badgeLabel}</span>` : '';
   const prazoBadgeRow = isPacote ? prazoBadgeHtml(getPacoteMeta(g)) : '';
-  const materiaisBadgeRow = isPacote ? materiaisBadgeHtml(g) : '';
+  const materiaisBadgeRow = '';
   // 4 linhas fixas quando é pacote: 1) nome, 2) tipo de serviço + material (fixo,
   // sem quebra — são os selos mais importantes), 3) dias restantes (menos
   // importante, isolado numa linha própria logo abaixo), 4) sub-etapa em azul.
