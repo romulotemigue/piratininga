@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 199)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 200)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1073,6 +1073,27 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
       <button onclick="closeMaterialModal()" style="background:none;border:none;color:var(--c-secondary);font-size:21px;cursor:pointer">×</button>
     </div>
     <div style="overflow-y:auto;flex:1;padding-right:4px">
+      <div style="background:var(--c-panel);border:1px solid var(--c-border2);border-radius:8px;padding:12px;margin-bottom:14px">
+        <div style="font-size:11px;color:var(--c-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Onde isso entra</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;grid-auto-rows:auto;gap:14px 20px">
+          <div class="form-group" style="margin-bottom:0">
+            <label>Etapa</label>
+            <select id="mat-l-etapa" onchange="onMatEtapaChange()"></select>
+          </div>
+          <div class="form-group" id="mat-l-categoria-group" style="margin-bottom:0;display:none">
+            <label>Categoria</label>
+            <select id="mat-l-categoria" onchange="onMatCategoriaChange()"></select>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label id="mat-l-subetapa-label">Sub-etapa</label>
+            <select id="mat-l-subetapa" onchange="onMatSubEtapaChange()"></select>
+          </div>
+          <div class="form-group" id="mat-l-subsub-group" style="margin-bottom:0;display:none">
+            <label>Ambiente</label>
+            <select id="mat-l-subsub"></select>
+          </div>
+        </div>
+      </div>
       <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:14px;margin-bottom:14px">
         <div class="form-group" style="margin-bottom:0">
           <label>Descrição</label>
@@ -1156,36 +1177,6 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
           <textarea id="mat-l-obs" rows="5" placeholder="Alguma nota importante..." style="width:100%;box-sizing:border-box;background:var(--c-panel);border:1px solid var(--c-border2);border-radius:8px;padding:10px 12px;color:var(--c-primary);font-size:14px;resize:vertical"></textarea>
         </div>
       </div>
-      <div style="background:var(--c-panel);border:1px solid var(--c-border2);border-radius:8px;padding:12px;margin-bottom:14px">
-        <div style="font-size:11px;color:var(--c-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Onde isso entra</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:auto;gap:14px 20px">
-          <div class="form-group" style="margin-bottom:0">
-            <label>Etapa</label>
-            <select id="mat-l-etapa" onchange="onMatEtapaChange()"></select>
-          </div>
-          <div class="form-group" id="mat-l-subsub-group" style="margin-bottom:0;display:none">
-            <label>Sub da sub-etapa</label>
-            <select id="mat-l-subsub"></select>
-          </div>
-          <div class="form-group" id="mat-l-categoria-group" style="margin-bottom:0;display:none">
-            <label>Categoria</label>
-            <select id="mat-l-categoria" onchange="onMatCategoriaChange()"></select>
-          </div>
-          <div class="form-group" style="margin-bottom:0">
-            <label id="mat-l-subetapa-label">Sub-etapa</label>
-            <select id="mat-l-subetapa" onchange="onMatSubEtapaChange()"></select>
-          </div>
-          <div class="form-group" id="mat-l-ambiente-group" style="margin-bottom:0;display:none">
-            <label>Ambiente(s) (opcional)</label>
-            <div id="mat-l-ambiente-list" style="display:flex;flex-wrap:wrap;gap:5px;max-height:74px;overflow-y:auto;background:var(--c-bg0);border:1px solid var(--c-border2);border-radius:8px;padding:6px"></div>
-            <button type="button" onclick="addMatAmbienteCustom()" style="margin-top:5px;background:none;border:1px dashed var(--c-faint);color:var(--c-muted2);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer">+ novo ambiente</button>
-          </div>
-        </div>
-        <div class="form-group" id="mat-l-linkpacote-group" style="margin-bottom:0;margin-top:14px;display:none;background:var(--c-material-bg2);border:1px solid #7d4a94;border-radius:8px;padding:10px 12px">
-          <label style="color:#c77dea;display:flex;align-items:center;gap:6px;font-weight:700">🔗 Vincular a um pacote de serviços (opcional)</label>
-          <select id="mat-l-linkpacote" style="border-color:#7d4a94"><option value="">— nenhum —</option></select>
-        </div>
-      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:8px">
         <div class="form-group" style="margin-bottom:0">
           <label>Link do site onde comprou</label>
@@ -1254,10 +1245,17 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
       <h3 style="margin:0" id="empreitada-title">📦 Novo pacote de empreitada</h3>
       <button onclick="closeObraEmpreitadaModal()" style="background:none;border:none;color:var(--c-primary);font-size:21px;cursor:pointer;line-height:1">&times;</button>
     </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      <div class="form-group" style="margin-bottom:0">
+        <label>Fase</label>
+        <select id="emp-fase-simples" onchange="onEmpFaseSimplesChange()"></select>
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>Ambiente</label>
+        <select id="emp-ambiente-simples" onchange="onEmpAmbienteSimplesChange()"></select>
+      </div>
+    </div>
     <div style="display:flex;gap:10px;margin-bottom:16px">
-      <button type="button" id="emp-vincular-material-btn" onclick="abrirVincularMaterialEmp()" title="Adicionar um gasto de material vinculado a este pacote"
-        style="flex:1;background:linear-gradient(135deg,#7d4a94,#c77dea);border:none;color:#fff;font-weight:700;border-radius:10px;padding:12px 16px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 0 14px rgba(199,125,234,.35);transition:transform .15s"
-        onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">🧱 Adicionar gastos com materiais</button>
       <button type="button" id="emp-material-incluso-btn" onclick="toggleEmpMaterialIncluso()" title="Esse serviço já vem com o material incluso?"
         style="flex:1;background:var(--c-panel);border:2px solid var(--c-border2);color:var(--c-faint3);font-weight:700;border-radius:10px;padding:12px 16px;cursor:pointer;font-size:13px;transition:all .15s">🧱 Materiais inclusos</button>
     </div>
@@ -1362,8 +1360,11 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         </div>
       </div>
     </div>
-    <div style="font-size:12px;color:var(--c-primary);margin-bottom:8px">Marque os serviços cobertos por esse pacote e, se quiser, escreva o ambiente de cada um:</div>
-    <div id="emp-service-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:12px;align-content:start;padding-bottom:8px"></div>
+    <details style="margin-bottom:8px">
+      <summary style="font-size:12px;color:var(--c-secondary);cursor:pointer;user-select:none">Avançado: cobrir mais de um ambiente/serviço nesse pacote</summary>
+      <div style="font-size:12px;color:var(--c-primary);margin:8px 0">Marque os serviços cobertos por esse pacote e, se quiser, escreva o ambiente de cada um:</div>
+      <div id="emp-service-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:12px;align-content:start;padding-bottom:8px"></div>
+    </details>
     <button class="btn-confirm" id="emp-btn-confirm" onclick="confirmEmpreitada()" style="margin-top:14px">Confirmar pacote</button>
   </div>
 </div>
@@ -4356,23 +4357,18 @@ function onMatEtapaChange(presetFase, presetSub, presetAmbiente, presetLinkPacot
   const subEl = document.getElementById('mat-l-subetapa');
   const subsubGroup = document.getElementById('mat-l-subsub-group');
   const categoriaGroup = document.getElementById('mat-l-categoria-group');
-  const ambienteGroup = document.getElementById('mat-l-ambiente-group');
-  document.getElementById('mat-l-subetapa-label').textContent = isObra ? 'Sub-etapa (fase)' : (isItensCasa ? 'Ambiente' : 'Sub-etapa');
+  document.getElementById('mat-l-subetapa-label').textContent = isObra ? 'Fase' : (isItensCasa ? 'Ambiente' : 'Sub-etapa');
   if(isObra){
     const fases = [...new Set(Object.values(SUBCATS['obra-bruta']||{}).map(s=>s.grupo).filter(Boolean))];
     subEl.innerHTML = fases.map(f=>`<option value="${f}">${f}</option>`).join('');
     if(presetFase && fases.includes(presetFase)) subEl.value = presetFase;
     subsubGroup.style.display = '';
     categoriaGroup.style.display = 'none';
-    ambienteGroup.style.display = '';
-    populateMatAmbienteChecklist(presetAmbiente);
-    onMatSubEtapaChange(presetSub, presetLinkPacote);
+    onMatSubEtapaChange(presetSub);
   } else if(isItensCasa){
     // Itens para Casa: primeiro escolhe a CATEGORIA de verdade (Móveis,
     // Decoração...), e só depois o ambiente — o "Sub-etapa" vira "Ambiente".
     subsubGroup.style.display = 'none';
-    ambienteGroup.style.display = 'none';
-    document.getElementById('mat-l-linkpacote-group').style.display = 'none';
     categoriaGroup.style.display = '';
     const categoriaSel = document.getElementById('mat-l-categoria');
     const filhos = getItensCasaChildren();
@@ -4385,8 +4381,6 @@ function onMatEtapaChange(presetFase, presetSub, presetAmbiente, presetLinkPacot
     if(presetSub && subs[presetSub]) subEl.value = presetSub;
     subsubGroup.style.display = 'none';
     categoriaGroup.style.display = 'none';
-    ambienteGroup.style.display = 'none';
-    document.getElementById('mat-l-linkpacote-group').style.display = 'none';
   }
 }
 // Depois de escolher a Categoria dentro de "Itens para Casa", preenche o
@@ -4399,30 +4393,8 @@ function onMatCategoriaChange(presetSub){
   subEl.innerHTML = '<option value="">— nenhum —</option>' + Object.keys(subs).map(sk=>`<option value="${sk}">${subs[sk].label}</option>`).join('');
   if(presetSub && subs[presetSub]) subEl.value = presetSub;
 }
-// Ambiente(s) do material — várias "pílulas" clicáveis (multi-seleção, ao
-// contrário do payment/investimento que são de escolha única), porque um
-// material às vezes se aplica a mais de um ambiente ao mesmo tempo.
-function populateMatAmbienteChecklist(presetAmbiente){
-  const wrap = document.getElementById('mat-l-ambiente-list');
-  const opcoes = getAmbienteOptions();
-  const presetList = (presetAmbiente||'').split(MAT_AMB_SEP).map(s=>s.trim()).filter(Boolean);
-  wrap.innerHTML = opcoes.map(a=>{
-    const isChecked = presetList.some(p=>p.toLowerCase()===a.toLowerCase());
-    return `<button type="button" class="mat-amb-pill${isChecked?' active':''}" data-amb="${a.replace(/"/g,'&quot;')}" onclick="this.classList.toggle('active')">${a}</button>`;
-  }).join('');
-}
-const MAT_AMB_SEP = ' + '; // separador usado quando mais de um ambiente é escolhido
-function getMatAmbientesSelecionados(){
-  return [...document.querySelectorAll('#mat-l-ambiente-list .mat-amb-pill.active')].map(b=>b.dataset.amb);
-}
-function addMatAmbienteCustom(){
-  const nome = prompt('Nome do novo ambiente:','');
-  if(!nome || !nome.trim()) return;
-  saveCustomAmbiente(nome.trim());
-  const jaMarcados = getMatAmbientesSelecionados();
-  populateMatAmbienteChecklist([...jaMarcados, nome.trim()].join(MAT_AMB_SEP));
-}
-function onMatSubEtapaChange(presetSub, presetLinkPacote){
+const MAT_AMB_SEP = ' + '; // separador usado quando mais de um ambiente é escolhido (uso legado em g.ambiente)
+function onMatSubEtapaChange(presetSub){
   const catKey = document.getElementById('mat-l-etapa').value;
   if(catKey!=='obra-bruta') return;
   const fase = document.getElementById('mat-l-subetapa').value;
@@ -4430,25 +4402,6 @@ function onMatSubEtapaChange(presetSub, presetLinkPacote){
   const subs = Object.keys(SUBCATS['obra-bruta']||{}).filter(k=>SUBCATS['obra-bruta'][k].grupo===fase);
   subsubEl.innerHTML = subs.map(sk=>`<option value="${sk}">${SUBCATS['obra-bruta'][sk].label}</option>`).join('');
   if(presetSub && subs.includes(presetSub)) subsubEl.value = presetSub;
-  populateMatLinkPacoteSelect(presetLinkPacote);
-}
-// Lista pacotes "sem material" da MESMA fase, pra vincular um material comprado
-// separadamente — os dois passam a mostrar o valor somado, mas cada um continua
-// guardando (e mostrando) o próprio valor individual também.
-function populateMatLinkPacoteSelect(presetId){
-  const group = document.getElementById('mat-l-linkpacote-group');
-  const sel = document.getElementById('mat-l-linkpacote');
-  const fase = document.getElementById('mat-l-subetapa').value;
-  const candidatos = gastos.filter(g=>{
-    if(g.categoria!=='obra-bruta') return false;
-    if(!g.pacote_subs) return false; // qualquer pacote (com ou sem material) pode receber material vinculado
-    const subEntry = SUBCATS['obra-bruta']?.[g.subcategoria];
-    return subEntry && subEntry.grupo===fase;
-  });
-  if(!candidatos.length){ group.style.display='none'; sel.innerHTML='<option value="">— nenhum —</option>'; return; }
-  group.style.display = '';
-  sel.innerHTML = '<option value="">— nenhum —</option>' + candidatos.map(g=>`<option value="${g.id}">${nomeExibicaoGasto(g,true).replace(/</g,'&lt;')} — ${fmtShort(gastoValor(g))}</option>`).join('');
-  if(presetId && candidatos.some(g=>g.id===presetId)) sel.value = presetId;
 }
 // ── Pílulas de forma de pagamento (clicáveis, com parcelas se for crédito) ──
 // ── Seletor "Investimento": Perpétuo / Transferível / Pessoal ──
@@ -4649,10 +4602,8 @@ async function confirmMaterialLancamento(){
   const isEditing = !!materialEditingId;
   btn.disabled = true; btn.textContent = 'Salvando...';
   try{
-    const ambientesSel = isObra ? getMatAmbientesSelecionados() : [];
-    const ambienteVal = ambientesSel.join(MAT_AMB_SEP);
-    const linkPacoteEl = document.getElementById('mat-l-linkpacote');
-    const linkedPacoteId = (isObra && linkPacoteEl.value) ? parseInt(linkPacoteEl.value,10) : null;
+    const ambienteVal = isObra ? (SUBCATS['obra-bruta']?.[subKey]?.label || '') : '';
+    const linkedPacoteId = null;
     const row = {
       descricao: desc, categoria: catKey, subcategoria: subKey||'', valor: val, quantidade:1,
       status: document.getElementById('mat-l-status').value,
@@ -5256,6 +5207,35 @@ function abrirVincularMaterialEmp(){
   const fase = subEntry?.grupo || null;
   openMaterialEntryChoice('obra-bruta', fase, g?.subcategoria||null, empreitadaEditingId);
 }
+// Dropdown simples Fase→Ambiente no topo do modal de serviço/pacote — por
+// baixo dos panos ainda usa o mesmo sistema de "serviços marcados" de sempre
+// (empreitadaCheckedServices), só que agora sempre com 1 só marcado, igual
+// já funciona no material. A grade antiga fica escondida em "Avançado", pra
+// quem realmente precisar cobrir mais de um ambiente no mesmo pacote.
+function populateEmpFaseSimples(presetSub){
+  const faseSel = document.getElementById('emp-fase-simples');
+  const fases = [...new Set(Object.values(SUBCATS['obra-bruta']||{}).map(s=>s.grupo).filter(Boolean))];
+  faseSel.innerHTML = fases.map(f=>`<option value="${f}">${f}</option>`).join('');
+  const presetEntry = presetSub && SUBCATS['obra-bruta']?.[presetSub];
+  if(presetEntry && fases.includes(presetEntry.grupo)) faseSel.value = presetEntry.grupo;
+  onEmpFaseSimplesChange(presetSub);
+}
+function onEmpFaseSimplesChange(presetSub){
+  const fase = document.getElementById('emp-fase-simples').value;
+  const ambSel = document.getElementById('emp-ambiente-simples');
+  const subs = Object.keys(SUBCATS['obra-bruta']||{}).filter(sk=>SUBCATS['obra-bruta'][sk].grupo===fase);
+  ambSel.innerHTML = subs.map(sk=>`<option value="${sk}">${SUBCATS['obra-bruta'][sk].label}</option>`).join('');
+  if(presetSub && subs.includes(presetSub)) ambSel.value = presetSub;
+  onEmpAmbienteSimplesChange();
+}
+function onEmpAmbienteSimplesChange(){
+  const sk = document.getElementById('emp-ambiente-simples').value;
+  if(!sk) return;
+  empreitadaCheckedServices = {[sk]: true};
+  const checkEl = document.querySelector(`.emp-sub-check[value="${sk}"]`);
+  if(checkEl && !checkEl.checked){ checkEl.checked = true; checkEl.dispatchEvent(new Event('change')); }
+  document.querySelectorAll('.emp-sub-check').forEach(el=>{ if(el.value!==sk) el.checked = false; });
+}
 function openObraEmpreitadaModal(material, presetSub, isUnico){
   empreitadaEditingId = null;
   empreitadaLegacySemGrade = null;
@@ -5306,6 +5286,7 @@ function openObraEmpreitadaModal(material, presetSub, isUnico){
   empreitadaShowAllFases = !presetEntry;
   empreitadaShowOnlySelected = false; // pacote novo — ainda não tem nada marcado, mostra tudo
   renderEmpreitadaServiceGrid();
+  populateEmpFaseSimples(presetSub);
   if(presetSub){
     const checkEl = document.querySelector(`.emp-sub-check[value="${presetSub}"]`);
     if(checkEl){ checkEl.checked = true; checkEl.dispatchEvent(new Event('change')); }
@@ -5398,6 +5379,7 @@ function openObraEmpreitadaModalForEdit(g){
   });
   empreitadaShowOnlySelected = true; // editando: mostra só o que já está no pacote por padrão
   renderEmpreitadaServiceGrid(true);
+  populateEmpFaseSimples(Object.keys(porSub)[0]);
   document.getElementById('obra-empreitada-overlay').classList.add('open');
 }
 
