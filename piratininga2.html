@@ -9,7 +9,7 @@
 // guardada. Só recarrega se já existia uma versão salva antes (não na
 // primeiríssima visita), pra não entrar num loop.
 (function(){
-  var BUILD_VERSION = '231';
+  var BUILD_VERSION = '232';
   try{
     var last = localStorage.getItem('pirati_build_version');
     if(last !== BUILD_VERSION){
@@ -339,7 +339,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 13SET26 (versão 231)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 13SET26 (versão 232)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -8586,6 +8586,7 @@ function renderImovelCat(catKey, subKey, grupoFiltro){
     if(totalAPagar>0) html += '<div style="border-left:1px solid var(--c-panel6);padding:0 2rem"><div style="font-size:11px;color:#e8b544;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">A pagar (seu bolso)</div><div style="font-size:23px;font-weight:800;color:#e8b544">'+fmt(totalAPagar)+'</div></div>';
     if(totalFinanciado>0) html += '<div style="border-left:1px solid var(--c-panel6);padding:0 2rem"><div style="font-size:11px;color:var(--c-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Financiado (banco)</div><div style="font-size:23px;font-weight:800;color:var(--c-primary)">'+fmt(totalFinanciado)+'</div><div style="font-size:10px;color:var(--c-secondary);margin-top:3px">não é seu dinheiro</div></div>';
     html += '<div style="border-left:1px solid var(--c-panel6);padding:0 2rem"><div style="font-size:11px;color:#e8b544;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Taxas</div><div style="font-size:23px;font-weight:800;color:#e8b544">'+fmt(totalDocumentacao)+'</div></div>';
+    if(totalAPagar===0 && totalGasto>0) html += '<div style="border-left:1px solid var(--c-panel6);padding:0 2rem;display:flex;align-items:center"><span style="font-size:12px;font-weight:700;color:#4caf50;background:var(--c-pago-bg2);border:1px solid var(--c-pago-border2);border-radius:10px;padding:4px 10px">✅ Concluída — nada pendente</span></div>';
   }
   html += '</div>';
 
@@ -8999,13 +9000,17 @@ function renderGeral(){
         })()}
       </div>`;
 
+  const compraConcluida = compraAPagar===0 && compraItems.length>0;
   const htmlCompra = `
       <div class="card" style="border-left:3px solid ${IMOVEL_CATS['compra-imovel']?.color||'#5c6bc0'};background:${IMOVEL_CATS['compra-imovel']?.color||'#5c6bc0'}12;cursor:pointer;height:100%" onclick="navigate('compra-imovel')">
-        <div class="card-label"><span style="font-size:14px">${IMOVEL_CATS['compra-imovel']?.icon||'🔑'}</span> <span style="color:${IMOVEL_CATS['compra-imovel']?.color||'#5c6bc0'}">${IMOVEL_CATS['compra-imovel']?.label||'Compra do Imóvel'}</span></div>
+        <div class="card-label" style="display:flex;align-items:center;justify-content:space-between">
+          <span><span style="font-size:14px">${IMOVEL_CATS['compra-imovel']?.icon||'🔑'}</span> <span style="color:${IMOVEL_CATS['compra-imovel']?.color||'#5c6bc0'}">${IMOVEL_CATS['compra-imovel']?.label||'Compra do Imóvel'}</span></span>
+          ${compraConcluida ? '<span style="font-size:11px;font-weight:700;color:#4caf50;background:var(--c-pago-bg2);border:1px solid var(--c-pago-border2);border-radius:10px;padding:2px 8px">✅ Concluída</span>' : ''}
+        </div>
         <div style="display:flex;gap:1.5rem;margin-top:6px">
           <div>
             <div style="font-size:11px;color:var(--c-primary)">Pago (seu bolso)</div>
-            <div style="font-size:19px;font-weight:700;color:#ef5350">${fmt(compraPago)}</div>
+            <div style="font-size:19px;font-weight:700;color:#4caf50">${fmt(compraPago)}</div>
           </div>
           <div>
             <div style="font-size:11px;color:var(--c-secondary)">Financiado (banco)</div>
