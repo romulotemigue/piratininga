@@ -9,7 +9,7 @@
 // guardada. Só recarrega se já existia uma versão salva antes (não na
 // primeiríssima visita), pra não entrar num loop.
 (function(){
-  var BUILD_VERSION = '216';
+  var BUILD_VERSION = '217';
   try{
     var last = localStorage.getItem('pirati_build_version');
     if(last !== BUILD_VERSION){
@@ -339,7 +339,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 216)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 13SET26 (versão 217)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1261,11 +1261,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
       <h3 style="margin:0" id="empreitada-title">👷 Novo serviço</h3>
       <button onclick="closeObraEmpreitadaModal()" style="background:none;border:none;color:var(--c-primary);font-size:21px;cursor:pointer;line-height:1">&times;</button>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-      <div class="form-group" style="margin-bottom:0">
-        <label>Fase</label>
-        <select id="emp-fase-simples" onchange="onEmpFaseSimplesChange()"></select>
-      </div>
+    <div style="display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:14px">
       <div class="form-group" style="margin-bottom:0">
         <label>Ambiente</label>
         <select id="emp-ambiente-simples" onchange="onEmpAmbienteSimplesChange()"></select>
@@ -2307,20 +2303,20 @@ function toggleSubGroup(k, gName, e){
 function buildSubcatRowsHtmlObraAmbiente(k){
   if(!SUBCATS[k]) return '';
   const skKeys = Object.keys(SUBCATS[k]);
-  // Agrupa por ambiente (label) e ordena pela MENOR 'ordem' de cada grupo —
-  // mesma lógica que Itens para Casa já usa pra ordenar os ambientes dele
-  // (sort por SUBCATS[k][sk].ordem), pra ficar na mesma sequência nos dois
-  // lugares em vez de usar a ordem "ao vivo" do catálogo de ambientes.
   const porAmbiente = {};
   skKeys.forEach(sk=>{
     const label = SUBCATS[k][sk].label;
     if(!label) return;
     (porAmbiente[label] = porAmbiente[label] || []).push(sk);
   });
+  // Segue a ordem AO VIVO de "Definir Ambientes" (não a 'ordem' congelada de
+  // cada sub-item) — é a mesma fonte que Itens para Casa agora usa, pra ficar
+  // na sequência certa nos dois lugares mesmo depois de reordenar ambientes.
+  const ambOrder = getAmbientesAtivosOrdenados();
   const ambientesOrdenados = Object.keys(porAmbiente).sort((a,b)=>{
-    const oa = Math.min(...porAmbiente[a].map(sk=>SUBCATS[k][sk].ordem??999999));
-    const ob = Math.min(...porAmbiente[b].map(sk=>SUBCATS[k][sk].ordem??999999));
-    return oa-ob;
+    const ia = ambOrder.findIndex(x=>x.toLowerCase()===a.toLowerCase());
+    const ib = ambOrder.findIndex(x=>x.toLowerCase()===b.toLowerCase());
+    return (ia===-1?999999:ia)-(ib===-1?999999:ib);
   });
   return ambientesOrdenados.map(ambName=>{
     const items = porAmbiente[ambName];
@@ -2334,7 +2330,7 @@ function buildSubcatRowsHtmlObraAmbiente(k){
           onmouseout="this.style.borderColor='var(--c-border)';this.style.color='var(--c-secondary)'">
           ${ambName}
         </div>
-        <button class="subcat-dots-btn" title="Lancar em ${ambName}" style="background:none;border:none;color:var(--c-muted2);cursor:pointer;padding:4px 4px;font-size:15px;transition:color .15s;opacity:1!important" onclick="event.stopPropagation();openObraTriagemModal()" onmouseover="this.style.color='${cor}'" onmouseout="this.style.color='var(--c-muted2)'"><i class="ti ti-plus"></i></button>
+        <button class="subcat-dots-btn" title="Lancar em ${ambName}" style="background:none;border:none;color:var(--c-muted2);cursor:pointer;padding:4px 4px;font-size:15px;transition:color .15s;opacity:1!important" onclick="event.stopPropagation();openObraTriagemModal(null,null,'${ambName.replace(/'/g,"\\'")}')" onmouseover="this.style.color='${cor}'" onmouseout="this.style.color='var(--c-muted2)'"><i class="ti ti-plus"></i></button>
         <button class="subcat-dots-btn" style="background:none;border:none;color:var(--c-secondary);cursor:pointer;padding:4px 6px;font-size:14px;transition:opacity .15s" onclick="toggleAmbienteMenu('${k}','${ambName.replace(/'/g,"\\'")}',event)"><i class="ti ti-dots-vertical"></i></button>
       </div>`;
   }).join('');
@@ -2352,7 +2348,9 @@ function toggleAmbienteMenu(k, ambName, e){
   const items = Object.keys(SUBCATS[k]||{}).filter(sk=>(SUBCATS[k][sk].label||'').toLowerCase()===ambName.toLowerCase());
   const ativo = items.some(sk=>isSubAtivo(k, sk));
   menu.dataset.forKey = idKey;
-  menu.innerHTML = `<div class="cat-menu-item" onclick="toggleFaseAtivo('${k}',${JSON.stringify(items).replace(/"/g,'&quot;')},event);document.getElementById('global-subcat-menu').classList.remove('open')"><i class="ti ti-power"></i> ${ativo?'Desativar':'Ativar'} esse ambiente</div>`;
+  const ambNameEsc = ambName.replace(/'/g,"\\'");
+  menu.innerHTML = `<div class="cat-menu-item" onclick="document.getElementById('global-subcat-menu').classList.remove('open');renameAmbienteDefinir('${ambNameEsc}')"><i class="ti ti-pencil"></i> Renomear</div>
+    <div class="cat-menu-item" onclick="toggleFaseAtivo('${k}',${JSON.stringify(items).replace(/"/g,'&quot;')},event);document.getElementById('global-subcat-menu').classList.remove('open')"><i class="ti ti-power"></i> ${ativo?'Desativar':'Ativar'} esse ambiente</div>`;
   const btn = e.currentTarget;
   const rect = btn.getBoundingClientRect();
   menu.style.top = rect.bottom + 'px';
@@ -2367,7 +2365,22 @@ function buildSubcatRowsHtml(k){
   const skKeys = Object.keys(SUBCATS[k]);
   const hasGroups = skKeys.some(sk=>SUBCATS[k][sk].grupo);
   if(!hasGroups){
-    const skOrdenados = [...skKeys].sort((a,b)=>(SUBCATS[k][a].ordem??999999)-(SUBCATS[k][b].ordem??999999));
+    // Ambientes de Itens para Casa devem seguir a ordem AO VIVO de "Definir
+    // Ambientes" — não a 'ordem' congelada de quando o sub-item foi criado,
+    // que fica desatualizada se os ambientes forem reordenados depois.
+    let skOrdenados;
+    if(getItensCasaChildren().includes(k)){
+      const ambOrder = getAmbientesAtivosOrdenados();
+      skOrdenados = [...skKeys].sort((a,b)=>{
+        const la = (SUBCATS[k][a].label||'').toLowerCase();
+        const lb = (SUBCATS[k][b].label||'').toLowerCase();
+        const ia = ambOrder.findIndex(x=>x.toLowerCase()===la);
+        const ib = ambOrder.findIndex(x=>x.toLowerCase()===lb);
+        return (ia===-1?999999:ia)-(ib===-1?999999:ib);
+      });
+    } else {
+      skOrdenados = [...skKeys].sort((a,b)=>(SUBCATS[k][a].ordem??999999)-(SUBCATS[k][b].ordem??999999));
+    }
     return skOrdenados.map(sk=>renderFlatSubcatRow(k, sk, subColor, false)).join('');
   }
   // Hierarquia de 2 níveis: fase (grupo) > itens — mantém a ordem definida em 'ordem'
@@ -4439,14 +4452,18 @@ function onMatEtapaChange(presetFase, presetSub, presetAmbiente, presetLinkPacot
   const subEl = document.getElementById('mat-l-subetapa');
   const subsubGroup = document.getElementById('mat-l-subsub-group');
   const categoriaGroup = document.getElementById('mat-l-categoria-group');
-  document.getElementById('mat-l-subetapa-label').textContent = isObra ? 'Fase' : (isItensCasa ? 'Ambiente' : 'Sub-etapa');
+  document.getElementById('mat-l-subetapa-label').textContent = isObra ? 'Ambiente' : (isItensCasa ? 'Ambiente' : 'Sub-etapa');
   if(isObra){
-    const fases = [...new Set(Object.values(SUBCATS['obra-bruta']||{}).map(s=>s.grupo).filter(Boolean))];
-    subEl.innerHTML = fases.map(f=>`<option value="${f}">${f}</option>`).join('');
-    if(presetFase && fases.includes(presetFase)) subEl.value = presetFase;
-    subsubGroup.style.display = '';
+    // Fase deixou de ser um campo à parte aqui — só Ambiente, direto (mesma
+    // ideia já usada no Diagnóstico e no modal de serviço: internamente
+    // escolhe pra cada ambiente a fase de menor 'ordem' como representante).
+    const ambientes = getAmbientesAtivosOrdenados().filter(a=>getObraAmbienteRepresentativeSk(a));
+    const presetEntry = presetSub && SUBCATS['obra-bruta']?.[presetSub];
+    const presetAmb = presetEntry?.label || presetFase || null;
+    subEl.innerHTML = ambientes.map(a=>`<option value="${a}">${a}</option>`).join('');
+    if(presetAmb && ambientes.some(a=>a.toLowerCase()===presetAmb.toLowerCase())) subEl.value = presetAmb;
+    subsubGroup.style.display = 'none';
     categoriaGroup.style.display = 'none';
-    onMatSubEtapaChange(presetSub);
   } else if(isItensCasa){
     // Itens para Casa: primeiro escolhe a CATEGORIA de verdade (Móveis,
     // Decoração...), e só depois o ambiente — o "Sub-etapa" vira "Ambiente".
@@ -4659,7 +4676,7 @@ async function confirmMaterialLancamento(){
   const isObra = catKeySelecionado==='obra-bruta';
   const isItensCasa = catKeySelecionado==='itens-casa';
   const catKey = isItensCasa ? document.getElementById('mat-l-categoria').value : catKeySelecionado;
-  const subKey = isObra ? document.getElementById('mat-l-subsub').value : document.getElementById('mat-l-subetapa').value;
+  const subKey = isObra ? (getObraAmbienteRepresentativeSk(document.getElementById('mat-l-subetapa').value)||'') : document.getElementById('mat-l-subetapa').value;
 
   const linhas = [];
   const marca = document.getElementById('mat-l-marca').value.trim();
@@ -4972,15 +4989,17 @@ function quickAddFromCol(catKeyComposite, status){
   }
 }
 let obraTriagemPresetSub = null; // guarda qual item foi clicado, se veio de um item específico
-let obraTriagemPresetFase = null; // guarda a fase, quando só a fase é conhecida (sem ambiente específico)
+let obraTriagemPresetFase = null; // legado — fase deixou de ser um campo visível, mantido só por compatibilidade
+let obraTriagemPresetAmbiente = null; // guarda o ambiente, quando veio de um "+lançar" clicado direto num ambiente
 
 // Fases onde faz sentido lançar "apenas o item, sem mão de obra" — comprar uma
 // peça/acabamento sem contratar instalação junto (ex: comprar a luminária e
 // instalar depois, ou nem instalar).
 const FASES_ITEM_SEM_MAO_DE_OBRA = ['Iluminação e Acabamentos Elétricos','Louças, Metais e Vidros','Marcenaria e Móveis Planejados'];
-function openObraTriagemModal(presetSub, presetFase){
+function openObraTriagemModal(presetSub, presetFase, presetAmbiente){
   obraTriagemPresetSub = presetSub || null;
   obraTriagemPresetFase = presetFase || null;
+  obraTriagemPresetAmbiente = presetAmbiente || null;
   document.getElementById('obra-triagem-overlay').classList.add('open');
 }
 function closeObraTriagemModal(){
@@ -4989,25 +5008,25 @@ function closeObraTriagemModal(){
 function chooseObraTipo(tipo, material){
   closeObraTriagemModal();
   pendingTipoContratacao = material;
-  openObraEmpreitadaModal(material, obraTriagemPresetSub, tipo==='unico' || tipo==='item', obraTriagemPresetFase);
+  openObraEmpreitadaModal(material, obraTriagemPresetSub, tipo==='unico' || tipo==='item', obraTriagemPresetAmbiente || obraTriagemPresetFase);
 }
 
-// Opções "Material" da triagem — 1 item vai pro popup de sempre (com a fase/sub
-// já preenchida), compra em lote abre o formulário de vários itens de uma vez.
+// Opções "Material" da triagem — 1 item vai pro popup de sempre (com o
+// ambiente já preenchido), compra em lote abre o formulário de vários itens de uma vez.
 function chooseObraMaterialTipo(tipo){
   closeObraTriagemModal();
   const sub = obraTriagemPresetSub;
-  const fase = sub ? (SUBCATS['obra-bruta']?.[sub]?.grupo || null) : null;
-  if(tipo==='unico') openMaterialModal('obra-bruta', fase, sub);
-  else openMaterialBulkModal(fase);
+  const amb = sub ? (SUBCATS['obra-bruta']?.[sub]?.label || null) : obraTriagemPresetAmbiente;
+  if(tipo==='unico') openMaterialModal('obra-bruta', amb, sub);
+  else openMaterialBulkModal(amb);
 }
 // Clicar em "Material" na triagem primeiro pergunta 1 item ou vários, aí sim
 // abre a janela certa — reaproveita a mesma telinha usada no "+material".
 function chooseObraMaterialEscolha(){
   closeObraTriagemModal();
   const sub = obraTriagemPresetSub;
-  const fase = sub ? (SUBCATS['obra-bruta']?.[sub]?.grupo || null) : obraTriagemPresetFase;
-  openMaterialEntryChoice('obra-bruta', fase, sub);
+  const amb = sub ? (SUBCATS['obra-bruta']?.[sub]?.label || null) : obraTriagemPresetAmbiente;
+  openMaterialEntryChoice('obra-bruta', amb, sub);
 }
 
 // Simplificado de volta: sempre array puro de serviços/ambientes. Data de início
@@ -5296,36 +5315,33 @@ function abrirVincularMaterialEmp(){
 // (empreitadaCheckedServices), só que agora sempre com 1 só marcado, igual
 // já funciona no material. A grade antiga fica escondida em "Avançado", pra
 // quem realmente precisar cobrir mais de um ambiente no mesmo pacote.
-function populateEmpFaseSimples(presetSub, presetFaseOnly){
-  const faseSel = document.getElementById('emp-fase-simples');
-  const fases = [...new Set(Object.values(SUBCATS['obra-bruta']||{}).map(s=>s.grupo).filter(Boolean))];
-  const presetEntry = presetSub && SUBCATS['obra-bruta']?.[presetSub];
-  const faseReconhecida = !!(presetEntry && fases.includes(presetEntry.grupo));
-  // Sem ambiente específico (veio de um "+lançar" clicado dentro de uma Fase,
-  // não de um ambiente/sub exato), mas com a Fase conhecida — pré-marca só a
-  // Fase e deixa o Ambiente em aberto pra pessoa escolher, em vez de deixar
-  // os dois em branco à toa.
-  const faseSoReconhecida = !faseReconhecida && presetFaseOnly && fases.includes(presetFaseOnly);
-  const faseFinal = faseReconhecida ? presetEntry.grupo : (faseSoReconhecida ? presetFaseOnly : null);
-  // Se o lançamento é antigo e o "endereço" salvo não existe mais na lista
-  // atual, NÃO finge que sabe onde ele está (isso fazia cair sempre na
-  // primeira fase/ambiente da lista, parecendo certo sem ser) — deixa em
-  // branco pra pessoa escolher de verdade.
-  faseSel.innerHTML = ((presetSub||presetFaseOnly) && !faseFinal ? '<option value="">— escolha a fase —</option>' : '') + fases.map(f=>`<option value="${f}">${f}</option>`).join('');
-  if(faseFinal) faseSel.value = faseFinal;
-  onEmpFaseSimplesChange(faseReconhecida ? presetSub : null);
+function getObraAmbienteRepresentativeSk(ambName){
+  const subs = SUBCATS['obra-bruta']||{};
+  let melhor = null;
+  Object.keys(subs).forEach(sk=>{
+    if((subs[sk].label||'').toLowerCase() !== (ambName||'').toLowerCase()) return;
+    if(!melhor || (subs[sk].ordem??999999) < (subs[melhor].ordem??999999)) melhor = sk;
+  });
+  return melhor;
 }
-function onEmpFaseSimplesChange(presetSub){
-  const fase = document.getElementById('emp-fase-simples').value;
+function populateEmpAmbienteSimples(presetSub, presetAmbienteOnly){
   const ambSel = document.getElementById('emp-ambiente-simples');
-  const subs = Object.keys(SUBCATS['obra-bruta']||{}).filter(sk=>SUBCATS['obra-bruta'][sk].grupo===fase);
-  const ambienteReconhecido = !!(presetSub && subs.includes(presetSub));
-  ambSel.innerHTML = (!fase || (presetSub && !ambienteReconhecido) ? '<option value="">— escolha o ambiente —</option>' : '') + subs.map(sk=>`<option value="${sk}">${SUBCATS['obra-bruta'][sk].label}</option>`).join('');
-  if(ambienteReconhecido) ambSel.value = presetSub;
+  const ambientes = getAmbientesAtivosOrdenados().filter(a=>getObraAmbienteRepresentativeSk(a));
+  const presetEntry = presetSub && SUBCATS['obra-bruta']?.[presetSub];
+  const ambReconhecido = !!(presetEntry && ambientes.some(a=>a.toLowerCase()===(presetEntry.label||'').toLowerCase()));
+  const ambSoReconhecido = !ambReconhecido && presetAmbienteOnly && ambientes.some(a=>a.toLowerCase()===presetAmbienteOnly.toLowerCase());
+  const ambFinal = ambReconhecido ? presetEntry.label : (ambSoReconhecido ? presetAmbienteOnly : null);
+  // Se o lançamento é antigo e o ambiente salvo não existe mais na lista
+  // atual, NÃO finge que sabe onde ele está — deixa em branco pra pessoa
+  // escolher de verdade, em vez de cair num ambiente errado silenciosamente.
+  ambSel.innerHTML = ((presetSub||presetAmbienteOnly) && !ambFinal ? '<option value="">— escolha o ambiente —</option>' : '') + ambientes.map(a=>`<option value="${a}">${a}</option>`).join('');
+  if(ambFinal) ambSel.value = ambFinal;
   onEmpAmbienteSimplesChange();
 }
 function onEmpAmbienteSimplesChange(){
-  const sk = document.getElementById('emp-ambiente-simples').value;
+  const amb = document.getElementById('emp-ambiente-simples').value;
+  if(!amb) return;
+  const sk = getObraAmbienteRepresentativeSk(amb);
   if(!sk) return;
   empreitadaCheckedServices = {[sk]: true};
   const checkEl = document.querySelector(`.emp-sub-check[value="${sk}"]`);
@@ -5382,11 +5398,11 @@ function openObraEmpreitadaModal(material, presetSub, isUnico, presetFase){
   // (sem presetSub), mostra tudo de uma vez, como sempre. Se veio de um "+lançar" clicado
   // dentro de uma Fase (sem ambiente específico), pelo menos a Fase já vem certa.
   const presetEntry = presetSub && SUBCATS['obra-bruta']?.[presetSub];
-  empreitadaFocusFase = presetEntry ? presetEntry.grupo : (presetFase || null);
-  empreitadaShowAllFases = !presetEntry && !presetFase;
+  empreitadaFocusFase = presetEntry ? presetEntry.grupo : null;
+  empreitadaShowAllFases = true;
   empreitadaShowOnlySelected = false; // pacote novo — ainda não tem nada marcado, mostra tudo
   renderEmpreitadaServiceGrid();
-  populateEmpFaseSimples(presetSub, presetFase);
+  populateEmpAmbienteSimples(presetSub, presetFase);
   if(presetSub){
     const checkEl = document.querySelector(`.emp-sub-check[value="${presetSub}"]`);
     if(checkEl){ checkEl.checked = true; checkEl.dispatchEvent(new Event('change')); }
@@ -5495,7 +5511,7 @@ function openObraEmpreitadaModalForEdit(g){
   // quando o pacote tinha outras subs perfeitamente válidas.
   const subKeysPorSub = Object.keys(porSub);
   const subKeyValida = subKeysPorSub.find(sk=>SUBCATS['obra-bruta']?.[sk]);
-  populateEmpFaseSimples(subKeyValida || subKeysPorSub[0]);
+  populateEmpAmbienteSimples(subKeyValida || subKeysPorSub[0]);
   document.getElementById('obra-empreitada-overlay').classList.add('open');
 }
 
@@ -6557,10 +6573,11 @@ async function confirmEmpreitada(){
   const status = document.getElementById('emp-status').value;
   if(!desc){ alert('Preencha a descrição/empreiteiro.'); return; }
   if(isNaN(val)||val<=0){ alert('Preencha um valor válido.'); return; }
-  // Garante que o dropdown simples de Fase/Ambiente (o caminho normal agora)
+  // Garante que o dropdown simples de Ambiente (o caminho normal agora)
   // realmente marcou a caixinha por baixo dos panos antes de validar — evita
   // o aviso chato de "marque um serviço" quando a pessoa só usou o dropdown.
-  const skSimples = document.getElementById('emp-ambiente-simples')?.value;
+  const ambSimples = document.getElementById('emp-ambiente-simples')?.value;
+  const skSimples = ambSimples ? getObraAmbienteRepresentativeSk(ambSimples) : null;
   if(skSimples && !document.querySelector(`.emp-sub-check[value="${skSimples}"]:checked`)){
     const checkElSimples = document.querySelector(`.emp-sub-check[value="${skSimples}"]`);
     if(checkElSimples){ checkElSimples.checked = true; checkElSimples.dispatchEvent(new Event('change')); }
@@ -9681,7 +9698,7 @@ function renderAmbienteGroup(catKey, ambName){
         <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px">
-        <button onclick="openObraTriagemModal()" title="Lançar em ${ambName}"
+        <button onclick="openObraTriagemModal(null,null,'${ambName.replace(/'/g,"\\'")}')" title="Lançar em ${ambName}"
           style="width:34px;height:34px;border-radius:50%;background:transparent;border:2px solid ${cor};color:${cor};font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0"
           onmouseover="this.style.background='${cor}';this.style.color='var(--c-panel)'"
           onmouseout="this.style.background='transparent';this.style.color='${cor}'">+</button>
