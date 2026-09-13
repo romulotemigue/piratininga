@@ -9,7 +9,7 @@
 // guardada. Só recarrega se já existia uma versão salva antes (não na
 // primeiríssima visita), pra não entrar num loop.
 (function(){
-  var BUILD_VERSION = '224';
+  var BUILD_VERSION = '225';
   try{
     var last = localStorage.getItem('pirati_build_version');
     if(last !== BUILD_VERSION){
@@ -339,7 +339,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 13SET26 (versão 224)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 13SET26 (versão 225)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -2896,10 +2896,11 @@ function openEdit(id){
     }
     // Investimento (Perpétuo/Transferível/Pessoal/Taxas) não faz sentido pra
     // recebimentos, nem pra Compra do Imóvel inteira (lá é tudo taxa mesmo,
-    // EXCETO o preço em si do imóvel — esse não entra em tag nenhuma).
-    const ehValorImovelCompra = g.categoria==='compra-imovel' && getImovelCardGroup('compra-imovel', g.subcategoria)==='valor-imovel';
+    // EXCETO o preço em si do imóvel e o que financiou ele — isso vira a tag
+    // própria "Compra do Imóvel").
+    const ehValorImovelCompra = g.categoria==='compra-imovel' && (g.subcategoria==='fgts' || getImovelCardGroup('compra-imovel', g.subcategoria)==='valor-imovel');
     document.getElementById('e-invest-wrap').style.display = (ehRecebimentoVenda || g.categoria==='compra-imovel' || g.categoria==='venda-imovel') ? 'none' : '';
-    if(ehValorImovelCompra) setInvestimentoValue('e','');
+    if(ehValorImovelCompra) setInvestimentoValue('e','compra-imovel-valor');
     else if(g.categoria==='compra-imovel' || (g.categoria==='venda-imovel' && !ehRecebimentoVenda)) setInvestimentoValue('e','taxas');
     statusSelect.value = g.status||'pago';
     document.getElementById('btn-confirm-edit').style.background='#e8b544';
@@ -3727,6 +3728,25 @@ async function marcarTaxasVendaCompraUmaVez(){
     if(afetados.length) render();
   }catch(e){ console.error('marcarTaxasVendaCompraUmaVez outer error:', e); }
 }
+// Romulo pediu pra criar uma tag de Investimento própria "Compra do Imóvel" e
+// jogar nela, de uma vez, tudo que é o preço do imóvel em si e o que
+// financiou ele (Entrada, Repasse Bancário, FGTS, "Por fora" e qualquer outro
+// cartão do grupo "valor-imovel") — mesmo os que já tinham uma tag errada
+// (ex: FGTS e "Por fora" que tinham caído em Taxas). Roda uma vez só.
+async function migrarCompraImovelParaTagPropriaUmaVez(){
+  try{
+    if(localStorage.getItem('pirati_fix_compra_imovel_tag_propria_v1')) return;
+    localStorage.setItem('pirati_fix_compra_imovel_tag_propria_v1','1');
+    const afetados = gastos.filter(g=>g.categoria==='compra-imovel' && (g.subcategoria==='fgts' || getImovelCardGroup('compra-imovel', g.subcategoria)==='valor-imovel') && g.investimento!=='compra-imovel-valor');
+    for(const g of afetados){
+      g.investimento = 'compra-imovel-valor';
+      try{
+        await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${g.id}`,{method:'PATCH', headers:{...HEADERS}, body: JSON.stringify({investimento: 'compra-imovel-valor'})});
+      }catch(e){ console.error('migrarCompraImovelParaTagPropriaUmaVez error:', e); }
+    }
+    if(afetados.length) render();
+  }catch(e){ console.error('migrarCompraImovelParaTagPropriaUmaVez outer error:', e); }
+}
 async function loadGastos(){
   try{
     gastos = await sbFetch();
@@ -3743,6 +3763,7 @@ async function loadGastos(){
     limparInvestimentoValorImovelUmaVez();
     marcarTaxasVendaCompraUmaVez();
     corrigirPorForaTaxasUmaVez();
+    migrarCompraImovelParaTagPropriaUmaVez();
     migrarMudancaParaEtapaPropriaUmaVez();
     restoreOrphanSubcats();
     checkPossibleDuplicates();
@@ -5146,7 +5167,8 @@ const INVEST_INFO = {
   perpetuo:     {label:'Perpétuo',     color:'#4caf50', bg:'var(--c-pago-bg2)', border:'var(--c-pago-border2)'},
   transferivel: {label:'Transferível', color:'#42a5f5', bg:'var(--c-necessario-bg)', border:'var(--c-necessario-border2)'},
   pessoal:      {label:'Pessoal',      color:'#c77dea', bg:'var(--c-material-bg)', border:'#7d4a94'},
-  taxas:        {label:'Taxas',        color:'#e8b544', bg:'var(--c-apagar-bg2)', border:'var(--c-apagar-strong)'}
+  taxas:        {label:'Taxas',        color:'#e8b544', bg:'var(--c-apagar-bg2)', border:'var(--c-apagar-strong)'},
+  'compra-imovel-valor': {label:'Compra do Imóvel', color:'#26c6da', bg:'#0a1a1c', border:'#1a4a4e'}
 };
 function investimentoBadgeHtml(g){
   const info = INVEST_INFO[g.investimento];
@@ -6783,7 +6805,7 @@ function openModal(cat, subcat){
   // Investimento ele deve contar como "valor do imóvel" igual Entrada/Repasse,
   // nunca cair em Taxas por padrão.
   const ehValorImovelCompraNovo = cat==='compra-imovel' && subcat && (subcat==='fgts' || getImovelCardGroup('compra-imovel', subcat)==='valor-imovel');
-  if(ehValorImovelCompraNovo) setInvestimentoValue('f','');
+  if(ehValorImovelCompraNovo) setInvestimentoValue('f','compra-imovel-valor');
   else if(cat==='compra-imovel' || cat==='venda-imovel') setInvestimentoValue('f','taxas');
   ambienteData['f-form'] = {};
   ambienteModoUnico['f-form'] = false;
@@ -8694,13 +8716,13 @@ function buildInvestPieChart(){
   const canvas = document.getElementById('investPieChart');
   if(!canvas) return;
   const getVal = g=>gastoValor(g);
-  const totais = {perpetuo:0, transferivel:0, pessoal:0, taxas:0};
+  const totais = {perpetuo:0, transferivel:0, pessoal:0, taxas:0, 'compra-imovel-valor':0};
   gastos.forEach(g=>{
     if(g.categoria==='ganho') return;
     if(!isCategoriaGlobalAtiva(g.categoria)) return;
     if(INVEST_INFO[g.investimento]) totais[g.investimento] += getVal(g);
   });
-  const keys = ['perpetuo','transferivel','pessoal','taxas'].filter(k=>totais[k]>0);
+  const keys = ['perpetuo','transferivel','pessoal','taxas','compra-imovel-valor'].filter(k=>totais[k]>0);
   const labels = keys.map(k=>INVEST_INFO[k].label);
   const colors = keys.map(k=>INVEST_INFO[k].color);
   const values = keys.map(k=>totais[k]);
@@ -8832,7 +8854,7 @@ function renderGeral(){
 
   // Resumo por tipo de Investimento (Perpétuo/Transferível/Pessoal) — considera
   // qualquer lançamento com essa tag, em qualquer categoria (exceto ganhos)
-  const investTotais = {perpetuo:0, transferivel:0, pessoal:0, taxas:0};
+  const investTotais = {perpetuo:0, transferivel:0, pessoal:0, taxas:0, 'compra-imovel-valor':0};
   gastosG.forEach(g=>{
     if(g.categoria==='ganho') return;
     if(INVEST_INFO[g.investimento]) investTotais[g.investimento] += getVal(g);
@@ -9076,6 +9098,10 @@ function renderGeral(){
           <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="openInvestimentoDetailModal('taxas')">
             <span style="font-size:13px;color:#e8b544">🟡 Taxas</span>
             <span style="font-size:16px;font-weight:700;color:#e8b544">${fmt(investTotais.taxas)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="openInvestimentoDetailModal('compra-imovel-valor')">
+            <span style="font-size:13px;color:#26c6da">🔷 Compra do Imóvel</span>
+            <span style="font-size:16px;font-weight:700;color:#26c6da">${fmt(investTotais['compra-imovel-valor'])}</span>
           </div>
           ${investSemTag>0 ? `<div style="font-size:11px;color:var(--c-muted2);margin-top:2px;padding-top:8px;border-top:1px solid var(--c-border);cursor:pointer" onclick="openInvestimentoDetailModal('')">${fmt(investSemTag)} ainda sem essa tag</div>` : ''}
         </div>
