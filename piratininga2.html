@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 206)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 207)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -5362,14 +5362,11 @@ function openObraEmpreitadaModalForEdit(g){
   const porSub = {};
   servicos.forEach(s=>{ (porSub[s.sub]=porSub[s.sub]||[]).push(s); });
   empreitadaLegacySemGrade = null;
+  let algumaSubReconhecida = false;
   Object.keys(porSub).forEach(sk=>{
     const checkEl = document.querySelector(`.emp-sub-check[value="${sk}"]`);
-    if(!checkEl){
-      // Sub antiga/órfã que não existe mais na grade atual — guarda pra não
-      // travar o salvamento, e ainda assim deixa editar valor/descrição/status.
-      if(!g.pacote_subs) empreitadaLegacySemGrade = {sub: sk, ambiente: porSub[sk][0]?.ambiente||''};
-      return;
-    }
+    if(!checkEl) return; // trata depois — só decide o fallback quando NENHUMA sub bateu
+    algumaSubReconhecida = true;
     checkEl.checked = true;
     checkEl.dispatchEvent(new Event('change'));
     const ri = checkEl.dataset.row;
@@ -5379,6 +5376,15 @@ function openObraEmpreitadaModalForEdit(g){
     });
     updateAmbienteBtnLabel(ri);
   });
+  if(!algumaSubReconhecida){
+    // Nenhuma das subs salvas bate com a grade atual — antes só isso liberava o
+    // salvamento sem forçar escolha quando o lançamento não tinha pacote_subs
+    // nenhum; agora vale pra qualquer lançamento (com uma sub só ou várias)
+    // cujas subs salvas sumiram/mudaram, senão a pessoa fica travada pra sempre
+    // sem conseguir salvar nada até escolher manualmente Fase/Ambiente.
+    const primeiraSk = Object.keys(porSub)[0];
+    empreitadaLegacySemGrade = primeiraSk ? {sub: primeiraSk, ambiente: porSub[primeiraSk][0]?.ambiente||''} : null;
+  }
   empreitadaShowOnlySelected = true; // editando: mostra só o que já está no pacote por padrão
   renderEmpreitadaServiceGrid(true);
   // Prefere uma sub que ainda exista na grade atual (mesmo que não seja a
