@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 205)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 206)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1246,7 +1246,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <select id="emp-ambiente-simples" onchange="onEmpAmbienteSimplesChange()"></select>
       </div>
     </div>
-    <div style="display:flex;gap:10px;margin-bottom:16px">
+    <div style="display:none">
       <button type="button" id="emp-material-incluso-btn" onclick="toggleEmpMaterialIncluso()" title="Esse serviço já vem com o material incluso?"
         style="flex:1;background:var(--c-panel);border:2px solid var(--c-border2);color:var(--c-faint3);font-weight:700;border-radius:10px;padding:12px 16px;cursor:pointer;font-size:13px;transition:all .15s">🧱 Materiais inclusos</button>
     </div>
@@ -1302,7 +1302,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
     <div id="emp-extra-info-group-2" style="display:none">
       <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:14px;align-items:end;margin-bottom:2px">
         <div class="form-group" style="margin-bottom:0">
-          <label>Data de início do serviço (opcional)</label>
+          <label id="emp-data-inicio-label">Data de início (opcional)</label>
           <input type="date" id="emp-data-inicio" onchange="updateEmpPrazoPreview()">
         </div>
         <div class="form-group" style="margin-bottom:0">
@@ -1310,7 +1310,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
           <input type="text" inputmode="numeric" id="emp-prazo-dias" placeholder="Ex: 15" oninput="this.value=this.value.replace(/[^0-9]/g,'');updateEmpPrazoPreview()">
         </div>
         <div class="form-group" style="margin-bottom:0;width:170px">
-          <label>Entrega</label>
+          <label id="emp-entrega-label">Entrega</label>
           <button type="button" id="emp-entregue-btn" onclick="toggleEmpEntregue()" title="Marcar como já entregue/recebido"
             style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--c-panel);border:1px solid var(--c-border2);color:var(--c-faint3);border-radius:8px;padding:0 12px;height:38px;cursor:pointer;font-size:13px;transition:all .15s">
             <i class="ti ti-truck-delivery"></i><span id="emp-entregue-label">Ainda não chegou</span>
@@ -5239,9 +5239,8 @@ function openObraEmpreitadaModal(material, presetSub, isUnico){
   refreshEmpMaterialFields();
   const isSoItem = material==='sem-mao-de-obra';
   const icon = isSoItem ? '🛒' : '👷';
-  const tipoLabel = isSoItem ? 'item' : 'serviço';
   const materialLabel = isSoItem ? 'sem mão de obra' : (material==='com-material'?'com material':'sem material');
-  document.getElementById('empreitada-title').textContent = icon+' Novo '+tipoLabel;
+  document.getElementById('empreitada-title').textContent = icon+' '+(isSoItem ? 'Nova compra' : 'Novo serviço');
   document.getElementById('emp-desc').value = '';
   document.getElementById('emp-valor').value = '';
   document.getElementById('emp-data').value = new Date().toISOString().slice(0,10);
@@ -5268,9 +5267,13 @@ function openObraEmpreitadaModal(material, presetSub, isUnico){
   document.getElementById('emp-invest-wrap').innerHTML = investimentoPickerHtml('emp');
   pendingMateriais = [];
   updateMateriaisBtnLabel();
-  document.getElementById('emp-btn-confirm').textContent = 'Confirmar serviço';
+  document.getElementById('emp-btn-confirm').textContent = isSoItem ? 'Confirmar compra' : 'Confirmar serviço';
   const valorLabelEl = document.getElementById('emp-valor-label');
   if(valorLabelEl) valorLabelEl.textContent = 'Valor do serviço (R$)';
+  const dataInicioLabelEl = document.getElementById('emp-data-inicio-label');
+  if(dataInicioLabelEl) dataInicioLabelEl.textContent = isSoItem ? 'Data da compra (opcional)' : 'Data de início (opcional)';
+  const entregaLabelEl = document.getElementById('emp-entrega-label');
+  if(entregaLabelEl) entregaLabelEl.textContent = isSoItem ? 'Entrega' : 'Término';
   const descLabelEl = document.getElementById('emp-desc-label');
   if(descLabelEl) descLabelEl.textContent = 'Descrição';
   // Se veio de uma sub específica (ex: clicou "lançar" dentro de Piso Vinílico), mostra
@@ -5309,7 +5312,7 @@ function openObraEmpreitadaModalForEdit(g){
   empreitadaFocusFase = null;
   empreitadaShowAllFases = true; // editando um lançamento existente, mostra tudo (pode abranger várias fases)
   const isSoItem = empreitadaMaterial==='sem-mao-de-obra';
-  const tipoLabel = isSoItem ? 'item' : 'serviço';
+  const tipoLabel = isSoItem ? 'compra' : 'serviço';
   const icon = isSoItem ? '🛒' : '👷';
   const materialLabel = isSoItem ? 'sem mão de obra' : (empreitadaMaterial==='com-material'?'com material':'sem material');
   document.getElementById('empreitada-title').textContent = icon+' Editar '+tipoLabel;
@@ -5319,6 +5322,10 @@ function openObraEmpreitadaModalForEdit(g){
   document.getElementById('emp-status').value = g.status||'necessario';
   document.getElementById('emp-btn-confirm').textContent = 'Salvar alterações';
   document.getElementById('emp-valor-label').textContent = 'Valor do serviço (R$)';
+  const dataInicioLabelElEdit = document.getElementById('emp-data-inicio-label');
+  if(dataInicioLabelElEdit) dataInicioLabelElEdit.textContent = isSoItem ? 'Data da compra (opcional)' : 'Data de início (opcional)';
+  const entregaLabelElEdit = document.getElementById('emp-entrega-label');
+  if(entregaLabelElEdit) entregaLabelElEdit.textContent = isSoItem ? 'Entrega' : 'Término';
   document.getElementById('emp-desc-label').textContent = 'Descrição';
   const meta = getPacoteMeta(g);
   document.getElementById('emp-data-inicio').value = meta.dataInicio || '';
@@ -5374,7 +5381,13 @@ function openObraEmpreitadaModalForEdit(g){
   });
   empreitadaShowOnlySelected = true; // editando: mostra só o que já está no pacote por padrão
   renderEmpreitadaServiceGrid(true);
-  populateEmpFaseSimples(Object.keys(porSub)[0]);
+  // Prefere uma sub que ainda exista na grade atual (mesmo que não seja a
+  // primeira do pacote) — antes, sempre pegava a primeira, e se por acaso ela
+  // fosse uma sub antiga/órfã, o Fase/Ambiente ficava em branco à toa mesmo
+  // quando o pacote tinha outras subs perfeitamente válidas.
+  const subKeysPorSub = Object.keys(porSub);
+  const subKeyValida = subKeysPorSub.find(sk=>SUBCATS['obra-bruta']?.[sk]);
+  populateEmpFaseSimples(subKeyValida || subKeysPorSub[0]);
   document.getElementById('obra-empreitada-overlay').classList.add('open');
 }
 
@@ -6488,13 +6501,13 @@ async function confirmEmpreitada(){
       }
     }
     closeObraEmpreitadaModal();
-    toast(isEditing ? 'Pacote atualizado com sucesso!' : (empreitadaIsUnico ? 'Lançamento salvo com sucesso!' : 'Pacote salvo com sucesso!'));
+    toast(isEditing ? 'Atualizado com sucesso!' : (empreitadaMaterial==='sem-mao-de-obra' ? 'Compra salva com sucesso!' : 'Serviço salvo com sucesso!'));
     empreitadaEditingId = null;
     await loadGastos();
   } catch(e){
     toast('Erro ao salvar: '+e.message,'err');
   } finally{
-    btn.disabled=false; btn.textContent = isEditing ? 'Salvar alterações' : 'Confirmar serviço';
+    btn.disabled=false; btn.textContent = isEditing ? 'Salvar alterações' : (empreitadaMaterial==='sem-mao-de-obra' ? 'Confirmar compra' : 'Confirmar serviço');
   }
 }
 
