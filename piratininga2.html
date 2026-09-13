@@ -9,7 +9,7 @@
 // guardada. Só recarrega se já existia uma versão salva antes (não na
 // primeiríssima visita), pra não entrar num loop.
 (function(){
-  var BUILD_VERSION = '232';
+  var BUILD_VERSION = '233';
   try{
     var last = localStorage.getItem('pirati_build_version');
     if(last !== BUILD_VERSION){
@@ -339,7 +339,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 13SET26 (versão 232)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 13SET26 (versão 233)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -9034,17 +9034,18 @@ function renderGeral(){
         <div class="card-sub" style="margin-top:8px;color:var(--c-secondary);font-size:11px">${compraItems.length} lançamentos · financiado não entra no saldo (não é seu dinheiro)</div>
         ${(()=>{
           const totalC = compraPago+compraAPagar+compraFinanciado;
-          const pP = totalC>0?Math.round(compraPago/totalC*100):0;
-          const pA = totalC>0?Math.round(compraAPagar/totalC*100):0;
-          const pF = 100-pP-pA;
+          // Barra por ETAPA concluída, não por quem pagou — Pago + Financiado
+          // contam igual como "resolvido" (a etapa em si já aconteceu), só o
+          // que ainda está em aberto (A pagar) conta como pendente de verdade.
+          const pConcluido = totalC>0?Math.round((compraPago+compraFinanciado)/totalC*100):0;
+          const pPendente = 100-pConcluido;
           return `<div style="margin-top:10px">
             <div style="display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--c-panel)">
-              <div style="width:${pP}%;background:#4caf50"></div>
-              <div style="width:${pA}%;background:#e8b544"></div>
-              <div style="width:${pF}%;background:var(--c-faint)"></div>
+              <div style="width:${pConcluido}%;background:#4caf50"></div>
+              <div style="width:${pPendente}%;background:#e8b544"></div>
             </div>
             <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:11px;color:var(--c-primary)">
-              <span style="color:#4caf50">Pago ${pP}%</span><span style="color:#e8b544">A pagar ${pA}%</span><span>Financiado ${pF}%</span>
+              <span style="color:#4caf50">Concluído ${pConcluido}%</span><span style="color:#e8b544">Pendente ${pPendente}%</span>
             </div>
           </div>`;
         })()}
