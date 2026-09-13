@@ -9,7 +9,7 @@
 // guardada. Só recarrega se já existia uma versão salva antes (não na
 // primeiríssima visita), pra não entrar num loop.
 (function(){
-  var BUILD_VERSION = '229';
+  var BUILD_VERSION = '230';
   try{
     var last = localStorage.getItem('pirati_build_version');
     if(last !== BUILD_VERSION){
@@ -339,7 +339,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 13SET26 (versão 229)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 13SET26 (versão 230)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -9258,6 +9258,24 @@ async function confirmDiagMover(){
   closeDiagMoverModal();
   renderDiagnostico();
 }
+function renderDiagBuscaResultados(){
+  const termo = normalizaBusca(document.getElementById('diag-busca-input').value);
+  const resEl = document.getElementById('diag-busca-resultados');
+  if(!termo){ resEl.innerHTML = ''; return; }
+  const achados = gastos.filter(g=>normalizaBusca(g.descricao||'').includes(termo) || normalizaBusca(g.obs||'').includes(termo));
+  if(!achados.length){ resEl.innerHTML = '<div style="font-size:13px;color:var(--c-primary)">Nada encontrado.</div>'; return; }
+  resEl.innerHTML = achados.map(g=>{
+    const catLabel = CATS[g.categoria]?.label || IMOVEL_CATS[g.categoria]?.label || '(nenhuma — CATS não reconhece essa categoria)';
+    return `<div style="background:var(--c-panel);border:1px solid var(--c-border);border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:12px;color:var(--c-secondary)">
+      <div style="font-size:14px;color:var(--c-primary);font-weight:700;margin-bottom:4px">${g.descricao||'(sem descrição)'} — ${fmt(gastoValor(g))}</div>
+      <div>id: <code>${g.id}</code></div>
+      <div>categoria (bruta): <code>${g.categoria||'(vazia)'}</code> → rótulo: ${catLabel}</div>
+      <div>subcategoria (bruta): <code>${g.subcategoria||'(vazia)'}</code></div>
+      <div>status: <code>${g.status||'(vazio)'}</code></div>
+      <button onclick="abrirMoverDiagnostico(${g.id})" style="margin-top:8px;background:var(--c-necessario-bg);border:1px solid var(--c-necessario-border2);color:#42a5f5;border-radius:5px;padding:5px 12px;font-size:12px;cursor:pointer">↔️ Mover pra etapa/ambiente certo</button>
+    </div>`;
+  }).join('');
+}
 function renderDiagnostico(){
   const getVal = g=>gastoValor(g);
 
@@ -9384,6 +9402,12 @@ function renderDiagnostico(){
     <div style="margin-bottom:1.5rem">
       <h2 style="margin:0 0 4px">Diagnóstico</h2>
       <div style="font-size:13px;color:var(--c-primary)">Lançamentos com status inválido (somem de qualquer tela), categoria/ambiente antigo ou excluído, e possíveis duplicatas. Nada aqui foi apagado — você decide item por item.</div>
+    </div>
+
+    <div style="background:var(--c-panel2);border:1px solid var(--c-border);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.5rem">
+      <div style="font-size:14px;font-weight:700;color:var(--c-primary);margin-bottom:6px">🔎 Buscar um lançamento específico (direto, sem depender de nenhuma classificação)</div>
+      <input type="text" id="diag-busca-input" placeholder="Ex: pendente, 60cm..." oninput="renderDiagBuscaResultados()" style="width:100%;max-width:420px;background:var(--c-panel);border:1px solid var(--c-border);border-radius:6px;padding:8px 10px;font-size:13px;color:var(--c-primary)">
+      <div id="diag-busca-resultados" style="margin-top:10px"></div>
     </div>
 
     <div style="background:var(--c-apagar-bg2);border:1px solid var(--c-apagar-bg);border-left:3px solid #ef5350;border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.5rem">
