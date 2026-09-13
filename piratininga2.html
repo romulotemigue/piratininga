@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 211)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 212)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -5666,13 +5666,26 @@ function ambCardDrop(e, nomeAlvo){
 // contar o mesmo dinheiro mais de uma vez na soma total.
 function computeGastoPorAmbiente(){
   const somas = {};
-  gastos.filter(g=>g.categoria==='obra-bruta' && g.status!=='cancel' && isCategoriaGlobalAtiva(g.categoria)).forEach(g=>{
+  // Antes só somava Execução de Obra — Itens para Casa (que também tem
+  // ambiente definido por lançamento) ficava de fora, então o gráfico não
+  // batia com o total real gasto por ambiente.
+  const itensCasaCats = getItensCasaChildren();
+  gastos.filter(g=>{
+    if(g.status==='cancel') return false;
+    if(!isCategoriaGlobalAtiva(g.categoria)) return false;
+    return g.categoria==='obra-bruta' || itensCasaCats.includes(g.categoria);
+  }).forEach(g=>{
     const val = gastoValor(g);
     let ambientesGasto = [];
     if(g.ambiente) ambientesGasto = g.ambiente.split(MAT_AMB_SEP).map(s=>s.trim()).filter(Boolean);
     else if(g.pacote_subs){
       const parsed = parsePacoteSubs(g.pacote_subs);
       ambientesGasto = [...new Set(parsed.map(p=>p.ambiente).filter(Boolean))];
+    } else if(itensCasaCats.includes(g.categoria) && g.subcategoria){
+      // Em Itens para Casa o "ambiente" é a própria subcategoria do lançamento
+      // (g.ambiente nunca é preenchido nesse fluxo) — usa o label dela.
+      const label = SUBCATS[g.categoria]?.[g.subcategoria]?.label || g.subcategoria;
+      if(label) ambientesGasto = [label];
     }
     if(!ambientesGasto.length) return;
     const parte = val / ambientesGasto.length;
