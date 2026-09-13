@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 212)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 213)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -8489,7 +8489,7 @@ function buildReformaPieChart(){
   const canvas = document.getElementById('reformaPieChart');
   if(!canvas) return;
   const getVal = g=>gastoValor(g);
-  const items = gastos.filter(g=>g.status==='necessario' && isReformaGasto(g) && isCategoriaGlobalAtiva(g.categoria));
+  const items = gastos.filter(g=>(g.status==='pago'||g.status==='necessario') && isReformaGasto(g) && isCategoriaGlobalAtiva(g.categoria));
   const byCat = {};
   items.forEach(g=>{ byCat[g.categoria] = (byCat[g.categoria]||0) + getVal(g); });
   const catKeys = Object.keys(byCat).filter(k=>byCat[k]>0).sort((a,b)=>byCat[b]-byCat[a]);
@@ -8731,6 +8731,12 @@ function renderGeral(){
   // venda/compra do imóvel de propósito (usado só nos 3 blocos de cenário abaixo)
   const saldoReforma = dispGanhos - pago;
   const pctReforma = dispGanhos>0?Math.round(total/dispGanhos*100):0;
+  // "REFORMA: TOTAL GASTO" tinha um bug real: só somava status Necessário,
+  // então qualquer coisa marcada como Paga sumia desse total (e do gráfico de
+  // categorias dele) — parecia que o valor não crescia, ou até encolhia,
+  // conforme você ia pagando as coisas. Agora soma Pago + Necessário
+  // (dispensável fica de fora de propósito, por ser opcional/pode não acontecer).
+  const reformaTotalComprometido = pago + necessario;
 
   const gcTitles = getGeralCardTitles();
 
@@ -8867,7 +8873,7 @@ function renderGeral(){
     <div class="card" style="border-left:3px solid #ab47bc;background:var(--c-material-bg2);height:100%">
       <div style="cursor:pointer" onclick="openStatusDetailModal('necessario','reforma')">
         <div class="card-label"><i class="ti ti-chart-pie" style="font-size:14px;color:#ab47bc"></i> ${gcTitles['reforma']||'REFORMA: TOTAL GASTO'}</div>
-        <div class="card-value" style="color:#ab47bc;margin-top:6px">${fmt(necessario)}</div>
+        <div class="card-value" style="color:#ab47bc;margin-top:6px">${fmt(reformaTotalComprometido)}</div>
         <div style="margin-top:4px;color:var(--c-primary);font-size:11px">clique pra ver todos os lançamentos</div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:22px;align-items:center">
