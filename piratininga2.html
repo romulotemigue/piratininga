@@ -9,7 +9,7 @@
 // guardada. Só recarrega se já existia uma versão salva antes (não na
 // primeiríssima visita), pra não entrar num loop.
 (function(){
-  var BUILD_VERSION = '227';
+  var BUILD_VERSION = '228';
   try{
     var last = localStorage.getItem('pirati_build_version');
     if(last !== BUILD_VERSION){
@@ -339,7 +339,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 13SET26 (versão 227)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 13SET26 (versão 228)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -8403,13 +8403,13 @@ function renderImovelCat(catKey, subKey, grupoFiltro){
   const gastoLista = lista.filter(g=>gastoKeys.includes(g.subcategoria));
   const financiadoLista = lista.filter(g=>financiadoKeys.includes(g.subcategoria));
   // Na Compra do Imóvel, o FGTS entra como parte da ENTRADA — soma
-  // automaticamente ali, sem a pessoa precisar somar na mão
+  // automaticamente ali, UMA VEZ só (fora do reduce por item, mesma correção
+  // de duplicação feita em renderGeral)
   const fgtsTotalEtapa = catKey==='compra-imovel' ? lista.filter(g=>g.subcategoria==='fgts').reduce((s,g)=>s+getVal(g),0) : 0;
-  const getValEtapaAjustado = g => (catKey==='compra-imovel' && g.subcategoria==='entrada') ? getVal(g)+fgtsTotalEtapa : getVal(g);
   const totalRecebido = recLista.filter(g=>g.status==='pago').reduce((s,g)=>s+getVal(g),0);
   const totalAReceber = recLista.filter(g=>g.status!=='pago').reduce((s,g)=>s+getVal(g),0);
-  const totalGasto = gastoLista.filter(g=>g.status==='pago').reduce((s,g)=>s+getValEtapaAjustado(g),0);
-  const totalAPagar = gastoLista.filter(g=>g.status!=='pago').reduce((s,g)=>s+getValEtapaAjustado(g),0);
+  const totalGasto = gastoLista.filter(g=>g.status==='pago').reduce((s,g)=>s+getVal(g),0) + fgtsTotalEtapa;
+  const totalAPagar = gastoLista.filter(g=>g.status!=='pago').reduce((s,g)=>s+getVal(g),0);
   const totalFinanciado = financiadoLista.reduce((s,g)=>s+getVal(g),0);
   const liquido = totalRecebido - totalGasto;
 
@@ -8888,18 +8888,20 @@ function renderGeral(){
   // não passa pela sua conta corrente, vai direto pro vendedor, não é "seu dinheiro" saindo)
   const compraItems = gastosG.filter(g=>g.categoria==='compra-imovel');
   // O FGTS entra como parte da ENTRADA (o Romulo usou o FGTS dentro do valor
-  // da entrada, não junto com o repasse do banco) — soma automaticamente ali.
+  // da entrada, não junto com o repasse do banco) — soma automaticamente ali,
+  // UMA VEZ só (fora do reduce por item — se tiver mais de um lançamento com
+  // subcategoria 'entrada', somar dentro do reduce duplicava o FGTS uma vez
+  // por lançamento de entrada, inflando o total).
   const compraFgtsTotal = compraItems.filter(g=>g.subcategoria==='fgts').reduce((s,g)=>s+getVal(g),0);
-  const getValCompraAjustado = g => g.subcategoria==='entrada' ? getVal(g)+compraFgtsTotal : getVal(g);
-  const compraPago       = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && g.status==='pago').reduce((s,g)=>s+getValCompraAjustado(g),0);
-  const compraAPagar     = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && g.status!=='pago').reduce((s,g)=>s+getValCompraAjustado(g),0);
+  const compraPago       = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && g.status==='pago').reduce((s,g)=>s+getVal(g),0) + compraFgtsTotal;
+  const compraAPagar     = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && g.status!=='pago').reduce((s,g)=>s+getVal(g),0);
   // Quanto do que já foi pago (ou falta pagar) é o imóvel em si (entrada/repasse/
   // por fora) vs taxas (ITBI, cartório, vistoria, avaliação...) — mesma
   // classificação usada nos cards "Compra do Imóvel"/"Taxas" da própria etapa.
   const compraSoImovel = g => getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && getImovelCardGroup('compra-imovel',g.subcategoria)==='valor-imovel';
   const compraSoTaxas  = g => getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && getImovelCardGroup('compra-imovel',g.subcategoria)!=='valor-imovel';
-  const compraImovelTotal = compraItems.filter(compraSoImovel).reduce((s,g)=>s+getValCompraAjustado(g),0);
-  const compraTaxasTotal  = compraItems.filter(compraSoTaxas).reduce((s,g)=>s+getValCompraAjustado(g),0);
+  const compraImovelTotal = compraItems.filter(compraSoImovel).reduce((s,g)=>s+getVal(g),0) + compraFgtsTotal;
+  const compraTaxasTotal  = compraItems.filter(compraSoTaxas).reduce((s,g)=>s+getVal(g),0);
   // FGTS não é financiamento bancário de verdade — foi usado dentro da
   // própria entrada. "Financiado" mostra só o que o banco manda direto pro
   // vendedor (Repasse).
@@ -9045,7 +9047,7 @@ function renderGeral(){
           ${compraAPagarItems.length ? compraAPagarItems.map(g=>{
             const def = getImovelCardDefs('compra-imovel').find(i=>i.key===g.subcategoria);
             const label = def?.label || g.descricao || g.subcategoria;
-            return `<div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span style="color:var(--c-muted3)">${label}${g.subcategoria==='entrada'?' <span style=\'color:var(--c-primary)\'>(inclui FGTS)</span>':''}</span><span style="color:#e8b544;font-weight:600">${fmt(getValCompraAjustado(g))}</span></div>`;
+            return `<div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span style="color:var(--c-muted3)">${label}</span><span style="color:#e8b544;font-weight:600">${fmt(getVal(g))}</span></div>`;
           }).join('') : '<div style="font-size:13px;color:var(--c-primary)">Nada pendente</div>'}
           <div style="display:flex;justify-content:space-between;font-size:14px;padding-top:6px;margin-top:6px;border-top:1px solid var(--c-panel6)"><span style="color:var(--c-primary);font-weight:600">Total</span><span style="color:#e8b544;font-weight:700">${fmt(compraAPagar)}</span></div>
         </div>
