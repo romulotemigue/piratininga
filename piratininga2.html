@@ -9,7 +9,7 @@
 // guardada. Só recarrega se já existia uma versão salva antes (não na
 // primeiríssima visita), pra não entrar num loop.
 (function(){
-  var BUILD_VERSION = '221';
+  var BUILD_VERSION = '222';
   try{
     var last = localStorage.getItem('pirati_build_version');
     if(last !== BUILD_VERSION){
@@ -339,7 +339,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 13SET26 (versão 221)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 13SET26 (versão 222)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -6730,7 +6730,7 @@ function refreshObraExtraFields(prefix){
 }
 
 function isCategoriaFantasma(catKey){
-  const ETAPAS_FIXAS_CONHECIDAS = ['obra-bruta','venda-imovel','compra-imovel','projeto-arq','mudanca','outros-gastos','ganho','itens-casa'];
+  const ETAPAS_FIXAS_CONHECIDAS = ['obra-bruta','venda-imovel','compra-imovel','projeto-arq','mudanca','outroscustos','ganho','itens-casa'];
   if(!catKey || !CATS[catKey]) return false;
   if(IMOVEL_CATS[catKey]) return false;
   if(ETAPAS_FIXAS_CONHECIDAS.includes(catKey)) return false;
@@ -9266,7 +9266,7 @@ function renderDiagnostico(){
   // de uma categoria criada (ex: dentro de Itens para Casa) e depois
   // removida/renomeada sem limpar o registro dela. Fica "viva" mas
   // inalcançável em qualquer tela — só aparece na busca.
-  const ETAPAS_FIXAS_CONHECIDAS = ['obra-bruta','venda-imovel','compra-imovel','projeto-arq','mudanca','outros-gastos','ganho','itens-casa'];
+  const ETAPAS_FIXAS_CONHECIDAS = ['obra-bruta','venda-imovel','compra-imovel','projeto-arq','mudanca','outroscustos','ganho','itens-casa'];
   const itensCasaAtuais = getItensCasaChildren();
   const fantasmaGroups = {};
   gastos.forEach(g=>{
