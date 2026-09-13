@@ -9,7 +9,7 @@
 // guardada. Só recarrega se já existia uma versão salva antes (não na
 // primeiríssima visita), pra não entrar num loop.
 (function(){
-  var BUILD_VERSION = '228';
+  var BUILD_VERSION = '229';
   try{
     var last = localStorage.getItem('pirati_build_version');
     if(last !== BUILD_VERSION){
@@ -339,7 +339,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 13SET26 (versão 228)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 13SET26 (versão 229)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -2034,12 +2034,6 @@ function renderCatNav(){
   const etapasOcultas = getEtapasOcultas();
   window.__itensCasaPrimeiroFilhoVisto = false;
   window.__itensCasaGroupNum = null;
-  console.log('[piratininga][chevron-debug] renderCatNav rodou às', new Date().toLocaleTimeString(),
-    '| venda-imovel tem subs?', !!(SUBCATS['venda-imovel'] && Object.keys(SUBCATS['venda-imovel']).length>0), '(', SUBCATS['venda-imovel']?Object.keys(SUBCATS['venda-imovel']).length:'undefined', ')',
-    '| compra-imovel tem subs?', !!(SUBCATS['compra-imovel'] && Object.keys(SUBCATS['compra-imovel']).length>0), '(', SUBCATS['compra-imovel']?Object.keys(SUBCATS['compra-imovel']).length:'undefined', ')',
-    '| projeto-arq tem subs?', !!(SUBCATS['projeto-arq'] && Object.keys(SUBCATS['projeto-arq']).length>0), '(', SUBCATS['projeto-arq']?Object.keys(SUBCATS['projeto-arq']).length:'undefined', ')',
-    '| pinnedKeys inclui venda-imovel?', pinnedKeys.includes('venda-imovel'),
-    '| allKeys inclui venda-imovel?', allKeys.includes('venda-imovel'));
 
   list.innerHTML = allKeys.map(k=>{
     const isImovel = !!IMOVEL_CATS[k];
@@ -2065,10 +2059,6 @@ function renderCatNav(){
         etapaNum = ++imovelCount;
       }
     }
-    if(['venda-imovel','compra-imovel','projeto-arq'].includes(k)){
-      console.log('[piratininga][row-debug] k=', k, '| hasSubs=', hasSubs, '| isOpen=', isOpen, '| SUBCATS[k]=', SUBCATS[k]);
-    }
-
     const subs = hasSubs ? (k==='obra-bruta' ? buildSubcatRowsHtmlObraAmbiente(k) : buildSubcatRowsHtml(k)) : '';
     const etapasChecklistRow = k==='obra-bruta'
       ? `<div class="nav-subitem${currentPage==='obra-bruta__etapas'?' active':''}" onclick="event.stopPropagation();navigate('obra-bruta__etapas')" style="font-weight:600;cursor:pointer">
@@ -3808,7 +3798,6 @@ async function migratePrazoLegado(lista){
       }
     }catch(e){ console.warn('[piratininga] falha ao migrar prazo legado do gasto', g.id, e); }
   }
-  console.log('[piratininga] migração de prazo legado concluída:', afetados.length, 'lançamento(s)');
 }
 
 // A categoria órfã "compra-imvel" (erro de digitação antigo) tinha R$330.000 em
@@ -4048,13 +4037,6 @@ function ensureObraBrutaPhases(){
       localStorage.setItem('obra_expand_reset_v2', '1');
     }
 
-    // Diagnóstico: mostra a estrutura final pra confirmar que ficou certo
-    const finalEntries = Object.keys(SUBCATS['obra-bruta']).map(k=>({key:k, label:SUBCATS['obra-bruta'][k].label, grupo:SUBCATS['obra-bruta'][k].grupo||'(SEM GRUPO)', ordem:SUBCATS['obra-bruta'][k].ordem}));
-    const semGrupo = finalEntries.filter(e=>e.grupo==='(SEM GRUPO)');
-    const gruposUnicos = [...new Set(finalEntries.map(e=>e.grupo))];
-    console.log('[piratininga][obra-bruta-debug] Total de entradas:', finalEntries.length, '(esperado: '+totalEsperado+')');
-    console.log('[piratininga][obra-bruta-debug] Entradas SEM grupo (deveria ser 0):', semGrupo.length, semGrupo);
-    console.log('[piratininga][obra-bruta-debug] Grupos únicos encontrados (deveria ser 17):', gruposUnicos.length, gruposUnicos);
   }catch(e){ console.warn('Erro ao criar fases da Execução de Obra:', e); }
 }
 
@@ -6641,7 +6623,6 @@ async function confirmEmpreitada(){
       servicos.push({sub:sk, ambiente:''});
     }
   });
-  console.log('[piratininga][empreitada-debug] serviços marcados no pacote:', servicos.length, servicos);
   const primeiro = servicos[0];
   const btn = document.getElementById('emp-btn-confirm');
   const isEditing = !!empreitadaEditingId;
@@ -7307,7 +7288,7 @@ function render(){
 }
 
 function getCardDate(catKey, key){ return localStorage.getItem('imovel-date-'+catKey+'-'+key)||''; }
-function setCardDate(catKey, key, val){ localStorage.setItem('imovel-date-'+catKey+'-'+key, val); console.log('setCardDate',catKey,key,val,localStorage.getItem('imovel-date-'+catKey+'-'+key)); renderImovelCat(catKey, null); }
+function setCardDate(catKey, key, val){ localStorage.setItem('imovel-date-'+catKey+'-'+key, val); renderImovelCat(catKey, null); }
 // Trava (ou destrava) a contagem de "dias corridos" de um cartão — ex: pagou o
 // cartório, marca como concluído e o número para de subir sozinho.
 function toggleImovelDiasConcluido(catKey, key, diasAtuais){
@@ -7900,8 +7881,6 @@ try{
     function normLabel(s){
       return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
     }
-    console.log('[piratininga] Categorias atuais:', Object.keys(CATS).map(k=>k+' => "'+CATS[k].label+'"'));
-    console.log('[piratininga] Etapas extras atuais:', EXTRA_PINNED_STAGES);
 
     // remove chaves "fantasma" de EXTRA_PINNED_STAGES que não existem de verdade em CATS
     for(let i=EXTRA_PINNED_STAGES.length-1;i>=0;i--){
@@ -7914,7 +7893,6 @@ try{
       const nk = normLabel(k);
       return nl.includes('piso') || nk.includes('piso');
     });
-    console.log('[piratininga] pisoKey encontrado:', pisoKey);
     if(pisoKey && !EXTRA_PINNED_STAGES.includes(pisoKey)){
       EXTRA_PINNED_STAGES.push(pisoKey);
     }
@@ -7924,7 +7902,6 @@ try{
       const nl = normLabel(CATS[k].label);
       return nl.includes('utilidades') && (nl.includes('domestic') || nl.includes('domestica'));
     });
-    console.log('[piratininga] utilidadesKey encontrado:', utilidadesKey);
     if(utilidadesKey && !EXTRA_PINNED_STAGES.includes(utilidadesKey)){
       EXTRA_PINNED_STAGES.push(utilidadesKey);
     }
@@ -7940,7 +7917,6 @@ try{
     }
     const GOLDEN = 137.508;
     const order = getPinnedStageKeys();
-    console.log('[piratininga] ordem final de etapas:', order);
     order.forEach((k,i)=>{
       const color = hsl2hex(Math.round((i*GOLDEN)%360), 68, 56);
       if(IMOVEL_CATS[k]) IMOVEL_CATS[k].color = color;
@@ -8002,7 +7978,6 @@ function ensureImovelSubcatsPrepopulated(){
       });
     });
     saveSubCats();
-    console.log('[piratininga][subcats-debug] venda-imovel:', SUBCATS['venda-imovel'], '| compra-imovel:', SUBCATS['compra-imovel'], '| projeto-arq:', SUBCATS['projeto-arq']);
   }catch(e){ console.warn('Erro ao pré-popular subcats imóvel:', e); }
 }
 
@@ -11275,7 +11250,7 @@ function renameProjectName(){
 document.getElementById('project-name-el').textContent = getProjectName();
 document.title = getProjectName();
 
-console.log('[piratininga] BUILD: 2026-07-08-fgts-fix', '| FGTS grupo:', IMOVEL_DEFAULT_CARDS['compra-imovel'].find(i=>i.key==='fgts')?.grupo);
+console.log('[piratininga] BUILD:', document.getElementById('build-marker')?.textContent||'');
 refreshStatusOptionLabels();
 renderCatNav();
 loadGastos();
