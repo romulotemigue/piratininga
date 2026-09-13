@@ -9,7 +9,7 @@
 // guardada. Só recarrega se já existia uma versão salva antes (não na
 // primeiríssima visita), pra não entrar num loop.
 (function(){
-  var BUILD_VERSION = '220';
+  var BUILD_VERSION = '221';
   try{
     var last = localStorage.getItem('pirati_build_version');
     if(last !== BUILD_VERSION){
@@ -339,7 +339,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 13SET26 (versão 220)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 13SET26 (versão 221)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -9828,7 +9828,7 @@ function renderSubCat(page){
           onmouseout="this.style.background='transparent';this.style.color='${info.color}'">+</button>
       </div>
     </div>
-    ${catKey==='obra-bruta' ? renderColGrid(lista, catKey, 'ambiente', [subKey], subLabel) : renderColGrid(lista, catKey, null, null, subLabel)}
+    ${catKey==='obra-bruta' ? renderColGrid(lista, catKey+'__'+subKey, 'ambiente', [subKey], subLabel) : renderColGrid(lista, catKey+'__'+subKey, null, null, subLabel)}
   `;
 }
 
