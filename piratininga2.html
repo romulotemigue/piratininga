@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 203)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 204)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -5204,17 +5204,23 @@ function abrirVincularMaterialEmp(){
 function populateEmpFaseSimples(presetSub){
   const faseSel = document.getElementById('emp-fase-simples');
   const fases = [...new Set(Object.values(SUBCATS['obra-bruta']||{}).map(s=>s.grupo).filter(Boolean))];
-  faseSel.innerHTML = fases.map(f=>`<option value="${f}">${f}</option>`).join('');
   const presetEntry = presetSub && SUBCATS['obra-bruta']?.[presetSub];
-  if(presetEntry && fases.includes(presetEntry.grupo)) faseSel.value = presetEntry.grupo;
-  onEmpFaseSimplesChange(presetSub);
+  const faseReconhecida = !!(presetEntry && fases.includes(presetEntry.grupo));
+  // Se o lançamento é antigo e o "endereço" salvo não existe mais na lista
+  // atual, NÃO finge que sabe onde ele está (isso fazia cair sempre na
+  // primeira fase/ambiente da lista, parecendo certo sem ser) — deixa em
+  // branco pra pessoa escolher de verdade.
+  faseSel.innerHTML = (presetSub && !faseReconhecida ? '<option value="">— escolha a fase —</option>' : '') + fases.map(f=>`<option value="${f}">${f}</option>`).join('');
+  if(faseReconhecida) faseSel.value = presetEntry.grupo;
+  onEmpFaseSimplesChange(faseReconhecida ? presetSub : null);
 }
 function onEmpFaseSimplesChange(presetSub){
   const fase = document.getElementById('emp-fase-simples').value;
   const ambSel = document.getElementById('emp-ambiente-simples');
   const subs = Object.keys(SUBCATS['obra-bruta']||{}).filter(sk=>SUBCATS['obra-bruta'][sk].grupo===fase);
-  ambSel.innerHTML = subs.map(sk=>`<option value="${sk}">${SUBCATS['obra-bruta'][sk].label}</option>`).join('');
-  if(presetSub && subs.includes(presetSub)) ambSel.value = presetSub;
+  const ambienteReconhecido = !!(presetSub && subs.includes(presetSub));
+  ambSel.innerHTML = (!fase || (presetSub && !ambienteReconhecido) ? '<option value="">— escolha o ambiente —</option>' : '') + subs.map(sk=>`<option value="${sk}">${SUBCATS['obra-bruta'][sk].label}</option>`).join('');
+  if(ambienteReconhecido) ambSel.value = presetSub;
   onEmpAmbienteSimplesChange();
 }
 function onEmpAmbienteSimplesChange(){
