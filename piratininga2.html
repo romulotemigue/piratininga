@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 207)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 208)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -947,7 +947,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
   </div>
 </div>
 
-<div class="modal-overlay" id="mat-entry-choice-overlay" onclick="if(event.target===this) closeMaterialEntryChoice()">
+<div class="modal-overlay" id="mat-entry-choice-overlay" style="display:none" onclick="if(event.target===this) closeMaterialEntryChoice()">
   <div class="modal" style="max-width:460px;width:92vw">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
       <h3 style="margin:0;font-size:16px">🛒 Lançar compra</h3>
@@ -4041,13 +4041,12 @@ function todasEtapasParaSelect(){
   return lista;
 }
 
-let materialEditingId = null;
-// Primeira tela ao lançar material: 1 item de cada vez, ou compra em lote
-// (vários itens da mesma loja, numa tacada só).
-let materialEntryArgs = null;
+// Antes perguntava "1 item ou em lote?" antes de abrir o popup de material —
+// removido a pedido do Romulo: "compra em lote" virou desnecessário, já que
+// dá pra simplesmente aumentar a quantidade com os botões +/- na lista
+// principal depois de lançar. Agora sempre abre direto o popup de 1 item.
 function openMaterialEntryChoice(presetCat, presetFase, presetSub, presetLinkPacote){
-  materialEntryArgs = {cat: presetCat, fase: presetFase, sub: presetSub, linkPacote: presetLinkPacote||null};
-  document.getElementById('mat-entry-choice-overlay').classList.add('open');
+  openMaterialModal(presetCat, presetFase, presetSub, presetLinkPacote);
 }
 function closeMaterialEntryChoice(){
   document.getElementById('mat-entry-choice-overlay').classList.remove('open');
