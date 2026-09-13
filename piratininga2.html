@@ -9,7 +9,7 @@
 // guardada. Só recarrega se já existia uma versão salva antes (não na
 // primeiríssima visita), pra não entrar num loop.
 (function(){
-  var BUILD_VERSION = '223';
+  var BUILD_VERSION = '224';
   try{
     var last = localStorage.getItem('pirati_build_version');
     if(last !== BUILD_VERSION){
@@ -339,7 +339,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 13SET26 (versão 223)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 13SET26 (versão 224)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -6751,11 +6751,11 @@ function isCategoriaFantasma(catKey){
   return true;
 }
 function openModal(cat, subcat){
-  // Categoria "fantasma" (existe em CATS mas não é mais uma etapa fixa nem
-  // filha atual de Itens para Casa) — em vez do modal antigo de criar cartão
-  // + calculadora por m², abre o mesmo modal moderno usado em Execução de
-  // Obra/Itens para Casa, com Etapa/Ambiente no topo, igual pedido.
-  if(cat && isCategoriaFantasma(cat)){
+  // Rede de segurança: qualquer categoria ligada a Itens para Casa — filha
+  // de verdade, quebrada/fantasma, ou até "itens-casa" puro — SEMPRE abre o
+  // modal moderno (mesmo de Execução de Obra), nunca o modal antigo de criar
+  // cartão + calculadora por m², não importa qual botão/caminho chamou isso.
+  if(cat && (cat==='itens-casa' || isCategoriaFantasma(cat) || getItensCasaChildren().includes(cat))){
     openMaterialModal(cat, null, subcat);
     return;
   }
@@ -6777,7 +6777,12 @@ function openModal(cat, subcat){
   document.getElementById('f-invest-wrap').innerHTML = investimentoPickerHtml('f');
   const fInvestWrap = document.getElementById('f-invest-wrap');
   fInvestWrap.style.display = (cat==='compra-imovel' || cat==='venda-imovel') ? 'none' : '';
-  const ehValorImovelCompraNovo = cat==='compra-imovel' && subcat && getImovelCardGroup('compra-imovel', subcat)==='valor-imovel';
+  // FGTS é dinheiro que também foi direto pro valor do imóvel (por isso
+  // getImovelCardGroup retorna null pra ele — não soma separado, já está
+  // embutido no Repasse Bancário), mas pra decidir a tag padrão de
+  // Investimento ele deve contar como "valor do imóvel" igual Entrada/Repasse,
+  // nunca cair em Taxas por padrão.
+  const ehValorImovelCompraNovo = cat==='compra-imovel' && subcat && (subcat==='fgts' || getImovelCardGroup('compra-imovel', subcat)==='valor-imovel');
   if(ehValorImovelCompraNovo) setInvestimentoValue('f','');
   else if(cat==='compra-imovel' || cat==='venda-imovel') setInvestimentoValue('f','taxas');
   ambienteData['f-form'] = {};
