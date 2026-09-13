@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 210)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 211)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -2071,7 +2071,7 @@ function renderCatNav(){
         <div class="nav-item" onclick="handleNavItemClick('${k}',event)" id="nav-${k}" style="padding-left:2px;flex:1;display:flex;align-items:center;gap:6px;${imovelNavStyle}">
           ${etapaNum ? `<span style="width:16px;height:16px;border-radius:50%;background:${info.color};color:var(--c-panel);font-size:10px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">${etapaNum}</span>` : `<span style="width:6px;height:6px;border-radius:50%;background:${info.color};display:inline-block;flex-shrink:0"></span>`}${info.icon||''} ${info.label}
         </div>
-        ${k==='obra-bruta' ? `<button id="btn-expand-all-${k}" onclick="toggleAllFaseGroups('${k}',event)" title="Expandir/recolher todas as fases" style="background:none;border:none;color:var(--c-primary);cursor:pointer;font-size:13px;padding:0 4px;line-height:1" onmouseover="this.style.color='${info.color}'" onmouseout="this.style.color='var(--c-faint2)'"><i class="ti ti-chevrons-down"></i></button>` : ''}
+        ${'' /* botão de expandir/recolher removido: ambientes agora são linhas simples, sem fases dentro pra expandir */}
         ${(isPinnedStage && !getItensCasaChildren().includes(k)) ? `<button onclick="ocultarEtapa('${k}',event)" title="Esconder essa etapa (continua somando na Visão Geral)" style="background:none;border:none;color:var(--c-muted2);cursor:pointer;font-size:13px;padding:0 2px"><i class="ti ti-chevron-left"></i></button>` : ''}
         ${(isPinnedStage && !getItensCasaChildren().includes(k)) ? miniToggleHtml(isEtapaGlobalAtiva(k), `toggleEtapaGlobalAtiva('${k}',event)`) : ''}
         <button class="nav-dots" onclick="toggleCatMenu('${k}',${isImovel},${isPinnedStage},event)" title="Opções"><i class="ti ti-dots-vertical"></i></button>
@@ -2271,69 +2271,29 @@ function toggleSubGroup(k, gName, e){
 }
 
 // Sidebar de Execução de Obra, reorganizado por AMBIENTE em vez de por Fase —
-// cada ambiente é o grupo principal (na mesma ordem de "Definir Ambientes"),
-// e as 16 fases aparecem como itens dentro dele, na ordem fixa do template
-// (sem precisar de drag-reorder aqui: quem reordena ambientes é "Definir
-// Ambientes", e a ordem das fases é sempre a mesma sequência da obra).
+// cada ambiente é apenas uma linha simples (igual a Itens para Casa), sem
+// nenhuma fase listada dentro. As fases só aparecem em "📋 Etapas" agora.
 function buildSubcatRowsHtmlObraAmbiente(k){
-  const info = CATS[k];
-  const subColor = info?.color||'#e8b544';
   if(!SUBCATS[k]) return '';
   const skKeys = Object.keys(SUBCATS[k]);
   const ambientesOrdenados = getAmbientesAtivosOrdenados();
-  const expandedSub = getExpandedSub();
   return ambientesOrdenados.map(ambName=>{
-    const items = skKeys.filter(sk=>(SUBCATS[k][sk].label||'').toLowerCase()===ambName.toLowerCase())
-      .map(sk=>({sk, ...SUBCATS[k][sk]}))
-      .sort((a,b)=>(a.ordem??0)-(b.ordem??0));
+    const items = skKeys.filter(sk=>(SUBCATS[k][sk].label||'').toLowerCase()===ambName.toLowerCase());
     if(!items.length) return '';
-    const groupKey = k+'__ambgrp__'+ambName;
-    const safeId = subGroupSafeId(groupKey);
-    const isOpen = !!expandedSub[groupKey];
-    const ambienteAtiva = items.some(e=>isSubAtivo(k, e.sk));
-    const ambNameEsc = ambName.replace(/'/g,"\\'");
+    const ativo = items.some(sk=>isSubAtivo(k, sk));
     const cor = corDoAmbiente(ambName);
-    const groupRow = `
-      <div class="nav-item-wrap" id="amb-wrap-${safeId}" style="display:flex;align-items:center;gap:5px;padding:5px 6px 5px .4rem;user-select:none;${ambienteAtiva?'':'opacity:.4'}">
-        <button id="chev-grp-btn-${safeId}" onclick="toggleAmbienteGroup('${k}','${ambNameEsc}',event)" title="Expandir/recolher fases" style="background:none;border:none;cursor:pointer;padding:2px 4px;flex-shrink:0">
-          <span id="chev-grp-${safeId}" style="color:${cor};font-size:10px;transition:transform .15s;transform:rotate(${isOpen?90:0}deg);display:inline-block">▶</span>
-        </button>
-        <span class="nav-item" onclick="handleNavAmbienteGroupClick('${k}','${ambNameEsc}',event)" id="nav-${k}__ambiente:${encodeURIComponent(ambName)}" style="padding:0 0 0 2px;cursor:pointer;display:flex;align-items:center;gap:5px;flex:1;min-width:0">
-          <span style="width:6px;height:6px;border-radius:50%;background:${cor};display:inline-block;flex-shrink:0"></span>
-          <span style="font-size:12px;color:var(--c-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ambName}</span>
-        </span>
-        <span style="font-size:10px;color:var(--c-muted3);background:var(--c-panel3);border-radius:8px;padding:1px 6px;flex-shrink:0">${items.length}</span>
-        <button class="subcat-dots-btn" style="background:none;border:none;color:var(--c-primary);cursor:pointer;padding:4px 6px;font-size:14px;flex-shrink:0;opacity:1" onclick="event.stopPropagation();toggleFaseAtivo('${k}',${JSON.stringify(items.map(e=>e.sk)).replace(/"/g,'&quot;')},event)" title="${ambienteAtiva?'Desativar':'Ativar'} esse ambiente"><i class="ti ti-power"></i></button>
+    return `
+      <div class="subcat-row" id="subcat-row-${k}-amb-${slugifyEtapaItem(ambName)}" style="${ativo?'':'opacity:.4'}">
+        <span style="color:transparent;font-size:12px;padding:0 4px 0 1rem;user-select:none">o</span>
+        <div class="nav-item" style="padding-left:0;font-size:12px;color:var(--c-secondary);flex:1;border-left:2px solid var(--c-border);padding-left:8px;margin:2px 0 2px 6px;border-radius:0" onclick="navigate('${k}__ambiente:${encodeURIComponent(ambName)}')" id="nav-${k}__ambiente:${encodeURIComponent(ambName)}"
+          onmouseover="this.style.borderColor='${cor}';this.style.color='#fff'"
+          onmouseout="this.style.borderColor='var(--c-border)';this.style.color='var(--c-secondary)'">
+          ${ambName}
+        </div>
+        <button class="subcat-dots-btn" title="Lancar em ${ambName}" style="background:none;border:none;color:var(--c-muted2);cursor:pointer;padding:4px 4px;font-size:15px;transition:color .15s;opacity:1!important" onclick="event.stopPropagation();openObraTriagemModal()" onmouseover="this.style.color='${cor}'" onmouseout="this.style.color='var(--c-muted2)'"><i class="ti ti-plus"></i></button>
+        <button class="subcat-dots-btn" style="background:none;border:none;color:var(--c-primary);cursor:pointer;padding:4px 6px;font-size:14px;flex-shrink:0;opacity:1" onclick="event.stopPropagation();toggleFaseAtivo('${k}',${JSON.stringify(items).replace(/"/g,'&quot;')},event)" title="${ativo?'Desativar':'Ativar'} esse ambiente"><i class="ti ti-power"></i></button>
       </div>`;
-    const itemRows = items.map(e=>renderFlatSubcatRow(k, e.sk, subColor, true)).join('');
-    return groupRow + `<div id="subgrp-${safeId}" style="overflow:hidden;max-height:${isOpen?'none':'0'}">${itemRows}</div>`;
   }).join('');
-}
-function toggleAmbienteGroup(k, ambName, e){
-  if(e) e.stopPropagation();
-  const expandedSub = getExpandedSub();
-  const groupKey = k+'__ambgrp__'+ambName;
-  expandedSub[groupKey] = !expandedSub[groupKey];
-  localStorage.setItem('pirati_expanded_sub', JSON.stringify(expandedSub));
-  const safeId = subGroupSafeId(groupKey);
-  const chev = document.getElementById('chev-grp-'+safeId);
-  const container = document.getElementById('subgrp-'+safeId);
-  if(chev) chev.style.transform = 'rotate('+(expandedSub[groupKey]?90:0)+'deg)';
-  if(container) container.style.maxHeight = expandedSub[groupKey] ? '900px' : '0';
-}
-function ambienteGroupPageKey(k, ambName){ return k+'__ambiente:'+encodeURIComponent(ambName); }
-let lastNavAmbienteGroupClickInfo = {key:null, time:0};
-function handleNavAmbienteGroupClick(k, ambName, e){
-  if(e) e.stopPropagation();
-  const uniqueKey = k+'|amb|'+ambName;
-  navigate(ambienteGroupPageKey(k, ambName));
-  const now = Date.now();
-  if(lastNavAmbienteGroupClickInfo.key === uniqueKey && (now - lastNavAmbienteGroupClickInfo.time) < 500){
-    toggleAmbienteGroup(k, ambName, e);
-    lastNavAmbienteGroupClickInfo = {key:null, time:0};
-  } else {
-    lastNavAmbienteGroupClickInfo = {key: uniqueKey, time: now};
-  }
 }
 
 function buildSubcatRowsHtml(k){
@@ -9691,22 +9651,16 @@ function toggleObraEtapaItem(itemKey){
 // Cartão de cada fase, na timeline, abre/fecha independente — por padrão só a
 // fase atual (a primeira não concluída) já vem aberta, o resto fica recolhido
 // pra não virar uma parede enorme de checkbox.
-function getEtapasCardAbertos(){
-  try{ return JSON.parse(localStorage.getItem('pirati_etapas_card_aberto')||'{}'); }catch(e){ return {}; }
-}
-function toggleEtapaFaseCard(fi){
-  const abertos = getEtapasCardAbertos();
-  abertos[fi] = !abertos[fi];
-  localStorage.setItem('pirati_etapas_card_aberto', JSON.stringify(abertos));
-  const body = document.getElementById('etapa-fase-body-'+fi);
-  const chev = document.getElementById('etapa-fase-chev-'+fi);
-  if(body) body.style.display = abertos[fi] ? '' : 'none';
-  if(chev) chev.style.transform = 'rotate('+(abertos[fi]?90:0)+'deg)';
+// ── "Etapas" — linha do tempo horizontal em ziguezague, descendo, com cores
+// próprias por fase (identidade visual), e um painel de detalhe embaixo pra
+// marcar os itens da fase selecionada. ──
+let etapaTimelineSelecionada = null; // null = usa a fase atual (1ª incompleta)
+function selecionarEtapaTimeline(fi){
+  etapaTimelineSelecionada = fi;
+  renderObraEtapasChecklist();
 }
 function renderObraEtapasChecklist(){
   const check = getObraEtapasCheck();
-  const cor = '#db4368'; // cor da Execução de Obra
-  let totalItens = 0, totalFeitos = 0;
   const faseCardsRaw = FASES_TEMPLATE.map((f,fi)=>{
     // normaliza pro mesmo formato (subgrupos), tratando o formato antigo
     // (só 'itens' plano) como um único subgrupo sem nome
@@ -9716,10 +9670,10 @@ function renderObraEtapasChecklist(){
       const itensHtml = sg.itens.map(it=>{
         const itemKey = slugifyEtapaItem(f.fase)+'__'+slugifyEtapaItem(sg.nome)+'__'+slugifyEtapaItem(it.de||it.label);
         const feito = !!check[itemKey];
-        totalItens++; faseItens++;
-        if(feito){ totalFeitos++; faseFeitos++; }
+        faseItens++;
+        if(feito) faseFeitos++;
         return `<label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:13px;color:${feito?'var(--c-muted3)':'var(--c-primary)'};text-decoration:${feito?'line-through':'none'}">
-          <input type="checkbox" ${feito?'checked':''} onchange="toggleObraEtapaItem('${itemKey}')" style="width:15px;height:15px;accent-color:${cor};cursor:pointer;flex-shrink:0">
+          <input type="checkbox" ${feito?'checked':''} onchange="toggleObraEtapaItem('${itemKey}')" style="width:15px;height:15px;cursor:pointer;flex-shrink:0">
           ${it.label}
         </label>`;
       }).join('');
@@ -9729,61 +9683,88 @@ function renderObraEtapasChecklist(){
     }).join('');
     const faseCompleta = faseItens>0 && faseFeitos===faseItens;
     const faseIniciada = faseFeitos>0;
-    return {fase:f.fase, faseItens, faseFeitos, faseCompleta, faseIniciada, subgruposHtml};
+    return {fase:f.fase, faseItens, faseFeitos, faseCompleta, faseIniciada, subgruposHtml, cor: subGroupColor(fi)};
   });
+  const totalItens = faseCardsRaw.reduce((s,fc)=>s+fc.faseItens,0);
+  const totalFeitos = faseCardsRaw.reduce((s,fc)=>s+fc.faseFeitos,0);
   const faseAtualIdx = faseCardsRaw.findIndex(fc=>!fc.faseCompleta);
-  const abertos = getEtapasCardAbertos();
-  const railTop = 20, railBottom = 20;
-  const timelineHtml = faseCardsRaw.map((fc,fi)=>{
-    const isLast = fi===faseCardsRaw.length-1;
-    const corFase = fc.faseCompleta ? '#4caf50' : (fc.faseIniciada ? cor : 'var(--c-panel5)');
-    // Padrão: fase atual aberta, resto fechado — mas respeita se a pessoa já
-    // mexeu manualmente (localStorage), pra não fechar de novo o que ela abriu.
-    const abertoPadrao = fi===faseAtualIdx;
-    const aberto = abertos.hasOwnProperty(fi) ? !!abertos[fi] : abertoPadrao;
-    const pctFase = fc.faseItens>0 ? Math.round(fc.faseFeitos/fc.faseItens*100) : 0;
-    return `
-    <div style="position:relative;display:flex;gap:14px;${isLast?'':'padding-bottom:14px'}">
-      <div style="position:relative;z-index:1;flex-shrink:0;width:34px;display:flex;justify-content:center">
-        <span style="width:34px;height:34px;border-radius:50%;background:${corFase};color:#fff;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:3px solid var(--c-bg0);box-shadow:0 0 0 2px ${corFase}55;transition:background .3s">${fc.faseCompleta?'✓':(fi+1)}</span>
-      </div>
-      <div style="flex:1;min-width:0;background:var(--c-bg0c);border:1px solid ${fc.faseCompleta?'#4caf5055':(fc.faseIniciada?cor+'55':'var(--c-panel4)')};border-radius:12px;padding:12px 16px;box-shadow:0 1px 3px rgba(0,0,0,.15)">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer" onclick="toggleEtapaFaseCard(${fi})">
-          <div style="display:flex;align-items:center;gap:8px;min-width:0">
-            <span style="font-size:14px;font-weight:700;color:${fc.faseCompleta?'#4caf50':'var(--c-primary)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${fc.fase}</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-            <span style="font-size:11px;color:var(--c-secondary)">${fc.faseFeitos}/${fc.faseItens}</span>
-            <span id="etapa-fase-chev-${fi}" style="color:var(--c-primary);font-size:11px;display:inline-block;transition:transform .15s;transform:rotate(${aberto?90:0}deg)">▶</span>
-          </div>
-        </div>
-        <div style="margin-top:6px;height:4px;border-radius:2px;background:var(--c-panel3);overflow:hidden">
-          <div style="height:100%;width:${pctFase}%;background:${corFase};border-radius:2px;transition:width .3s"></div>
-        </div>
-        <div id="etapa-fase-body-${fi}" style="display:${aberto?'':'none'}">${fc.subgruposHtml}</div>
-      </div>
-    </div>`;
-  }).join('');
+  const selecionada = etapaTimelineSelecionada!=null ? etapaTimelineSelecionada : (faseAtualIdx===-1 ? faseCardsRaw.length-1 : faseAtualIdx);
   const pct = totalItens>0 ? Math.round(totalFeitos/totalItens*100) : 0;
 
+  // Ziguezague: N fases por linha, alternando o sentido (esquerda→direita,
+  // depois direita→esquerda) — como um mapa de fases de jogo, descendo.
+  const POR_LINHA = 4;
+  const linhas = [];
+  for(let i=0;i<faseCardsRaw.length;i+=POR_LINHA) linhas.push(faseCardsRaw.slice(i, i+POR_LINHA).map((fc,j)=>({...fc, idx:i+j})));
+
+  const nodeHtml = (fc)=>{
+    const isSel = fc.idx===selecionada;
+    const corNode = fc.cor;
+    const bg = fc.faseCompleta ? corNode : (fc.faseIniciada ? corNode : 'transparent');
+    const borderCor = corNode;
+    const textCor = fc.faseCompleta ? '#fff' : (fc.faseIniciada ? '#fff' : corNode);
+    const tamanho = isSel ? 46 : 38;
+    return `<div style="display:flex;flex-direction:column;align-items:center;width:92px;flex-shrink:0;cursor:pointer" onclick="selecionarEtapaTimeline(${fc.idx})">
+      <div style="width:${tamanho}px;height:${tamanho}px;border-radius:50%;background:${bg};border:3px solid ${borderCor};color:${textCor};font-size:${isSel?'16px':'14px'};font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;box-shadow:${isSel?`0 0 0 4px ${corNode}33, 0 2px 8px rgba(0,0,0,.35)`:'0 1px 4px rgba(0,0,0,.25)'}">${fc.faseCompleta?'✓':(fc.idx+1)}</div>
+      <div style="margin-top:6px;font-size:11px;text-align:center;font-weight:${isSel?'700':'500'};color:${isSel?corNode:'var(--c-secondary)'};line-height:1.25;max-width:92px">${fc.fase}</div>
+      <div style="font-size:10px;color:var(--c-muted3);margin-top:1px">${fc.faseFeitos}/${fc.faseItens}</div>
+    </div>`;
+  };
+  const connectorH = (corA, corB)=>`<div style="flex:1;height:4px;margin-top:19px;border-radius:2px;background:linear-gradient(to right, ${corA}, ${corB});flex-shrink:0;min-width:12px"></div>`;
+  const connectorV = (lado, cor)=>`<div style="display:flex;justify-content:${lado==='right'?'flex-end':'flex-start'};padding:0 45px">
+    <div style="width:4px;height:22px;border-radius:2px;background:${cor}"></div>
+  </div>`;
+
+  const linhasHtml = linhas.map((linha, li)=>{
+    const invertida = li%2===1;
+    const ordenada = invertida ? [...linha].reverse() : linha;
+    const nodesRow = ordenada.map((fc,j)=>{
+      const isLastInRow = j===ordenada.length-1;
+      return nodeHtml(fc) + (isLastInRow ? '' : connectorH(fc.cor, ordenada[j+1].cor));
+    }).join('');
+    const rowHtml = `<div style="display:flex;align-items:flex-start">${nodesRow}</div>`;
+    const isLastLine = li===linhas.length-1;
+    if(isLastLine) return rowHtml;
+    // conector vertical: desce do lado onde a linha atual termina (direita se
+    // normal, esquerda se invertida) até a próxima linha começar do mesmo lado.
+    const lado = invertida ? 'left' : 'right';
+    const corConector = linha[linha.length-1].cor;
+    return rowHtml + connectorV(lado, corConector);
+  }).join('');
+
+  const fcSel = faseCardsRaw[selecionada];
+
   document.getElementById('content').innerHTML = `
-    <div style="margin-bottom:1.5rem">
+    <div style="margin-bottom:1.25rem">
       <h2 style="margin:0 0 4px">📋 Etapas da Obra</h2>
-      <div style="font-size:13px;color:var(--c-primary)">Acompanhamento do início ao fim, separado dos lançamentos — marque o que já foi feito.</div>
+      <div style="font-size:13px;color:var(--c-primary)">Acompanhamento do início ao fim, separado dos lançamentos — clique numa fase pra ver e marcar os itens dela.</div>
     </div>
     <div style="background:var(--c-panel2);border:1px solid var(--c-border);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.5rem">
       <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--c-primary);margin-bottom:6px">
-        <span>${faseAtualIdx===-1 ? 'Obra concluída! 🎉' : 'Você está em: <b style="color:'+cor+'">'+FASES_TEMPLATE[faseAtualIdx].fase+'</b>'}</span>
-        <span style="font-weight:700;color:${cor}">${pct}%</span>
+        <span>${faseAtualIdx===-1 ? 'Obra concluída! 🎉' : 'Você está em: <b style="color:'+faseCardsRaw[faseAtualIdx].cor+'">'+FASES_TEMPLATE[faseAtualIdx].fase+'</b>'}</span>
+        <span style="font-weight:700;color:var(--c-primary)">${pct}%</span>
       </div>
-      <div style="height:8px;border-radius:4px;background:var(--c-panel3);overflow:hidden"><div style="height:100%;width:${pct}%;background:${cor};border-radius:4px;transition:width .3s"></div></div>
+      <div style="height:8px;border-radius:4px;background:var(--c-panel3);overflow:hidden;display:flex">
+        ${faseCardsRaw.map(fc=>`<div style="width:${100/faseCardsRaw.length}%;height:100%;background:${fc.faseCompleta?fc.cor:'transparent'};border-right:1px solid var(--c-panel2)"></div>`).join('')}
+      </div>
       <div style="font-size:11px;color:var(--c-secondary);margin-top:6px">${totalFeitos} de ${totalItens} itens marcados · ${faseCardsRaw.filter(fc=>fc.faseCompleta).length} de ${FASES_TEMPLATE.length} fases completas</div>
     </div>
-    <div style="max-width:680px;position:relative">
-      <div style="position:absolute;left:16px;top:${railTop}px;bottom:${railBottom}px;width:2px;background:linear-gradient(to bottom, ${cor}66, var(--c-panel4))"></div>
-      ${timelineHtml}
+    <div style="overflow-x:auto;padding-bottom:6px;margin-bottom:1.5rem">
+      <div style="min-width:400px;max-width:800px">${linhasHtml}</div>
+    </div>
+    <div style="background:var(--c-bg0c);border:1px solid ${fcSel.cor}55;border-top:3px solid ${fcSel.cor};border-radius:12px;padding:16px 18px;max-width:520px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <span style="width:22px;height:22px;border-radius:50%;background:${fcSel.cor};color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">${fcSel.faseCompleta?'✓':(selecionada+1)}</span>
+        <span style="font-size:15px;font-weight:700;color:${fcSel.cor}">${fcSel.fase}</span>
+        <span style="margin-left:auto;font-size:11px;color:var(--c-secondary)">${fcSel.faseFeitos}/${fcSel.faseItens}</span>
+      </div>
+      <div style="height:4px;border-radius:2px;background:var(--c-panel3);overflow:hidden;margin-bottom:10px">
+        <div style="height:100%;width:${fcSel.faseItens>0?Math.round(fcSel.faseFeitos/fcSel.faseItens*100):0}%;background:${fcSel.cor};border-radius:2px;transition:width .3s"></div>
+      </div>
+      ${fcSel.subgruposHtml}
     </div>
   `;
+  document.querySelectorAll('#content input[type=checkbox]').forEach(el=>{ el.style.accentColor = fcSel.cor; });
 }
 function renderObraBrutaSteps(){
   const cat = 'obra-bruta';
