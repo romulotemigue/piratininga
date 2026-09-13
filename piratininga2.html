@@ -9,7 +9,7 @@
 // guardada. Só recarrega se já existia uma versão salva antes (não na
 // primeiríssima visita), pra não entrar num loop.
 (function(){
-  var BUILD_VERSION = '230';
+  var BUILD_VERSION = '231';
   try{
     var last = localStorage.getItem('pirati_build_version');
     if(last !== BUILD_VERSION){
@@ -339,7 +339,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 13SET26 (versão 230)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 13SET26 (versão 231)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -9034,12 +9034,12 @@ function renderGeral(){
           const pF = 100-pP-pA;
           return `<div style="margin-top:10px">
             <div style="display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--c-panel)">
-              <div style="width:${pP}%;background:#ef5350"></div>
+              <div style="width:${pP}%;background:#4caf50"></div>
               <div style="width:${pA}%;background:#e8b544"></div>
               <div style="width:${pF}%;background:var(--c-faint)"></div>
             </div>
             <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:11px;color:var(--c-primary)">
-              <span style="color:#ef5350">Pago ${pP}%</span><span style="color:#e8b544">A pagar ${pA}%</span><span>Financiado ${pF}%</span>
+              <span style="color:#4caf50">Pago ${pP}%</span><span style="color:#e8b544">A pagar ${pA}%</span><span>Financiado ${pF}%</span>
             </div>
           </div>`;
         })()}
