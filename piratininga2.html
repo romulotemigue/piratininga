@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 204)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 205)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -913,23 +913,23 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
 <div class="modal-overlay" id="pacote-delete-overlay" onclick="if(event.target===this) closePacoteDeleteModal()">
   <div class="modal" style="max-width:420px;width:92vw">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <h3 style="margin:0;font-size:17px" id="pacote-delete-title">Excluir item do pacote</h3>
+      <h3 style="margin:0;font-size:17px" id="pacote-delete-title">Excluir item do serviço</h3>
       <button onclick="closePacoteDeleteModal()" style="background:none;border:none;color:var(--c-primary);font-size:19px;cursor:pointer">×</button>
     </div>
     <div id="pacote-delete-step1">
-      <p style="font-size:14px;color:var(--c-secondary);margin:0 0 14px">Esse lançamento faz parte de um pacote de empreitada. O que você quer excluir?</p>
+      <p style="font-size:14px;color:var(--c-secondary);margin:0 0 14px">Esse lançamento faz parte de um serviço com vários itens. O que você quer excluir?</p>
       <div style="display:flex;flex-direction:column;gap:8px">
         <button onclick="choosePacoteDeleteScope('item')" style="text-align:left;background:var(--c-panel);border:1px solid var(--c-border2);color:var(--c-primary);padding:10px 12px;border-radius:8px;cursor:pointer;font-size:14px">
           <b>Apenas este serviço</b><br><span id="pacote-delete-item-desc" style="font-size:12px;color:var(--c-primary)"></span>
         </button>
         <button onclick="choosePacoteDeleteScope('pacote')" style="text-align:left;background:var(--c-red-bg);border:1px solid #5c2b2b;color:#ef9a9a;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:14px">
-          <b>O pacote inteiro</b><br><span id="pacote-delete-pacote-desc" style="font-size:12px;color:#c88"></span>
+          <b>O serviço inteiro</b><br><span id="pacote-delete-pacote-desc" style="font-size:12px;color:#c88"></span>
         </button>
       </div>
     </div>
     <div id="pacote-delete-step1b" style="display:none">
-      <p style="font-size:14px;color:var(--c-secondary);margin:0 0 6px">Remover <b id="pacote-delete-item-name" style="color:#e8b544"></b> de <u>todos</u> os ambientes onde ele aparece nesse pacote.</p>
-      <p style="font-size:13px;color:var(--c-primary);margin:0 0 10px">Se o empreiteiro concedeu um desconto por causa dessa remoção, informe o valor abaixo — ele será subtraído do total do pacote.</p>
+      <p style="font-size:14px;color:var(--c-secondary);margin:0 0 6px">Remover <b id="pacote-delete-item-name" style="color:#e8b544"></b> de <u>todos</u> os ambientes onde ele aparece nesse serviço.</p>
+      <p style="font-size:13px;color:var(--c-primary);margin:0 0 10px">Se o empreiteiro concedeu um desconto por causa dessa remoção, informe o valor abaixo — ele será subtraído do total do serviço.</p>
       <label style="font-size:12px;color:var(--c-primary);display:block;margin-bottom:4px">Desconto (R$) — opcional</label>
       <input type="text" id="pacote-delete-desconto" placeholder="0,00" style="width:100%;background:var(--c-panel);border:1px solid var(--c-border2);border-radius:6px;padding:8px 10px;color:var(--c-primary);font-size:14px;box-sizing:border-box">
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
@@ -938,10 +938,10 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
       </div>
     </div>
     <div id="pacote-delete-step2" style="display:none">
-      <p style="font-size:14px;color:var(--c-secondary);margin:0 0 10px">Tem certeza que quer excluir o pacote <b id="pacote-delete-confirm-name" style="color:#ef5350"></b> inteiro? Essa ação não pode ser desfeita.</p>
+      <p style="font-size:14px;color:var(--c-secondary);margin:0 0 10px">Tem certeza que quer excluir o serviço <b id="pacote-delete-confirm-name" style="color:#ef5350"></b> inteiro? Essa ação não pode ser desfeita.</p>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
         <button onclick="closePacoteDeleteModal()" style="background:var(--c-panel6);border:none;color:var(--c-secondary);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:14px">Cancelar</button>
-        <button onclick="confirmPacoteDelete()" style="background:#c62828;border:none;color:#fff;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:14px">Excluir pacote inteiro</button>
+        <button onclick="confirmPacoteDelete()" style="background:#c62828;border:none;color:#fff;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:14px">Excluir serviço inteiro</button>
       </div>
     </div>
   </div>
@@ -1030,7 +1030,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
       <textarea id="mbulk-obs" rows="2" placeholder="Alguma nota importante sobre essa compra..." style="width:100%;box-sizing:border-box;background:var(--c-panel);border:1px solid var(--c-border2);border-radius:8px;padding:10px 12px;color:var(--c-primary);font-size:13px;resize:vertical"></textarea>
     </div>
     <div class="form-group" id="mbulk-linkpacote-group" style="margin-bottom:14px;display:none;background:var(--c-material-bg2);border:1px solid #7d4a94;border-radius:8px;padding:10px 12px">
-      <label style="color:#c77dea;display:flex;align-items:center;gap:6px;font-weight:700">🔗 Vincular todo esse lote a um pacote de serviços (opcional)</label>
+      <label style="color:#c77dea;display:flex;align-items:center;gap:6px;font-weight:700">🔗 Vincular todo esse lote a um serviço (opcional)</label>
       <select id="mbulk-linkpacote" style="border-color:#7d4a94"><option value="">— nenhum —</option></select>
     </div>
     <div style="font-size:12px;color:var(--c-primary);margin-bottom:8px">Itens comprados:</div>
@@ -1233,7 +1233,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
 <div class="modal-overlay" id="obra-empreitada-overlay" onclick="if(event.target===this) closeObraEmpreitadaModal()">
   <div class="modal" style="max-width:1400px;width:96vw;max-height:92vh;display:flex;flex-direction:column">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
-      <h3 style="margin:0" id="empreitada-title">📦 Novo pacote de empreitada</h3>
+      <h3 style="margin:0" id="empreitada-title">👷 Novo serviço</h3>
       <button onclick="closeObraEmpreitadaModal()" style="background:none;border:none;color:var(--c-primary);font-size:21px;cursor:pointer;line-height:1">&times;</button>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
@@ -1281,7 +1281,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <input type="text" id="emp-desc" placeholder="Ex: João Empreiteiro - piso e demolição">
       </div>
       <div class="form-group" style="margin-bottom:0">
-        <label id="emp-valor-label">Valor total do pacote (R$)</label>
+        <label id="emp-valor-label">Valor do serviço (R$)</label>
         <input type="text" id="emp-valor" placeholder="0,00" oninput="maskMoney(this)" inputmode="numeric">
       </div>
     </div>
@@ -1354,7 +1354,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
     <div style="display:none">
       <div id="emp-service-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:12px;align-content:start;padding-bottom:8px"></div>
     </div>
-    <button class="btn-confirm" id="emp-btn-confirm" onclick="confirmEmpreitada()" style="margin-top:14px">Confirmar pacote</button>
+    <button class="btn-confirm" id="emp-btn-confirm" onclick="confirmEmpreitada()" style="margin-top:14px">Confirmar serviço</button>
   </div>
 </div>
 
@@ -5238,8 +5238,8 @@ function openObraEmpreitadaModal(material, presetSub, isUnico){
   empreitadaIsUnico = !!isUnico;
   refreshEmpMaterialFields();
   const isSoItem = material==='sem-mao-de-obra';
-  const icon = isSoItem ? '🛒' : (isUnico ? '👷' : '📦');
-  const tipoLabel = isSoItem ? 'item' : (isUnico ? 'serviço' : 'pacote de empreitada');
+  const icon = isSoItem ? '🛒' : '👷';
+  const tipoLabel = isSoItem ? 'item' : 'serviço';
   const materialLabel = isSoItem ? 'sem mão de obra' : (material==='com-material'?'com material':'sem material');
   document.getElementById('empreitada-title').textContent = icon+' Novo '+tipoLabel;
   document.getElementById('emp-desc').value = '';
@@ -5268,9 +5268,9 @@ function openObraEmpreitadaModal(material, presetSub, isUnico){
   document.getElementById('emp-invest-wrap').innerHTML = investimentoPickerHtml('emp');
   pendingMateriais = [];
   updateMateriaisBtnLabel();
-  document.getElementById('emp-btn-confirm').textContent = isUnico ? 'Confirmar lançamento' : 'Confirmar pacote';
+  document.getElementById('emp-btn-confirm').textContent = 'Confirmar serviço';
   const valorLabelEl = document.getElementById('emp-valor-label');
-  if(valorLabelEl) valorLabelEl.textContent = isUnico ? 'Valor do serviço (R$)' : 'Valor total do pacote (R$)';
+  if(valorLabelEl) valorLabelEl.textContent = 'Valor do serviço (R$)';
   const descLabelEl = document.getElementById('emp-desc-label');
   if(descLabelEl) descLabelEl.textContent = 'Descrição';
   // Se veio de uma sub específica (ex: clicou "lançar" dentro de Piso Vinílico), mostra
@@ -5309,8 +5309,8 @@ function openObraEmpreitadaModalForEdit(g){
   empreitadaFocusFase = null;
   empreitadaShowAllFases = true; // editando um lançamento existente, mostra tudo (pode abranger várias fases)
   const isSoItem = empreitadaMaterial==='sem-mao-de-obra';
-  const tipoLabel = isSoItem ? 'item' : (empreitadaIsUnico ? 'serviço' : 'pacote de empreitada');
-  const icon = isSoItem ? '🛒' : (empreitadaIsUnico ? '👷' : '📦');
+  const tipoLabel = isSoItem ? 'item' : 'serviço';
+  const icon = isSoItem ? '🛒' : '👷';
   const materialLabel = isSoItem ? 'sem mão de obra' : (empreitadaMaterial==='com-material'?'com material':'sem material');
   document.getElementById('empreitada-title').textContent = icon+' Editar '+tipoLabel;
   document.getElementById('emp-desc').value = g.descricao||'';
@@ -5318,7 +5318,7 @@ function openObraEmpreitadaModalForEdit(g){
   document.getElementById('emp-data').value = g.data||new Date().toISOString().slice(0,10);
   document.getElementById('emp-status').value = g.status||'necessario';
   document.getElementById('emp-btn-confirm').textContent = 'Salvar alterações';
-  document.getElementById('emp-valor-label').textContent = empreitadaIsUnico ? 'Valor do serviço (R$)' : 'Valor total do pacote (R$)';
+  document.getElementById('emp-valor-label').textContent = 'Valor do serviço (R$)';
   document.getElementById('emp-desc-label').textContent = 'Descrição';
   const meta = getPacoteMeta(g);
   document.getElementById('emp-data-inicio').value = meta.dataInicio || '';
@@ -5869,14 +5869,14 @@ function renderEmpreitadaServiceGrid(preserveState){
   if(empreitadaShowOnlySelected){
     bannerHtml += `
     <div style="grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;margin-bottom:2px;background:var(--c-panel);border:1px solid var(--c-border2);border-radius:8px">
-      <span style="font-size:13px;color:var(--c-primary)">Mostrando só os serviços que já estão neste pacote.</span>
+      <span style="font-size:13px;color:var(--c-primary)">Mostrando só os serviços que já estão neste serviço.</span>
       <button type="button" onclick="showAllServicosEmpreitada()" style="background:var(--c-apagar-bg);border:1px solid var(--c-apagar-strong);color:#e8b544;border-radius:6px;padding:6px 12px;font-size:13px;cursor:pointer;flex-shrink:0;white-space:nowrap">+ Mostrar todos os serviços</button>
     </div>`;
   } else if(temAlgoMarcado){
     bannerHtml += `
     <div style="grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;margin-bottom:2px;background:var(--c-panel);border:1px solid var(--c-border2);border-radius:8px">
       <span style="font-size:13px;color:var(--c-primary)">Mostrando todos os serviços.</span>
-      <button type="button" onclick="hideUnselectedServicosEmpreitada()" style="background:var(--c-panel3);border:1px solid var(--c-faint);color:var(--c-secondary);border-radius:6px;padding:6px 12px;font-size:13px;cursor:pointer;flex-shrink:0;white-space:nowrap">Recolher — só os do pacote</button>
+      <button type="button" onclick="hideUnselectedServicosEmpreitada()" style="background:var(--c-panel3);border:1px solid var(--c-faint);color:var(--c-secondary);border-radius:6px;padding:6px 12px;font-size:13px;cursor:pointer;flex-shrink:0;white-space:nowrap">Recolher — só os do serviço</button>
     </div>`;
   }
 
@@ -6125,7 +6125,7 @@ function renderAmbienteModalBody(ri){
           </div>
           <label style="display:flex;align-items:center;gap:6px;font-size:14px;color:var(--c-primary);cursor:pointer">
             <input type="checkbox" ${vals.noPacote?'checked':''} onchange="toggleAmbienteNoPacote('${ri}','${CHAVE_GERAL}',this.checked)" style="width:15px;height:15px">
-            é serviço do pacote (sem valor à parte)
+            é item do serviço (sem valor à parte)
           </label>
         </div>
         <input type="text" id="amb-geral-obs-${ri}" value="${vals.tipo||''}" placeholder="observações (opcional)" oninput="setAmbienteField('${ri}','${CHAVE_GERAL}','tipo',this.value)" style="width:100%;box-sizing:border-box;background:var(--c-panel);border:1px solid var(--c-border3);border-radius:6px;padding:9px 12px;color:var(--c-primary);font-size:14px">
@@ -6235,7 +6235,7 @@ function renderAmbienteModalBody(ri){
           </div>
           <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--c-primary);cursor:pointer">
             <input type="checkbox" ${noPacote?'checked':''} onchange="toggleAmbienteNoPacote('${ri}','${escJs(a)}',this.checked)" style="width:14px;height:14px">
-            é serviço do pacote (sem valor à parte)
+            é item do serviço (sem valor à parte)
           </label>
         </div>
         <input type="text" id="amb-tipo-${ri}-${ai}" value="${vals.tipo||''}" placeholder="observações" oninput="setAmbienteField('${ri}','${escJs(a)}','tipo',this.value)" style="background:var(--c-panel);border:1px solid var(--c-border3);border-radius:6px;padding:8px 10px;color:var(--c-primary);font-size:14px">
@@ -6402,7 +6402,7 @@ async function confirmEmpreitada(){
     if(checkElSimples){ checkElSimples.checked = true; checkElSimples.dispatchEvent(new Event('change')); }
   }
   const checks = [...document.querySelectorAll('.emp-sub-check:checked')];
-  if(!checks.length && !empreitadaLegacySemGrade){ alert('Marque pelo menos um serviço coberto pelo pacote.'); return; }
+  if(!checks.length && !empreitadaLegacySemGrade){ alert('Marque pelo menos um serviço coberto.'); return; }
   const servicos = [];
   if(!checks.length && empreitadaLegacySemGrade){
     servicos.push({sub: empreitadaLegacySemGrade.sub, ambiente: empreitadaLegacySemGrade.ambiente});
@@ -6494,7 +6494,7 @@ async function confirmEmpreitada(){
   } catch(e){
     toast('Erro ao salvar: '+e.message,'err');
   } finally{
-    btn.disabled=false; btn.textContent = isEditing ? 'Salvar alterações' : (empreitadaIsUnico ? 'Confirmar lançamento' : 'Confirmar pacote');
+    btn.disabled=false; btn.textContent = isEditing ? 'Salvar alterações' : 'Confirmar serviço';
   }
 }
 
@@ -6777,12 +6777,12 @@ function openPacoteDeleteModal(gastoId, sub, ambiente){
   const ambientesDoServico = servicos.filter(s=>s.sub===sub).map(s=>s.ambiente).filter(Boolean);
   document.getElementById('pacote-delete-item-desc').textContent = label + (ambientesDoServico.length ? ` — ${ambientesDoServico.join(', ')}` : '');
   document.getElementById('pacote-delete-item-name').textContent = label;
-  document.getElementById('pacote-delete-pacote-desc').textContent = `Remove o pacote "${g.descricao}" (${fmt(gastoValor(g))}) inteiro, de todos os ambientes e serviços.`;
+  document.getElementById('pacote-delete-pacote-desc').textContent = `Remove o serviço "${g.descricao}" (${fmt(gastoValor(g))}) inteiro, de todos os ambientes e serviços.`;
   document.getElementById('pacote-delete-step1').style.display = '';
   document.getElementById('pacote-delete-step1b').style.display = 'none';
   document.getElementById('pacote-delete-step2').style.display = 'none';
   document.getElementById('pacote-delete-desconto').value = '';
-  document.getElementById('pacote-delete-title').textContent = 'Excluir item do pacote';
+  document.getElementById('pacote-delete-title').textContent = 'Excluir item do serviço';
   document.getElementById('pacote-delete-overlay').classList.add('open');
 }
 function closePacoteDeleteModal(){
@@ -6815,7 +6815,7 @@ async function deleteJustPacoteItem(){
     if(!servicos.length){
       // não sobrou nenhum serviço no pacote — remove o lançamento inteiro
       await sbDelete(gastoId);
-      toast('Serviço removido — era o último do pacote, então o lançamento foi excluído.');
+      toast('Serviço removido — era o último item, então o lançamento foi excluído.');
     } else {
       const primeiro = servicos[0];
       const res = await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${gastoId}`,{
@@ -6823,7 +6823,7 @@ async function deleteJustPacoteItem(){
         body:JSON.stringify({ subcategoria: primeiro.sub, ambiente: primeiro.ambiente, pacote_subs: JSON.stringify(servicos), valor: novoValor })
       });
       if(!res.ok) throw new Error(await res.text());
-      toast(desconto>0 ? `Serviço removido de todos os ambientes — desconto de ${fmt(desconto)} aplicado.` : 'Serviço removido de todos os ambientes do pacote.');
+      toast(desconto>0 ? `Serviço removido de todos os ambientes — desconto de ${fmt(desconto)} aplicado.` : 'Serviço removido de todos os ambientes.');
     }
     await loadGastos();
   } catch(e){
@@ -9728,11 +9728,11 @@ function openPacoteModal(gastoId){
   const isUnico = tipoRaw.startsWith('unico-');
   const material = tipoRaw.replace('unico-','');
   const isSoItem = material==='sem-mao-de-obra';
-  const headerIcon = isSoItem ? '🛒' : (isUnico ? '👷' : '📦');
+  const headerIcon = isSoItem ? '🛒' : '👷';
   document.getElementById('status-detail-title').textContent = headerIcon+' '+g.descricao;
   const totalEl = document.getElementById('status-detail-total');
   totalEl.textContent = fmt(val);
-  totalEl.style.color = isSoItem ? '#c77dea' : (isUnico ? '#42a5f5' : '#e8b544');
+  totalEl.style.color = isSoItem ? '#c77dea' : '#42a5f5';
   const rows = (()=>{
     // Agrupa itens do MESMO serviço que compartilham exatamente o mesmo m²/valor/tipo —
     // isso indica que vieram do "modo único" (metragem total dividida entre vários
@@ -9751,7 +9751,7 @@ function openPacoteModal(gastoId){
       if(item.valorM2) detailParts.push(`R$ ${item.valorM2}/m²`);
       if(item.tipo) detailParts.push(item.tipo);
       if(item.itens && item.itens.length) detailParts.push(item.itens.join(', '));
-      if(item.noPacote) detailParts.push('faz parte do pacote — sem valor à parte');
+      if(item.noPacote) detailParts.push('faz parte do serviço — sem valor à parte');
       const arquivoLink = item.arquivo ? ` <a href="${item.arquivo.url}" target="_blank" style="color:#4caf50;font-size:11px">📎 ${item.arquivo.nome}</a>` : '';
       const detailStr = detailParts.length ? ` <span style="color:var(--c-primary);font-size:11px">(${detailParts.join(' · ')})</span>` : '';
       if(itens.length > 1 && item.m2){
@@ -9764,9 +9764,7 @@ function openPacoteModal(gastoId){
   })();
   const tipoTag = tipoRaw ? (isSoItem
     ? `<span style="background:var(--c-material-bg);color:#c77dea;border-radius:4px;padding:2px 7px;font-size:11px">${headerIcon} item sem mão de obra</span>`
-    : isUnico
-      ? `<span style="background:var(--c-necessario-bg);color:#42a5f5;border-radius:4px;padding:2px 7px;font-size:11px">${headerIcon} serviço único ${material==='com-material'?'com material':'sem material'}</span>`
-      : `<span style="background:var(--c-apagar-bg2);color:#e8b544;border-radius:4px;padding:2px 7px;font-size:11px">${headerIcon} empreitada ${material==='com-material'?'com material':'sem material'}</span>`) : '';
+    : `<span style="background:var(--c-necessario-bg);color:#42a5f5;border-radius:4px;padding:2px 7px;font-size:11px">${headerIcon} serviço ${material==='com-material'?'com material':'sem material'}</span>`) : '';
   const meta = getPacoteMeta(g);
   const prazoBadge = prazoBadgeHtml(meta);
   const prazoLine = meta.dataInicio ? `<div style="font-size:12px;color:var(--c-primary);margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b>Início:</b> ${fmtDateTxt(meta.dataInicio)} ${meta.prazoDias?` &nbsp;·&nbsp; <b>Prazo:</b> ${meta.prazoDias} dias`:''} ${prazoBadge}</div>` : '';
@@ -9781,11 +9779,11 @@ function openPacoteModal(gastoId){
     ${g.obs?`<div style="font-size:12px;color:var(--c-primary);margin-top:6px"><b>Observação:</b> ${g.obs}</div>`:''}
     ${g.link?`<div style="font-size:12px;margin-top:6px"><a href="${g.link}" target="_blank" style="color:#2a78d6">🔗 Ver link/contrato</a></div>`:''}
     <div style="margin-top:10px;display:flex;gap:6px">
-      <button onclick="closeStatusDetailModal();openEdit(${g.id})" style="background:var(--c-border2);border:none;color:var(--c-secondary);padding:5px 12px;border-radius:5px;font-size:12px;cursor:pointer"><i class="ti ti-pencil"></i> Editar ${isUnico?'serviço':'pacote'}</button>
+      <button onclick="closeStatusDetailModal();openEdit(${g.id})" style="background:var(--c-border2);border:none;color:var(--c-secondary);padding:5px 12px;border-radius:5px;font-size:12px;cursor:pointer"><i class="ti ti-pencil"></i> Editar serviço</button>
     </div>
   </td></tr>`;
   document.getElementById('status-detail-tbody').innerHTML =
-    `<tr><td colspan="6" style="padding:8px 12px;background:${isUnico?'#0d152055':'#1a150055'};font-size:11px;font-weight:700;color:${isUnico?'#42a5f5':'#e8b544'};text-transform:uppercase;letter-spacing:.06em">Serviços cobertos (${subs.length})</td></tr>`
+    `<tr><td colspan="6" style="padding:8px 12px;background:#0d152055;font-size:11px;font-weight:700;color:#42a5f5;text-transform:uppercase;letter-spacing:.06em">Serviços cobertos (${subs.length})</td></tr>`
     + rows + infoRow;
   document.getElementById('status-detail-overlay').classList.add('open');
 }
@@ -10092,13 +10090,13 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
   const badgeIsUnico = tipoRaw.startsWith('unico-');
   const badgeMaterial = tipoRaw.replace('unico-','');
   const isSoItem = badgeMaterial==='sem-mao-de-obra';
-  // Padrão novo, mais simples: 🛒 compra/material, 👷 um serviço só (uma
-  // pessoa), 📦 pacote que cobre mais de um serviço.
-  const badgeIcon = isSoItem ? '🛒' : (badgeIsUnico ? '👷' : '📦');
-  const badgeLabel = isSoItem ? 'compra' : (badgeIsUnico ? 'serviço' : 'pacote');
-  const badgeColor = isSoItem ? '#c77dea' : (badgeIsUnico ? '#42a5f5' : '#e8b544');
-  const badgeBg = isSoItem ? 'var(--c-material-bg)' : (badgeIsUnico ? 'var(--c-necessario-bg)' : 'var(--c-apagar-bg2)');
-  const badgeBorder = isSoItem ? '#7d4a94' : (badgeIsUnico ? 'var(--c-necessario-border2)' : 'var(--c-apagar-strong)');
+  // Só duas categorias visíveis pro usuário: 🛒 compra/material, 👷 serviço
+  // (seja um profissional só ou vários itens/serviços num único lançamento).
+  const badgeIcon = isSoItem ? '🛒' : '👷';
+  const badgeLabel = isSoItem ? 'compra' : 'serviço';
+  const badgeColor = isSoItem ? '#c77dea' : '#42a5f5';
+  const badgeBg = isSoItem ? 'var(--c-material-bg)' : 'var(--c-necessario-bg)';
+  const badgeBorder = isSoItem ? '#7d4a94' : 'var(--c-necessario-border2)';
   const materialLabelStr = isSoItem ? 'sem mão de obra' : (badgeMaterial==='com-material'?'com material':'sem material');
   const pacoteBadge = isPacote ? `<span onclick="event.stopPropagation();openPacoteModal(${g.id})" title="Ver todos os serviços deste ${badgeLabel} (${materialLabelStr})" style="cursor:pointer;color:${badgeColor};font-size:11px;font-weight:700;background:${badgeBg};border:1px solid ${badgeBorder};border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;line-height:1.4;width:88px;flex-shrink:0;box-sizing:border-box">${badgeIcon} ${badgeLabel}</span>` : '';
   const prazoBadgeRow = isPacote ? prazoBadgeHtml(getPacoteMeta(g)) : '';
