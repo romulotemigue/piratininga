@@ -9,7 +9,7 @@
 // guardada. Só recarrega se já existia uma versão salva antes (não na
 // primeiríssima visita), pra não entrar num loop.
 (function(){
-  var BUILD_VERSION = '225';
+  var BUILD_VERSION = '227';
   try{
     var last = localStorage.getItem('pirati_build_version');
     if(last !== BUILD_VERSION){
@@ -339,7 +339,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 13SET26 (versão 225)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 13SET26 (versão 227)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -8402,10 +8402,10 @@ function renderImovelCat(catKey, subKey, grupoFiltro){
   const recLista = lista.filter(g=>recKeys.includes(g.subcategoria));
   const gastoLista = lista.filter(g=>gastoKeys.includes(g.subcategoria));
   const financiadoLista = lista.filter(g=>financiadoKeys.includes(g.subcategoria));
-  // Na Compra do Imóvel, o FGTS chega junto com o Repasse Bancário do
-  // financiamento — soma automaticamente ali, sem a pessoa precisar somar na mão
+  // Na Compra do Imóvel, o FGTS entra como parte da ENTRADA — soma
+  // automaticamente ali, sem a pessoa precisar somar na mão
   const fgtsTotalEtapa = catKey==='compra-imovel' ? lista.filter(g=>g.subcategoria==='fgts').reduce((s,g)=>s+getVal(g),0) : 0;
-  const getValEtapaAjustado = g => (catKey==='compra-imovel' && g.subcategoria==='repasse-bancario') ? getVal(g)+fgtsTotalEtapa : getVal(g);
+  const getValEtapaAjustado = g => (catKey==='compra-imovel' && g.subcategoria==='entrada') ? getVal(g)+fgtsTotalEtapa : getVal(g);
   const totalRecebido = recLista.filter(g=>g.status==='pago').reduce((s,g)=>s+getVal(g),0);
   const totalAReceber = recLista.filter(g=>g.status!=='pago').reduce((s,g)=>s+getVal(g),0);
   const totalGasto = gastoLista.filter(g=>g.status==='pago').reduce((s,g)=>s+getValEtapaAjustado(g),0);
@@ -8609,7 +8609,7 @@ function renderImovelCat(catKey, subKey, grupoFiltro){
   } else {
     html += '<div style="padding-right:2rem"><div style="font-size:11px;color:var(--c-primary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Já pago (seu bolso)</div><div style="font-size:23px;font-weight:800;color:'+info.color+'">'+fmt(totalGasto)+'</div><div style="font-size:11px;color:#e8b544;margin-top:3px">depois de pagar tudo: '+fmt(totalGasto+totalAPagar)+'</div></div>';
     if(totalAPagar>0) html += '<div style="border-left:1px solid var(--c-panel6);padding:0 2rem"><div style="font-size:11px;color:#e8b544;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">A pagar (seu bolso)</div><div style="font-size:23px;font-weight:800;color:#e8b544">'+fmt(totalAPagar)+'</div></div>';
-    if(totalFinanciado>0) html += '<div style="border-left:1px solid var(--c-panel6);padding:0 2rem"><div style="font-size:11px;color:var(--c-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Financiado (banco/FGTS)</div><div style="font-size:23px;font-weight:800;color:var(--c-primary)">'+fmt(totalFinanciado)+'</div><div style="font-size:10px;color:var(--c-secondary);margin-top:3px">não é seu dinheiro</div></div>';
+    if(totalFinanciado>0) html += '<div style="border-left:1px solid var(--c-panel6);padding:0 2rem"><div style="font-size:11px;color:var(--c-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Financiado (banco)</div><div style="font-size:23px;font-weight:800;color:var(--c-primary)">'+fmt(totalFinanciado)+'</div><div style="font-size:10px;color:var(--c-secondary);margin-top:3px">não é seu dinheiro</div></div>';
     html += '<div style="border-left:1px solid var(--c-panel6);padding:0 2rem"><div style="font-size:11px;color:#e8b544;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Taxas</div><div style="font-size:23px;font-weight:800;color:#e8b544">'+fmt(totalDocumentacao)+'</div></div>';
   }
   html += '</div>';
@@ -8887,10 +8887,10 @@ function renderGeral(){
   // Compra do Imóvel: pagamento do seu bolso (Sinal/Entrada/Taxas) x financiamento (Repasse bancário —
   // não passa pela sua conta corrente, vai direto pro vendedor, não é "seu dinheiro" saindo)
   const compraItems = gastosG.filter(g=>g.categoria==='compra-imovel');
-  // O FGTS chega junto com o Repasse Bancário do financiamento — soma
-  // automaticamente ali (a pessoa não precisa fazer essa conta na mão)
+  // O FGTS entra como parte da ENTRADA (o Romulo usou o FGTS dentro do valor
+  // da entrada, não junto com o repasse do banco) — soma automaticamente ali.
   const compraFgtsTotal = compraItems.filter(g=>g.subcategoria==='fgts').reduce((s,g)=>s+getVal(g),0);
-  const getValCompraAjustado = g => g.subcategoria==='repasse-bancario' ? getVal(g)+compraFgtsTotal : getVal(g);
+  const getValCompraAjustado = g => g.subcategoria==='entrada' ? getVal(g)+compraFgtsTotal : getVal(g);
   const compraPago       = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && g.status==='pago').reduce((s,g)=>s+getValCompraAjustado(g),0);
   const compraAPagar     = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && g.status!=='pago').reduce((s,g)=>s+getValCompraAjustado(g),0);
   // Quanto do que já foi pago (ou falta pagar) é o imóvel em si (entrada/repasse/
@@ -8900,8 +8900,9 @@ function renderGeral(){
   const compraSoTaxas  = g => getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && getImovelCardGroup('compra-imovel',g.subcategoria)!=='valor-imovel';
   const compraImovelTotal = compraItems.filter(compraSoImovel).reduce((s,g)=>s+getValCompraAjustado(g),0);
   const compraTaxasTotal  = compraItems.filter(compraSoTaxas).reduce((s,g)=>s+getValCompraAjustado(g),0);
-  // FGTS não é financiamento bancário de verdade — é desconto usado dentro da própria
-  // entrada. "Financiado" mostra só o que o banco manda direto pro vendedor (Repasse).
+  // FGTS não é financiamento bancário de verdade — foi usado dentro da
+  // própria entrada. "Financiado" mostra só o que o banco manda direto pro
+  // vendedor (Repasse).
   const compraFinanciado = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='financiamento' && g.subcategoria!=='fgts').reduce((s,g)=>s+getVal(g),0);
   const compraAPagarItems = compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && g.status!=='pago');
 
@@ -8914,7 +8915,11 @@ function renderGeral(){
     + compraItems.filter(g=>getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && g.status==='pago').length;
 
   // Saldo final = tudo que já entrou/saiu de verdade, sem contar o que ainda está pendente
-  const saldoReal = vendaRecebido - vendaPago + dispGanhos - compraPago - pago;
+  // O FGTS soma aqui do lado do que "entrou" (junto com o recebido da venda) porque ele já
+  // era dinheiro do Romulo antes — sem essa soma, ele sairia como gasto (dentro de
+  // compraPago, via Entrada) sem nunca ter entrado em lugar nenhum, derrubando o Saldo
+  // Real sem motivo real (o FGTS não é dinheiro novo saindo do bolso).
+  const saldoReal = vendaRecebido + compraFgtsTotal - vendaPago + dispGanhos - compraPago - pago;
   // Saldo projetado = saldo real + o que ainda falta entrar/sair dos dois lados
   const saldoProjetado = saldoReal + vendaAReceber - vendaAPagar - compraAPagar - necessario;
   // Só a transação do imóvel (venda + compra), sem contar a reforma — "quanto sobra
@@ -9026,7 +9031,7 @@ function renderGeral(){
             <div style="font-size:19px;font-weight:700;color:#ef5350">${fmt(compraPago)}</div>
           </div>
           <div>
-            <div style="font-size:11px;color:var(--c-secondary)">Financiado (banco + FGTS)</div>
+            <div style="font-size:11px;color:var(--c-secondary)">Financiado (banco)</div>
             <div style="font-size:19px;font-weight:700;color:var(--c-secondary)">${fmt(compraFinanciado)}</div>
           </div>
         </div>
@@ -9040,7 +9045,7 @@ function renderGeral(){
           ${compraAPagarItems.length ? compraAPagarItems.map(g=>{
             const def = getImovelCardDefs('compra-imovel').find(i=>i.key===g.subcategoria);
             const label = def?.label || g.descricao || g.subcategoria;
-            return `<div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span style="color:var(--c-muted3)">${label}${g.subcategoria==='repasse-bancario'?' <span style=\'color:var(--c-primary)\'>(inclui FGTS)</span>':''}</span><span style="color:#e8b544;font-weight:600">${fmt(getValCompraAjustado(g))}</span></div>`;
+            return `<div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span style="color:var(--c-muted3)">${label}${g.subcategoria==='entrada'?' <span style=\'color:var(--c-primary)\'>(inclui FGTS)</span>':''}</span><span style="color:#e8b544;font-weight:600">${fmt(getValCompraAjustado(g))}</span></div>`;
           }).join('') : '<div style="font-size:13px;color:var(--c-primary)">Nada pendente</div>'}
           <div style="display:flex;justify-content:space-between;font-size:14px;padding-top:6px;margin-top:6px;border-top:1px solid var(--c-panel6)"><span style="color:var(--c-primary);font-weight:600">Total</span><span style="color:#e8b544;font-weight:700">${fmt(compraAPagar)}</span></div>
         </div>
