@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 213)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 214)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -5700,12 +5700,9 @@ function renderGastoPorAmbienteChart(canvasId){
   const canvas = document.getElementById(canvasId);
   if(!canvas) return null;
   const somas = computeGastoPorAmbiente();
-  // Ambientes já selecionados em "Definir Ambientes" entram no gráfico mesmo
-  // sem nenhum gasto ainda (barra zerada), em vez de sumir da lista.
-  getAmbientesAtivos().forEach(a=>{
-    if(!Object.keys(somas).some(k=>k.toLowerCase()===a.toLowerCase())) somas[a] = 0;
-  });
-  const entries = Object.entries(somas).sort((a,b)=>b[1]-a[1]);
+  // Só mostra ambiente que já tem gasto de verdade — nada de barra zerada
+  // pra ambiente cadastrado em "Definir Ambientes" mas ainda sem lançamento.
+  const entries = Object.entries(somas).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
   if(!entries.length) return null;
   const cores = entries.map((_,i)=>subGroupColor(i));
   const corTexto = cssVar('--c-primary') || '#e8e7e2';
@@ -5747,6 +5744,8 @@ function renderGastoPorAmbienteChart(canvasId){
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      onClick: (evt, elements)=>{ if(elements.length) openAmbienteDetailModal(entries[elements[0].index][0]); },
+      onHover: (evt, elements)=>{ evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'; },
       plugins: { legend: { display: false }, tooltip: { callbacks: { label: c=>fmt(c.parsed.y) } } },
       scales: {
         x: { ticks: { color: corTexto, font: { size: 11, weight: '600' }, maxRotation: 0, minRotation: 0,
@@ -5761,6 +5760,37 @@ function renderGastoPorAmbienteChart(canvasId){
       }
     }
   });
+}
+// Clique numa barra do gráfico "Gasto por Ambiente" — abre o mesmo modal de
+// detalhe usado pelos cards de status (Necessários/Dispensáveis etc), listando
+// todos os lançamentos (Execução de Obra + Itens para Casa) daquele ambiente.
+function openAmbienteDetailModal(ambName){
+  const itensCasaCats = getItensCasaChildren();
+  const lista = gastos.filter(g=>{
+    if(g.status==='cancel') return false;
+    if(!isCategoriaGlobalAtiva(g.categoria)) return false;
+    if(g.categoria!=='obra-bruta' && !itensCasaCats.includes(g.categoria)) return false;
+    let ambientesGasto = [];
+    if(g.ambiente) ambientesGasto = g.ambiente.split(MAT_AMB_SEP).map(s=>s.trim()).filter(Boolean);
+    else if(g.pacote_subs){
+      const parsed = parsePacoteSubs(g.pacote_subs);
+      ambientesGasto = [...new Set(parsed.map(p=>p.ambiente).filter(Boolean))];
+    } else if(itensCasaCats.includes(g.categoria) && g.subcategoria){
+      const label = SUBCATS[g.categoria]?.[g.subcategoria]?.label || g.subcategoria;
+      if(label) ambientesGasto = [label];
+    }
+    return ambientesGasto.some(a=>a.toLowerCase()===ambName.toLowerCase());
+  });
+  const cor = corDoAmbiente(ambName);
+  const total = lista.reduce((s,g)=>s+gastoValor(g),0);
+  document.getElementById('status-detail-title').textContent = '📍 '+ambName;
+  const totalEl = document.getElementById('status-detail-total');
+  totalEl.textContent = fmt(total);
+  totalEl.style.color = cor;
+  document.getElementById('status-detail-tbody').innerHTML = lista.length
+    ? lista.map(g=>renderOneRow(g, g.status, g.categoria, cor+'33', true)).join('')
+    : `<tr><td colspan="6" style="padding:2rem;text-align:center;color:var(--c-primary);font-size:13px">Nenhum lançamento nesse ambiente ainda</td></tr>`;
+  document.getElementById('status-detail-overlay').classList.add('open');
 }
 function getAmbientesMetragem(){ try{ return JSON.parse(localStorage.getItem('pirati_ambientes_metragem')||'{}'); }catch(e){ return {}; } }
 function setAmbienteMetragem(nome, valor){
