@@ -314,7 +314,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 208)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 209)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -4878,6 +4878,7 @@ function quickAddFromCol(catKeyComposite, status){
   }
 }
 let obraTriagemPresetSub = null; // guarda qual item foi clicado, se veio de um item específico
+let obraTriagemPresetFase = null; // guarda a fase, quando só a fase é conhecida (sem ambiente específico)
 
 // Fases onde faz sentido lançar "apenas o item, sem mão de obra" — comprar uma
 // peça/acabamento sem contratar instalação junto (ex: comprar a luminária e
@@ -4885,6 +4886,7 @@ let obraTriagemPresetSub = null; // guarda qual item foi clicado, se veio de um 
 const FASES_ITEM_SEM_MAO_DE_OBRA = ['Iluminação e Acabamentos Elétricos','Louças, Metais e Vidros','Marcenaria e Móveis Planejados'];
 function openObraTriagemModal(presetSub, presetFase){
   obraTriagemPresetSub = presetSub || null;
+  obraTriagemPresetFase = presetFase || null;
   document.getElementById('obra-triagem-overlay').classList.add('open');
 }
 function closeObraTriagemModal(){
@@ -4893,7 +4895,7 @@ function closeObraTriagemModal(){
 function chooseObraTipo(tipo, material){
   closeObraTriagemModal();
   pendingTipoContratacao = material;
-  openObraEmpreitadaModal(material, obraTriagemPresetSub, tipo==='unico' || tipo==='item');
+  openObraEmpreitadaModal(material, obraTriagemPresetSub, tipo==='unico' || tipo==='item', obraTriagemPresetFase);
 }
 
 // Opções "Material" da triagem — 1 item vai pro popup de sempre (com a fase/sub
@@ -4910,7 +4912,7 @@ function chooseObraMaterialTipo(tipo){
 function chooseObraMaterialEscolha(){
   closeObraTriagemModal();
   const sub = obraTriagemPresetSub;
-  const fase = sub ? (SUBCATS['obra-bruta']?.[sub]?.grupo || null) : null;
+  const fase = sub ? (SUBCATS['obra-bruta']?.[sub]?.grupo || null) : obraTriagemPresetFase;
   openMaterialEntryChoice('obra-bruta', fase, sub);
 }
 
@@ -5200,17 +5202,23 @@ function abrirVincularMaterialEmp(){
 // (empreitadaCheckedServices), só que agora sempre com 1 só marcado, igual
 // já funciona no material. A grade antiga fica escondida em "Avançado", pra
 // quem realmente precisar cobrir mais de um ambiente no mesmo pacote.
-function populateEmpFaseSimples(presetSub){
+function populateEmpFaseSimples(presetSub, presetFaseOnly){
   const faseSel = document.getElementById('emp-fase-simples');
   const fases = [...new Set(Object.values(SUBCATS['obra-bruta']||{}).map(s=>s.grupo).filter(Boolean))];
   const presetEntry = presetSub && SUBCATS['obra-bruta']?.[presetSub];
   const faseReconhecida = !!(presetEntry && fases.includes(presetEntry.grupo));
+  // Sem ambiente específico (veio de um "+lançar" clicado dentro de uma Fase,
+  // não de um ambiente/sub exato), mas com a Fase conhecida — pré-marca só a
+  // Fase e deixa o Ambiente em aberto pra pessoa escolher, em vez de deixar
+  // os dois em branco à toa.
+  const faseSoReconhecida = !faseReconhecida && presetFaseOnly && fases.includes(presetFaseOnly);
+  const faseFinal = faseReconhecida ? presetEntry.grupo : (faseSoReconhecida ? presetFaseOnly : null);
   // Se o lançamento é antigo e o "endereço" salvo não existe mais na lista
   // atual, NÃO finge que sabe onde ele está (isso fazia cair sempre na
   // primeira fase/ambiente da lista, parecendo certo sem ser) — deixa em
   // branco pra pessoa escolher de verdade.
-  faseSel.innerHTML = (presetSub && !faseReconhecida ? '<option value="">— escolha a fase —</option>' : '') + fases.map(f=>`<option value="${f}">${f}</option>`).join('');
-  if(faseReconhecida) faseSel.value = presetEntry.grupo;
+  faseSel.innerHTML = ((presetSub||presetFaseOnly) && !faseFinal ? '<option value="">— escolha a fase —</option>' : '') + fases.map(f=>`<option value="${f}">${f}</option>`).join('');
+  if(faseFinal) faseSel.value = faseFinal;
   onEmpFaseSimplesChange(faseReconhecida ? presetSub : null);
 }
 function onEmpFaseSimplesChange(presetSub){
@@ -5230,7 +5238,7 @@ function onEmpAmbienteSimplesChange(){
   if(checkEl && !checkEl.checked){ checkEl.checked = true; checkEl.dispatchEvent(new Event('change')); }
   document.querySelectorAll('.emp-sub-check').forEach(el=>{ if(el.value!==sk) el.checked = false; });
 }
-function openObraEmpreitadaModal(material, presetSub, isUnico){
+function openObraEmpreitadaModal(material, presetSub, isUnico, presetFase){
   empreitadaEditingId = null;
   empreitadaLegacySemGrade = null;
   empreitadaMaterial = material;
@@ -5277,13 +5285,14 @@ function openObraEmpreitadaModal(material, presetSub, isUnico){
   if(descLabelEl) descLabelEl.textContent = 'Descrição';
   // Se veio de uma sub específica (ex: clicou "lançar" dentro de Piso Vinílico), mostra
   // só a fase dela de cara — menos poluído. Se veio do botão geral de Execução de Obra
-  // (sem presetSub), mostra tudo de uma vez, como sempre.
+  // (sem presetSub), mostra tudo de uma vez, como sempre. Se veio de um "+lançar" clicado
+  // dentro de uma Fase (sem ambiente específico), pelo menos a Fase já vem certa.
   const presetEntry = presetSub && SUBCATS['obra-bruta']?.[presetSub];
-  empreitadaFocusFase = presetEntry ? presetEntry.grupo : null;
-  empreitadaShowAllFases = !presetEntry;
+  empreitadaFocusFase = presetEntry ? presetEntry.grupo : (presetFase || null);
+  empreitadaShowAllFases = !presetEntry && !presetFase;
   empreitadaShowOnlySelected = false; // pacote novo — ainda não tem nada marcado, mostra tudo
   renderEmpreitadaServiceGrid();
-  populateEmpFaseSimples(presetSub);
+  populateEmpFaseSimples(presetSub, presetFase);
   if(presetSub){
     const checkEl = document.querySelector(`.emp-sub-check[value="${presetSub}"]`);
     if(checkEl){ checkEl.checked = true; checkEl.dispatchEvent(new Event('change')); }
@@ -9407,7 +9416,7 @@ function renderFaseGroup(catKey, gName){
         <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px">
-        <button onclick="openObraTriagemModal()" title="Lançar em ${gName}"
+        <button onclick="openObraTriagemModal(null,'${gName.replace(/'/g,"\\'")}')" title="Lançar em ${gName}"
           style="width:34px;height:34px;border-radius:50%;background:transparent;border:2px solid ${info.color};color:${info.color};font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0"
           onmouseover="this.style.background='${info.color}';this.style.color='var(--c-panel)'"
           onmouseout="this.style.background='transparent';this.style.color='${info.color}'">+</button>
@@ -9453,7 +9462,7 @@ function renderSubgrupoGroup(catKey, gName, sgName){
         <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px">
-        <button onclick="openObraTriagemModal()" title="Lançar em ${sgName}"
+        <button onclick="openObraTriagemModal(null,'${gName.replace(/'/g,"\\'")}')" title="Lançar em ${sgName}"
           style="width:34px;height:34px;border-radius:50%;background:transparent;border:2px solid ${info.color};color:${info.color};font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0"
           onmouseover="this.style.background='${info.color}';this.style.color='var(--c-panel)'"
           onmouseout="this.style.background='transparent';this.style.color='${info.color}'">+</button>
