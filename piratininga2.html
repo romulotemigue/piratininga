@@ -9,7 +9,7 @@
 // guardada. Só recarrega se já existia uma versão salva antes (não na
 // primeiríssima visita), pra não entrar num loop.
 (function(){
-  var BUILD_VERSION = '218';
+  var BUILD_VERSION = '219';
   try{
     var last = localStorage.getItem('pirati_build_version');
     if(last !== BUILD_VERSION){
@@ -339,7 +339,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 13SET26 (versão 218)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 13SET26 (versão 219)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1091,7 +1091,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
     <div style="overflow-y:auto;flex:1;padding-right:4px">
       <div style="background:var(--c-panel);border:1px solid var(--c-border2);border-radius:8px;padding:12px;margin-bottom:14px">
         <div style="font-size:11px;color:var(--c-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Onde isso entra</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;grid-auto-rows:auto;gap:14px 20px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));grid-auto-rows:auto;gap:14px 20px">
           <div class="form-group" id="mat-l-etapa-group" style="margin-bottom:0">
             <label>Etapa</label>
             <select id="mat-l-etapa" onchange="onMatEtapaChange()"></select>
@@ -4455,7 +4455,11 @@ function onMatEtapaChange(presetFase, presetSub, presetAmbiente, presetLinkPacot
   // Etapa não precisa aparecer quando já veio de dentro de Execução de Obra —
   // ali só o Ambiente importa, igual no modal de Serviço, que nem tem Etapa.
   const etapaGroupEl = document.getElementById('mat-l-etapa-group');
-  if(etapaGroupEl) etapaGroupEl.style.display = isObra ? 'none' : '';
+  // Itens para Casa também só tem "Compra" (nunca Serviço), então recebe o
+  // mesmo tratamento de Execução de Obra: Etapa fica implícita/escondida,
+  // pra as duas janelas ficarem com o mesmo design — só aparece quando é
+  // uma categoria "solta" de verdade (fantasma) que precisa escolher a etapa.
+  if(etapaGroupEl) etapaGroupEl.style.display = (isObra || isItensCasa) ? 'none' : '';
   document.getElementById('mat-l-subetapa-label').textContent = isObra ? 'Ambiente' : (isItensCasa ? 'Ambiente' : 'Sub-etapa');
   if(isObra){
     // Fase deixou de ser um campo à parte aqui — só Ambiente, direto (mesma
