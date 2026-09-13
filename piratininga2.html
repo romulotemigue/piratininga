@@ -9,7 +9,7 @@
 // guardada. Só recarrega se já existia uma versão salva antes (não na
 // primeiríssima visita), pra não entrar num loop.
 (function(){
-  var BUILD_VERSION = '222';
+  var BUILD_VERSION = '223';
   try{
     var last = localStorage.getItem('pirati_build_version');
     if(last !== BUILD_VERSION){
@@ -339,7 +339,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 13SET26 (versão 222)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 13SET26 (versão 223)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -4469,8 +4469,11 @@ function onMatEtapaChange(presetFase, presetSub, presetAmbiente, presetLinkPacot
     const ambientes = getAmbientesAtivosOrdenados().filter(a=>getObraAmbienteRepresentativeSk(a));
     const presetEntry = presetSub && SUBCATS['obra-bruta']?.[presetSub];
     const presetAmb = presetEntry?.label || presetFase || null;
-    subEl.innerHTML = ambientes.map(a=>`<option value="${a}">${a}</option>`).join('');
-    if(presetAmb && ambientes.some(a=>a.toLowerCase()===presetAmb.toLowerCase())) subEl.value = presetAmb;
+    const presetAmbValido = presetAmb && ambientes.some(a=>a.toLowerCase()===presetAmb.toLowerCase());
+    // Sem preset (botão geral) ou preset que não bate mais — nunca escolhe
+    // um ambiente sozinho, sempre deixa em branco pra pessoa escolher.
+    subEl.innerHTML = (!presetAmbValido ? '<option value="">— escolha o ambiente —</option>' : '') + ambientes.map(a=>`<option value="${a}">${a}</option>`).join('');
+    if(presetAmbValido) subEl.value = presetAmb;
     subsubGroup.style.display = 'none';
     categoriaGroup.style.display = 'none';
   } else if(isItensCasa){
@@ -4685,7 +4688,9 @@ async function confirmMaterialLancamento(){
   const isObra = catKeySelecionado==='obra-bruta';
   const isItensCasa = catKeySelecionado==='itens-casa';
   const catKey = isItensCasa ? document.getElementById('mat-l-categoria').value : catKeySelecionado;
-  const subKey = isObra ? (getObraAmbienteRepresentativeSk(document.getElementById('mat-l-subetapa').value)||'') : document.getElementById('mat-l-subetapa').value;
+  const ambienteEscolhidoObra = isObra ? document.getElementById('mat-l-subetapa').value : null;
+  if(isObra && !ambienteEscolhidoObra){ alert('Escolha o ambiente antes de salvar.'); return; }
+  const subKey = isObra ? (getObraAmbienteRepresentativeSk(ambienteEscolhidoObra)||'') : document.getElementById('mat-l-subetapa').value;
 
   const linhas = [];
   const marca = document.getElementById('mat-l-marca').value.trim();
@@ -5343,10 +5348,11 @@ function populateEmpAmbienteSimples(presetSub, presetAmbienteOnly){
   const ambReconhecido = !!(presetEntry && ambientes.some(a=>a.toLowerCase()===(presetEntry.label||'').toLowerCase()));
   const ambSoReconhecido = !ambReconhecido && presetAmbienteOnly && ambientes.some(a=>a.toLowerCase()===presetAmbienteOnly.toLowerCase());
   const ambFinal = ambReconhecido ? presetEntry.label : (ambSoReconhecido ? presetAmbienteOnly : null);
-  // Se o lançamento é antigo e o ambiente salvo não existe mais na lista
-  // atual, NÃO finge que sabe onde ele está — deixa em branco pra pessoa
-  // escolher de verdade, em vez de cair num ambiente errado silenciosamente.
-  ambSel.innerHTML = ((presetSub||presetAmbienteOnly) && !ambFinal ? '<option value="">— escolha o ambiente —</option>' : '') + ambientes.map(a=>`<option value="${a}">${a}</option>`).join('');
+  // Sem preset nenhum (botão geral, sem contexto de ambiente) OU com preset
+  // que não bate mais — nunca escolhe um ambiente sozinho: sempre deixa em
+  // branco pra pessoa escolher de propósito, em vez de cair no primeiro da
+  // lista por padrão do navegador.
+  ambSel.innerHTML = (!ambFinal ? '<option value="">— escolha o ambiente —</option>' : '') + ambientes.map(a=>`<option value="${a}">${a}</option>`).join('');
   if(ambFinal) ambSel.value = ambFinal;
   onEmpAmbienteSimplesChange();
 }
@@ -6595,7 +6601,7 @@ async function confirmEmpreitada(){
     if(checkElSimples){ checkElSimples.checked = true; checkElSimples.dispatchEvent(new Event('change')); }
   }
   const checks = [...document.querySelectorAll('.emp-sub-check:checked')];
-  if(!checks.length && !empreitadaLegacySemGrade){ alert('Marque pelo menos um serviço coberto.'); return; }
+  if(!checks.length && !empreitadaLegacySemGrade){ alert('Escolha o ambiente antes de salvar.'); return; }
   const servicos = [];
   if(!checks.length && empreitadaLegacySemGrade){
     servicos.push({sub: empreitadaLegacySemGrade.sub, ambiente: empreitadaLegacySemGrade.ambiente});
@@ -6729,6 +6735,13 @@ function refreshObraExtraFields(prefix){
   }
 }
 
+function desvincularItensCasaQuebrado(key){
+  const extras = getItensCasaExtraChildren().filter(k=>k!==key);
+  saveItensCasaExtraChildren(extras);
+  renderCatNav();
+  renderDiagnostico();
+  toast('Desvinculado — agora aparece em "Categorias fantasmas" pra você mover os lançamentos.');
+}
 function isCategoriaFantasma(catKey){
   const ETAPAS_FIXAS_CONHECIDAS = ['obra-bruta','venda-imovel','compra-imovel','projeto-arq','mudanca','outroscustos','ganho','itens-casa'];
   if(!catKey || !CATS[catKey]) return false;
@@ -9280,6 +9293,20 @@ function renderDiagnostico(){
   const fantasmaKeys = Object.keys(fantasmaGroups);
   const fantasmaTotalGeral = fantasmaKeys.reduce((s,k)=>s+fantasmaGroups[k].reduce((s2,g)=>s2+getVal(g),0),0);
 
+  // 1.55) Itens para Casa "quebrado": a chave ainda está registrada na lista
+  // de filhas de Itens para Casa (por isso NÃO aparece como fantasma acima —
+  // getItensCasaChildren() ainda a reconhece), mas nunca ganhou os ambientes
+  // automáticos (SUBCATS vazio) — sobra de um bug antigo. Fica invisível em
+  // qualquer diagnóstico normal e pode até virar a categoria escolhida por
+  // padrão ao clicar "+lançar" em Itens para Casa. Aqui dá pra desvincular
+  // (some da lista de filhas — os lançamentos dela passam a aparecer em
+  // "Categorias fantasmas" acima, prontos pra mover pro lugar certo).
+  const itensCasaQuebrados = getItensCasaChildren().filter(k=>Object.keys(SUBCATS[k]||{}).length===0);
+  const itensCasaQuebradosComGasto = itensCasaQuebrados.map(k=>({
+    key:k, label: CATS[k]?.label||k,
+    itens: gastos.filter(g=>g.categoria===k),
+  }));
+
   // 1.5) Sub-categorias/ambientes órfãos: a categoria existe, mas o ambiente/sub
   // que o lançamento usa não existe mais dentro dela (ex.: você tirou "Mão de Obra"
   // da lista de ambientes, mas os lançamentos antigos continuam com essa marcação)
@@ -9400,6 +9427,21 @@ function renderDiagnostico(){
         <table style="width:100%;border-collapse:collapse">${items.map(rowHtml).join('')}</table>
       </div>`;
     }).join('') : '<div style="color:var(--c-primary);font-size:13px;margin-bottom:1.5rem">Nenhuma categoria fantasma encontrada. ✓</div>'}
+
+    ${itensCasaQuebrados.length ? `
+    <div style="background:var(--c-material-bg2);border:1px solid #7d4a94;border-left:3px solid #c77dea;border-radius:10px;padding:1rem 1.25rem;margin:2rem 0 1.5rem">
+      <div style="font-size:14px;font-weight:700;color:#c77dea;margin-bottom:4px">Itens para Casa quebrado (registrado, mas sem ambientes)</div>
+      <div style="font-size:13px;color:var(--c-primary)">${itensCasaQuebrados.length} categoria(s) ficaram "presas" na lista de Itens para Casa sem nunca ganhar ambientes — clique "Desvincular" pra elas caírem em Categorias fantasmas, onde dá pra mover os lançamentos.</div>
+    </div>
+    ${itensCasaQuebradosComGasto.map(item=>`
+      <div style="background:var(--c-panel);border:1px solid var(--c-border);border-radius:10px;overflow:hidden;margin-bottom:1rem">
+        <div style="padding:10px 14px;background:var(--c-panel3);display:flex;align-items:center;gap:8px">
+          <span style="font-size:13px;font-weight:700;color:#c77dea">"${item.label}"</span>
+          <span style="font-size:12px;color:var(--c-primary)">${item.itens.length} lançamento(s)</span>
+          <button onclick="desvincularItensCasaQuebrado('${item.key}')" style="margin-left:auto;background:var(--c-apagar-bg);border:1px solid var(--c-apagar-strong);color:#e8b544;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer">Desvincular</button>
+        </div>
+      </div>`).join('')}
+    ` : ''}
 
     <div style="background:var(--c-necessario-bg);border:1px solid var(--c-necessario-border);border-left:3px solid #42a5f5;border-radius:10px;padding:1rem 1.25rem;margin:2rem 0 1.5rem">
       <div style="font-size:14px;font-weight:700;color:#42a5f5;margin-bottom:4px">Ambientes órfãos (a categoria existe, mas o ambiente não existe mais dentro dela)</div>
@@ -10189,7 +10231,10 @@ function renderCat(cat){
   // modal antigo (criar cartão + etc), pra ficar com a mesma cara em
   // qualquer lugar que a pessoa clique "+lançar".
   const isItensCasaCat = cat==='itens-casa' || getItensCasaChildren().includes(cat);
-  const catParaLancar = cat==='itens-casa' ? (getItensCasaChildren()[0]||cat) : cat;
+  // Pega o primeiro filho que realmente tem ambientes cadastrados — uma
+  // categoria "registrada" mas quebrada/vazia (sobra de bug antigo) não deve
+  // ser a que abre quando a pessoa clica no "+" geral de Itens para Casa.
+  const catParaLancar = cat==='itens-casa' ? (getItensCasaChildren().find(k=>Object.keys(SUBCATS[k]||{}).length>0) || getItensCasaChildren()[0] || cat) : cat;
   const launchOnclick = isItensCasaCat ? `openMaterialModal('${catParaLancar}')` : `openModal('${catParaLancar}')`;
 
   const byMonth={};
