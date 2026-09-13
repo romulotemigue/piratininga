@@ -1,8 +1,33 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+<script>
+// "Macete" pra forçar atualização: compara a versão deste build com a última
+// que o navegador guardou. Se mudou, recarrega a página UMA vez com um
+// parâmetro novo na URL (?_v=XXX) — isso convence o navegador (e o cache da
+// GitHub Pages) a buscar o HTML de novo em vez de servir uma cópia antiga
+// guardada. Só recarrega se já existia uma versão salva antes (não na
+// primeiríssima visita), pra não entrar num loop.
+(function(){
+  var BUILD_VERSION = '215';
+  try{
+    var last = localStorage.getItem('pirati_build_version');
+    if(last !== BUILD_VERSION){
+      localStorage.setItem('pirati_build_version', BUILD_VERSION);
+      if(last){
+        var url = new URL(location.href);
+        url.searchParams.set('_v', BUILD_VERSION);
+        location.replace(url.toString());
+      }
+    }
+  }catch(e){}
+})();
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Piratininga — Controle de Gastos</title>
 <script>
 // Aplica o tema salvo (claro/escuro) o quanto antes, antes da página desenhar,
@@ -314,7 +339,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 214)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 12SET26 (versão 215)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -2276,10 +2301,23 @@ function toggleSubGroup(k, gName, e){
 function buildSubcatRowsHtmlObraAmbiente(k){
   if(!SUBCATS[k]) return '';
   const skKeys = Object.keys(SUBCATS[k]);
-  const ambientesOrdenados = getAmbientesAtivosOrdenados();
+  // Agrupa por ambiente (label) e ordena pela MENOR 'ordem' de cada grupo —
+  // mesma lógica que Itens para Casa já usa pra ordenar os ambientes dele
+  // (sort por SUBCATS[k][sk].ordem), pra ficar na mesma sequência nos dois
+  // lugares em vez de usar a ordem "ao vivo" do catálogo de ambientes.
+  const porAmbiente = {};
+  skKeys.forEach(sk=>{
+    const label = SUBCATS[k][sk].label;
+    if(!label) return;
+    (porAmbiente[label] = porAmbiente[label] || []).push(sk);
+  });
+  const ambientesOrdenados = Object.keys(porAmbiente).sort((a,b)=>{
+    const oa = Math.min(...porAmbiente[a].map(sk=>SUBCATS[k][sk].ordem??999999));
+    const ob = Math.min(...porAmbiente[b].map(sk=>SUBCATS[k][sk].ordem??999999));
+    return oa-ob;
+  });
   return ambientesOrdenados.map(ambName=>{
-    const items = skKeys.filter(sk=>(SUBCATS[k][sk].label||'').toLowerCase()===ambName.toLowerCase());
-    if(!items.length) return '';
+    const items = porAmbiente[ambName];
     const ativo = items.some(sk=>isSubAtivo(k, sk));
     const cor = corDoAmbiente(ambName);
     return `
@@ -2291,7 +2329,7 @@ function buildSubcatRowsHtmlObraAmbiente(k){
           ${ambName}
         </div>
         <button class="subcat-dots-btn" title="Lancar em ${ambName}" style="background:none;border:none;color:var(--c-muted2);cursor:pointer;padding:4px 4px;font-size:15px;transition:color .15s;opacity:1!important" onclick="event.stopPropagation();openObraTriagemModal()" onmouseover="this.style.color='${cor}'" onmouseout="this.style.color='var(--c-muted2)'"><i class="ti ti-plus"></i></button>
-        <button class="subcat-dots-btn" style="background:none;border:none;color:var(--c-primary);cursor:pointer;padding:4px 6px;font-size:14px;flex-shrink:0;opacity:1" onclick="event.stopPropagation();toggleFaseAtivo('${k}',${JSON.stringify(items).replace(/"/g,'&quot;')},event)" title="${ativo?'Desativar':'Ativar'} esse ambiente"><i class="ti ti-power"></i></button>
+        <button class="subcat-dots-btn" style="background:none;border:none;color:var(--c-secondary);cursor:pointer;padding:4px 6px;font-size:14px;transition:opacity .15s" onclick="event.stopPropagation();toggleFaseAtivo('${k}',${JSON.stringify(items).replace(/"/g,'&quot;')},event)" title="${ativo?'Desativar':'Ativar'} esse ambiente"><i class="ti ti-dots-vertical"></i></button>
       </div>`;
   }).join('');
 }
