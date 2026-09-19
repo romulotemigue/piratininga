@@ -9,7 +9,7 @@
 // guardada. Só recarrega se já existia uma versão salva antes (não na
 // primeiríssima visita), pra não entrar num loop.
 (function(){
-  var BUILD_VERSION = '233';
+  var BUILD_VERSION = '234';
   try{
     var last = localStorage.getItem('pirati_build_version');
     if(last !== BUILD_VERSION){
@@ -339,7 +339,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 13SET26 (versão 233)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19SET26 (versão 234)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -471,11 +471,16 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
     <div class="modal-row" id="f-status-ambiente-row">
       <div class="form-group">
         <label>Status</label>
-        <select id="f-status">
+        <select id="f-status" onchange="toggleValorPagoRow('f')">
           <option value="pago">Pago</option>
+          <option value="pagando">Pagando (parcial)</option>
           <option value="necessario">Necessário</option>
           <option value="apagar">Dispensável</option>
         </select>
+      </div>
+      <div class="form-group" id="f-valor-pago-row" style="display:none">
+        <label>Quanto já foi pago (R$)</label>
+        <input type="text" id="f-valor-pago" placeholder="0,00" oninput="maskMoney(this)" inputmode="numeric">
       </div>
       <div class="form-group" id="f-ambiente-group" style="display:none">
         <label>Ambientes (opcional) — pode escolher mais de um e informar m²/valor</label>
@@ -732,12 +737,16 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
       </div>
       <div class="form-group" id="e-status-group">
         <label>Status</label>
-        <select id="e-status">
+        <select id="e-status" onchange="toggleValorPagoRow('e')">
           <option value="pago">Pago</option>
           <option value="necessario">Necessário</option>
           <option value="apagar">Dispensável</option>
         </select>
       </div>
+    </div>
+    <div class="form-group" id="e-valor-pago-row" style="display:none">
+      <label>Quanto já foi pago (R$)</label>
+      <input type="text" id="e-valor-pago" placeholder="0,00" oninput="maskMoney(this)" inputmode="numeric">
     </div>
     <div id="e-invest-wrap"></div>
     <div class="form-group">
@@ -1125,12 +1134,17 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         </div>
         <div class="form-group" style="margin-bottom:0">
           <label>Status</label>
-          <select id="mat-l-status">
+          <select id="mat-l-status" onchange="toggleValorPagoRow('mat-l')">
             <option value="necessario">Necessário</option>
             <option value="pago">Pago</option>
+            <option value="pagando">Pagando (parcial)</option>
             <option value="apagar">Dispensável</option>
           </select>
         </div>
+      </div>
+      <div class="form-group" id="mat-l-valor-pago-row" style="display:none;margin-bottom:14px">
+        <label>Quanto já foi pago (R$)</label>
+        <input type="text" id="mat-l-valor-pago" placeholder="0,00" oninput="maskMoney(this)" inputmode="numeric" style="max-width:220px">
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
         <div class="form-group" style="margin-bottom:0">
@@ -1313,12 +1327,17 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
       </div>
       <div class="form-group" style="margin-bottom:0">
         <label>Status</label>
-        <select id="emp-status">
+        <select id="emp-status" onchange="toggleValorPagoRow('emp')">
           <option value="necessario">Necessário</option>
           <option value="pago">Pago</option>
+          <option value="pagando">Pagando (parcial)</option>
           <option value="apagar">Dispensável</option>
         </select>
       </div>
+    </div>
+    <div class="form-group" id="emp-valor-pago-row" style="display:none;margin-bottom:14px">
+      <label>Quanto já foi pago (R$)</label>
+      <input type="text" id="emp-valor-pago" placeholder="0,00" oninput="maskMoney(this)" inputmode="numeric" style="max-width:220px">
     </div>
     <div id="emp-extra-info-group-2" style="display:none">
       <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:14px;align-items:end;margin-bottom:2px">
@@ -1624,7 +1643,11 @@ function getStatusDetailList(status, scope){
   if(statusArr.length===1 && statusArr[0]==='apagar'){
     return gastos.filter(g=>g.status==='apagar'&&isReformaGasto(g)&&isCategoriaGlobalAtiva(g.categoria));
   }
-  const reforma = gastos.filter(g=>statusArr.includes(g.status) && isReformaGasto(g) && isCategoriaGlobalAtiva(g.categoria));
+  // Um lançamento "pagando" (pago parcial) aparece tanto no detalhe de Pago
+  // quanto no de Necessário — a barrinha de cada linha mostra qual parte é
+  // qual; o total do topo já vem calculado certo (só a parte pedida).
+  const incluiPagando = statusArr.includes('pago') || statusArr.includes('necessario');
+  const reforma = gastos.filter(g=>(statusArr.includes(g.status) || (incluiPagando && g.status==='pagando')) && isReformaGasto(g) && isCategoriaGlobalAtiva(g.categoria));
   if(scope==='reforma') return reforma;
   const venda   = gastos.filter(g=>g.categoria==='venda-imovel'  && statusArr.includes(g.status) && getImovelCardKind('venda-imovel',g.subcategoria)==='pagamento' && isCategoriaGlobalAtiva(g.categoria));
   const compra  = gastos.filter(g=>g.categoria==='compra-imovel' && statusArr.includes(g.status) && getImovelCardKind('compra-imovel',g.subcategoria)==='pagamento' && isCategoriaGlobalAtiva(g.categoria));
@@ -1635,8 +1658,8 @@ let statusModalCurrentStatus = null;
 let statusModalCurrentScope = null;
 let statusModalInvestimentoTag = null;
 
-function renderStatusDetailGrouped(list){
-  const getValSd = g=>gastoValor(g);
+function renderStatusDetailGrouped(list, valorParaEsseStatus){
+  const getValSd = valorParaEsseStatus || (g=>gastoValor(g));
   const groups = {};
   list.forEach(g=>{
     const displayKey = CAT_MERGE_ALIASES[g.categoria] || g.categoria;
@@ -1696,16 +1719,25 @@ function refreshStatusDetailModal(){
     }
   }
   document.getElementById('status-detail-title').textContent = title;
+  // Se o status pedido é 'pago' ou 'necessario' (não array), um lançamento
+  // "pagando" entra só com a fatia correspondente (paga ou pendente) — não
+  // com o valor cheio, senão o total bateria errado com a soma real.
+  const valorParaEsseStatus = g => {
+    if(Array.isArray(status)) return getValSd(g);
+    if(status==='pago') return pagoEfetivo(g, getValSd);
+    if(status==='necessario') return necessarioEfetivo(g, getValSd);
+    return getValSd(g);
+  };
   const total = list.reduce((s,g)=>{
     const displayKey = CAT_MERGE_ALIASES[g.categoria] || g.categoria;
     if(statusModalDisabledGroups.has(displayKey)) return s;
-    return s+getValSd(g);
+    return s+valorParaEsseStatus(g);
   },0);
   const totalEl = document.getElementById('status-detail-total');
   totalEl.textContent = fmt(total);
   totalEl.style.color = color;
   document.getElementById('status-detail-tbody').innerHTML = list.length
-    ? renderStatusDetailGrouped(list)
+    ? renderStatusDetailGrouped(list, valorParaEsseStatus)
     : '<tr><td colspan="6" style="padding:1.5rem;text-align:center;color:var(--c-primary);font-size:13px">Nenhum lançamento</td></tr>';
 }
 
@@ -2882,7 +2914,7 @@ function openEdit(id){
       // "Dispensável" não fazem sentido pra essas etapas.
       statusSelect.innerHTML = '<option value="pago">Pago</option><option value="necessario">À pagar</option>';
     } else {
-      statusSelect.innerHTML = '<option value="pago">Pago</option><option value="necessario">Necessário</option><option value="apagar">Dispensável</option>';
+      statusSelect.innerHTML = '<option value="pago">Pago</option><option value="pagando">Pagando (parcial)</option><option value="necessario">Necessário</option><option value="apagar">Dispensável</option>';
     }
     // Investimento (Perpétuo/Transferível/Pessoal/Taxas) não faz sentido pra
     // recebimentos, nem pra Compra do Imóvel inteira (lá é tudo taxa mesmo,
@@ -2893,6 +2925,8 @@ function openEdit(id){
     if(ehValorImovelCompra) setInvestimentoValue('e','compra-imovel-valor');
     else if(g.categoria==='compra-imovel' || (g.categoria==='venda-imovel' && !ehRecebimentoVenda)) setInvestimentoValue('e','taxas');
     statusSelect.value = g.status||'pago';
+    document.getElementById('e-valor-pago').value = g.valor_pago_parcial ? fmtInput(g.valor_pago_parcial) : '';
+    toggleValorPagoRow('e');
     document.getElementById('btn-confirm-edit').style.background='#e8b544';
 
     const ehVendaOuCompra = g.categoria==='venda-imovel' || g.categoria==='compra-imovel';
@@ -2966,6 +3000,12 @@ async function saveEdit(){
     row.data = document.getElementById('e-data').value;
     row.status = document.getElementById('e-status').value;
     row.investimento = document.getElementById('e-investimento')?.value || '';
+    if(row.status==='pagando'){
+      const vp = parseMoney(document.getElementById('e-valor-pago').value);
+      row.valor_pago_parcial = isNaN(vp) ? 0 : vp;
+    } else {
+      row.valor_pago_parcial = null;
+    }
     if(getItensCasaChildren().includes(row.categoria)){
       const marca = document.getElementById('e-marca').value.trim();
       const loja = document.getElementById('e-loja').value.trim();
@@ -4333,6 +4373,8 @@ function openMaterialModal(presetCat, presetFase, presetSub, presetLinkPacote){
   document.getElementById('mat-l-data').value = new Date().toISOString().slice(0,10);
   document.getElementById('mat-l-status').value = pendingStatusPreset || 'necessario';
   pendingStatusPreset = null;
+  document.getElementById('mat-l-valor-pago').value = '';
+  toggleValorPagoRow('mat-l');
   document.getElementById('mat-l-entrega').value = '';
   document.getElementById('mat-l-prazo').value = '';
   document.getElementById('mat-l-entregue').checked = false;
@@ -4409,6 +4451,8 @@ function openMaterialModalForEdit(g){
   document.getElementById('mat-l-loja').value = parsed.loja;
   document.getElementById('mat-l-data').value = g.data || new Date().toISOString().slice(0,10);
   document.getElementById('mat-l-status').value = g.status || 'necessario';
+  document.getElementById('mat-l-valor-pago').value = g.valor_pago_parcial ? fmtInput(g.valor_pago_parcial) : '';
+  toggleValorPagoRow('mat-l');
   const meta = getPacoteMeta(g);
   document.getElementById('mat-l-entrega').value = meta.dataInicio || '';
   document.getElementById('mat-l-prazo').value = meta.prazoDias || '';
@@ -4720,9 +4764,12 @@ async function confirmMaterialLancamento(){
   try{
     const ambienteVal = isObra ? (SUBCATS['obra-bruta']?.[subKey]?.label || '') : '';
     const linkedPacoteId = null;
+    const statusEscolhido = document.getElementById('mat-l-status').value;
+    const valorPagoParcialInput = parseMoney(document.getElementById('mat-l-valor-pago').value);
     const row = {
       descricao: desc, categoria: catKey, subcategoria: subKey||'', valor: val, quantidade:1,
-      status: document.getElementById('mat-l-status').value,
+      status: statusEscolhido,
+      valor_pago_parcial: statusEscolhido==='pagando' ? (isNaN(valorPagoParcialInput)?0:valorPagoParcialInput) : null,
       data: document.getElementById('mat-l-data').value,
       obs, link: document.getElementById('mat-l-link').value.trim(),
       tipo_contratacao: 'material',
@@ -5145,6 +5192,54 @@ function gastoValor(g){
   const mat = g.materiais ? materiaisTotal(getMateriais(g)) : 0;
   return base + mat;
 }
+// ── PAGANDO (pagamento parcial) ─────────────────────────────────────
+// Um lançamento com status 'pagando' representa algo pago PARCIALMENTE
+// (ex: 60% de entrada). O cartão vive numa coluna própria ("Pagando"),
+// mas o valor se divide nos totais: a parte já paga conta como PAGO em
+// todo o app, e o restante ainda conta como NECESSÁRIO (ainda falta pagar).
+function valorPagoParcial(g){
+  const v = Math.max(0, Number(g.valor_pago_parcial)||0);
+  const total = gastoValor(g);
+  return Math.min(v, total);
+}
+// Mostra/esconde o campo "quanto já foi pago" conforme o status escolhido
+// nos selects que suportam pagamento parcial. `prefix` é o prefixo do id
+// (ex: 'e', 'mat-l', 'emp').
+function toggleValorPagoRow(prefix){
+  const sel = document.getElementById(prefix+'-status');
+  const row = document.getElementById(prefix+'-valor-pago-row');
+  if(!sel || !row) return;
+  row.style.display = sel.value==='pagando' ? '' : 'none';
+}
+function pctPagoParcial(g){
+  const total = gastoValor(g);
+  if(total<=0) return 0;
+  return Math.round(valorPagoParcial(g)/total*100);
+}
+// Soma a parte "paga" de um lançamento, usando um getter de valor customizado
+// (getVal, getValG, getValSub, getValO, getValCat, etc — todos calculam o
+// valor total do lançamento, do jeito específico de cada tela).
+function pagoEfetivo(g, getVal){
+  const gv = getVal||gastoValor;
+  if(g.status==='pago') return gv(g);
+  if(g.status==='pagando'){
+    const total = gv(g);
+    const pagoParcialAbs = Math.max(0, Number(g.valor_pago_parcial)||0);
+    return Math.min(pagoParcialAbs, total);
+  }
+  return 0;
+}
+// Soma a parte "necessária/pendente" de um lançamento (mesmo getter customizado).
+function necessarioEfetivo(g, getVal){
+  const gv = getVal||gastoValor;
+  if(g.status==='necessario') return gv(g);
+  if(g.status==='pagando'){
+    const total = gv(g);
+    const pagoParcialAbs = Math.max(0, Number(g.valor_pago_parcial)||0);
+    return Math.max(0, total - Math.min(pagoParcialAbs, total));
+  }
+  return 0;
+}
 const INVEST_INFO = {
   perpetuo:     {label:'Perpétuo',     color:'#4caf50', bg:'var(--c-pago-bg2)', border:'var(--c-pago-border2)'},
   transferivel: {label:'Transferível', color:'#42a5f5', bg:'var(--c-necessario-bg)', border:'var(--c-necessario-border2)'},
@@ -5385,6 +5480,8 @@ function openObraEmpreitadaModal(material, presetSub, isUnico, presetFase){
   document.getElementById('emp-data').value = new Date().toISOString().slice(0,10);
   document.getElementById('emp-status').value = pendingStatusPreset || 'necessario';
   pendingStatusPreset = null;
+  document.getElementById('emp-valor-pago').value = '';
+  toggleValorPagoRow('emp');
   document.getElementById('emp-data-inicio').value = '';
   document.getElementById('emp-prazo-dias').value = '';
   document.getElementById('emp-prazo-preview').style.display = 'none';
@@ -5460,6 +5557,8 @@ function openObraEmpreitadaModalForEdit(g){
   document.getElementById('emp-valor').value = g.valor ? fmtInput(g.valor) : '';
   document.getElementById('emp-data').value = g.data||new Date().toISOString().slice(0,10);
   document.getElementById('emp-status').value = g.status||'necessario';
+  document.getElementById('emp-valor-pago').value = g.valor_pago_parcial ? fmtInput(g.valor_pago_parcial) : '';
+  toggleValorPagoRow('emp');
   document.getElementById('emp-btn-confirm').textContent = 'Salvar alterações';
   document.getElementById('emp-valor-label').textContent = 'Valor do serviço (R$)';
   const dataInicioLabelElEdit = document.getElementById('emp-data-inicio-label');
@@ -6648,8 +6747,10 @@ async function confirmEmpreitada(){
   const obs = linhas.join(' · ');
   const link = document.getElementById('emp-link').value.trim();
 
+  const valorPagoParcialInput = parseMoney(document.getElementById('emp-valor-pago').value);
   const row = {
     descricao: desc, categoria:'obra-bruta', subcategoria: primeiro.sub, data, valor: val, status,
+    valor_pago_parcial: status==='pagando' ? (isNaN(valorPagoParcialInput)?0:valorPagoParcialInput) : null,
     ambiente: primeiro.ambiente,
     pacote_subs: JSON.stringify(servicos),
     tipo_contratacao: (empreitadaIsUnico ? 'unico-' : '') + empreitadaMaterial,
@@ -6826,9 +6927,14 @@ function openModal(cat, subcat){
       } else if(curCat==='compra-imovel'){
         statusEl.innerHTML = '<option value="pago">Pago</option><option value="necessario">A pagar</option>';
       } else {
-        statusEl.innerHTML = `<option value="pago">${getColLabel('pago')}</option><option value="necessario">${getColLabel('necessario')}</option><option value="apagar">${getColLabel('apagar')}</option>`;
+        statusEl.innerHTML = `<option value="pago">${getColLabel('pago')}</option><option value="pagando">${getColLabel('pagando')}</option><option value="necessario">${getColLabel('necessario')}</option><option value="apagar">${getColLabel('apagar')}</option>`;
       }
       if(pendingStatusPreset){ statusEl.value = pendingStatusPreset; pendingStatusPreset = null; }
+      const fValorPagoRow = document.getElementById('f-valor-pago-row');
+      if(fValorPagoRow) fValorPagoRow.style.display = 'none';
+      const fValorPagoInput = document.getElementById('f-valor-pago');
+      if(fValorPagoInput) fValorPagoInput.value = '';
+      toggleValorPagoRow('f');
     }
   }, 0);
   document.getElementById('modal-overlay').classList.add('open');
@@ -6920,7 +7026,9 @@ async function addGasto(){
     const subcat = document.getElementById('f-subcat')?.value || document.getElementById('modal-overlay').dataset.subcat||'';
     const link = document.getElementById('f-link').value.trim();
     const investimento = document.getElementById('f-investimento')?.value || '';
-    const payload = {descricao:desc,categoria:cat,data,valor:val,status:st,obs,orcamento,subcategoria:subcat,link,quantidade:1,investimento};
+    const valorPagoParcialF = parseMoney(document.getElementById('f-valor-pago')?.value || '');
+    const payload = {descricao:desc,categoria:cat,data,valor:val,status:st,obs,orcamento,subcategoria:subcat,link,quantidade:1,investimento,
+      valor_pago_parcial: st==='pagando' ? (isNaN(valorPagoParcialF)?0:valorPagoParcialF) : null};
     if(cat==='obra-bruta'){
       const ambData = ambienteData['f-form'] || {};
       const ambNomes = Object.keys(ambData);
@@ -8659,7 +8767,7 @@ function buildReformaPieChart(){
   const canvas = document.getElementById('reformaPieChart');
   if(!canvas) return;
   const getVal = g=>gastoValor(g);
-  const items = gastos.filter(g=>(g.status==='pago'||g.status==='necessario') && isReformaGasto(g) && isCategoriaGlobalAtiva(g.categoria));
+  const items = gastos.filter(g=>(g.status==='pago'||g.status==='pagando'||g.status==='necessario') && isReformaGasto(g) && isCategoriaGlobalAtiva(g.categoria));
   const byCat = {};
   items.forEach(g=>{ byCat[g.categoria] = (byCat[g.categoria]||0) + getVal(g); });
   const catKeys = Object.keys(byCat).filter(k=>byCat[k]>0).sort((a,b)=>byCat[b]-byCat[a]);
@@ -8843,10 +8951,11 @@ function renderGeral(){
   const dispGanhos = ganhos.filter(g=>g.subcategoria==='disponivel'||!g.subcategoria).reduce((s,g)=>s+gastoValor(g),0);
   const aReceberGanhos = ganhos.filter(g=>g.subcategoria==='areceber').reduce((s,g)=>s+gastoValor(g),0);
   const ativos = gastosG.filter(g=>g.status==='pago'&&isReforma(g));
-  const total  = ativos.reduce((s,g)=>s+getVal(g),0);
-  const pago   = gastosG.filter(g=>g.status==='pago'&&isReforma(g)).reduce((s,g)=>s+getVal(g),0);
+  const reformaItens = gastosG.filter(isReforma);
+  const total  = reformaItens.reduce((s,g)=>s+pagoEfetivo(g,getVal),0);
+  const pago   = total;
   const dispensavel = gastosG.filter(g=>g.status==='apagar'&&isReforma(g)).reduce((s,g)=>s+getVal(g),0);
-  const necessario  = gastosG.filter(g=>g.status==='necessario'&&isReforma(g)).reduce((s,g)=>s+getVal(g),0);
+  const necessario  = reformaItens.reduce((s,g)=>s+necessarioEfetivo(g,getVal),0);
   const pct    = dispGanhos>0?Math.round(total/dispGanhos*100):0;
   const barColor = pct>90?'#ef5350':pct>70?'#e8b544':'#4caf50';
 
@@ -9289,7 +9398,7 @@ function renderDiagnostico(){
   // Esses não aparecem em NENHUMA das 3 colunas de NENHUMA tela (nem na etapa,
   // nem na Visão Geral) — ficam completamente invisíveis, mesmo que a categoria
   // e o ambiente estejam certinhos.
-  const STATUS_VALIDOS = ['pago','necessario','apagar'];
+  const STATUS_VALIDOS = ['pago','pagando','necessario','apagar'];
   const statusInvalidoGroups = {};
   gastos.forEach(g=>{
     if(g.categoria==='ganho') return;
@@ -9571,8 +9680,9 @@ function renderGanhos(){
     </div>`;
   }
 
-  const jaGasto = gastos.filter(g=>g.status==='pago'&&isReformaGasto(g)).reduce((s,g)=>s+gastoValor(g),0);
-  const necessarios = gastos.filter(g=>g.status==='necessario'&&isReformaGasto(g)).reduce((s,g)=>s+gastoValor(g),0);
+  const reformaItensSd = gastos.filter(isReformaGasto);
+  const jaGasto = reformaItensSd.reduce((s,g)=>s+pagoEfetivo(g),0);
+  const necessarios = reformaItensSd.reduce((s,g)=>s+necessarioEfetivo(g),0);
   const dispensavel = gastos.filter(g=>g.status==='apagar'&&isReformaGasto(g)).reduce((s,g)=>s+gastoValor(g),0);
   const naContaAgora = dispTotal - jaGasto;
   const saldoProjetado = naContaAgora + aReceberTotal - necessarios;
@@ -9678,8 +9788,8 @@ function renderContextBars(activeCatKey, activeSubKey){
   const totalGanhos = gastos.filter(g=>g.categoria==='ganho').reduce((s,g)=>s+(g.valor||0),0);
 
   function barHtml(label, color, bgColor, borderColor, items, extraLabel, showSaldo){
-    const pago = items.filter(g=>g.status==='pago').reduce((s,g)=>s+getVal(g),0);
-    const nec  = items.filter(g=>g.status==='necessario').reduce((s,g)=>s+getVal(g),0);
+    const pago = items.reduce((s,g)=>s+pagoEfetivo(g,getVal),0);
+    const nec  = items.reduce((s,g)=>s+necessarioEfetivo(g,getVal),0);
     const disp = items.filter(g=>g.status==='apagar').reduce((s,g)=>s+getVal(g),0);
     const total = pago+nec+disp;
     const pct = totalGanhos>0?Math.round(total/totalGanhos*100):0;
@@ -9738,8 +9848,8 @@ function renderFaseGroup(catKey, gName){
   });
   const getValG = g => gastoValor(g);
   const total = lista.filter(g=>g.status!=='cancel').reduce((s,g)=>s+getValG(g),0);
-  const pago  = lista.filter(g=>g.status==='pago').reduce((s,g)=>s+getValG(g),0);
-  const necessario = lista.filter(g=>g.status==='necessario').reduce((s,g)=>s+getValG(g),0);
+  const pago  = lista.reduce((s,g)=>s+pagoEfetivo(g,getValG),0);
+  const necessario = lista.reduce((s,g)=>s+necessarioEfetivo(g,getValG),0);
   const dispensavel = lista.filter(g=>g.status==='apagar').reduce((s,g)=>s+getValG(g),0);
 
   document.getElementById('content').innerHTML = `
@@ -9787,8 +9897,8 @@ function renderAmbienteGroup(catKey, ambName){
   });
   const getValG = g => gastoValor(g);
   const total = lista.filter(g=>g.status!=='cancel').reduce((s,g)=>s+getValG(g),0);
-  const pago  = lista.filter(g=>g.status==='pago').reduce((s,g)=>s+getValG(g),0);
-  const necessario = lista.filter(g=>g.status==='necessario').reduce((s,g)=>s+getValG(g),0);
+  const pago  = lista.reduce((s,g)=>s+pagoEfetivo(g,getValG),0);
+  const necessario = lista.reduce((s,g)=>s+necessarioEfetivo(g,getValG),0);
   const dispensavel = lista.filter(g=>g.status==='apagar').reduce((s,g)=>s+getValG(g),0);
   const cor = corDoAmbiente(ambName);
 
@@ -9835,8 +9945,8 @@ function renderSubgrupoGroup(catKey, gName, sgName){
   });
   const getValG = g => gastoValor(g);
   const total = lista.filter(g=>g.status!=='cancel').reduce((s,g)=>s+getValG(g),0);
-  const pago  = lista.filter(g=>g.status==='pago').reduce((s,g)=>s+getValG(g),0);
-  const necessario = lista.filter(g=>g.status==='necessario').reduce((s,g)=>s+getValG(g),0);
+  const pago  = lista.reduce((s,g)=>s+pagoEfetivo(g,getValG),0);
+  const necessario = lista.reduce((s,g)=>s+necessarioEfetivo(g,getValG),0);
   const dispensavel = lista.filter(g=>g.status==='apagar').reduce((s,g)=>s+getValG(g),0);
 
   document.getElementById('content').innerHTML = `
@@ -9884,8 +9994,8 @@ function renderSubCat(page){
   });
   const getValSub = g => gastoValor(g);
   const total = lista.filter(g=>g.status!=='cancel').reduce((s,g)=>s+getValSub(g),0);
-  const pago  = lista.filter(g=>g.status==='pago').reduce((s,g)=>s+getValSub(g),0);
-  const necessario= lista.filter(g=>g.status==='necessario').reduce((s,g)=>s+getValSub(g),0);
+  const pago  = lista.reduce((s,g)=>s+pagoEfetivo(g,getValSub),0);
+  const necessario= lista.reduce((s,g)=>s+necessarioEfetivo(g,getValSub),0);
   const dispensavel= lista.filter(g=>g.status==='apagar').reduce((s,g)=>s+getValSub(g),0);
 
   document.getElementById('content').innerHTML = `
@@ -10046,8 +10156,8 @@ function renderObraBrutaSteps(){
   const lista = gastos.filter(g=>catAliasKeys.includes(g.categoria));
   const getValO = g=>gastoValor(g);
   const total = lista.reduce((s,g)=>s+getValO(g),0);
-  const pago = lista.filter(g=>g.status==='pago').reduce((s,g)=>s+getValO(g),0);
-  const necessario = lista.filter(g=>g.status==='necessario').reduce((s,g)=>s+getValO(g),0);
+  const pago = lista.reduce((s,g)=>s+pagoEfetivo(g,getValO),0);
+  const necessario = lista.reduce((s,g)=>s+necessarioEfetivo(g,getValO),0);
   const dispensavel = lista.filter(g=>g.status==='apagar').reduce((s,g)=>s+getValO(g),0);
   const pctGeral = total>0?Math.round(pago/total*100):0;
 
@@ -10069,7 +10179,7 @@ function renderObraBrutaSteps(){
     if(skListAtivos.length===0) return ''; // fase inteira desligada — some do lado direito
     const itemsFase = lista.filter(g=>skListAtivos.includes(g.subcategoria));
     const totalFase = itemsFase.reduce((s,g)=>s+getValO(g),0);
-    const pagoFase = itemsFase.filter(g=>g.status==='pago').reduce((s,g)=>s+getValO(g),0);
+    const pagoFase = itemsFase.reduce((s,g)=>s+pagoEfetivo(g,getValO),0);
     const pctFase = totalFase>0 ? Math.round(pagoFase/totalFase*100) : 0;
     const temItens = itemsFase.length>0;
     const corFase = pctFase>=100 ? '#4caf50' : temItens ? info.color : 'var(--c-border2)';
@@ -10266,8 +10376,8 @@ function renderCat(cat){
   const ativos = lista.filter(g=>g.status!=='cancel');
   const getValCat = g => gastoValor(g);
   const total  = ativos.reduce((s,g)=>s+getValCat(g),0);
-  const pago   = lista.filter(g=>g.status==='pago').reduce((s,g)=>s+getValCat(g),0);
-  const necessario = lista.filter(g=>g.status==='necessario').reduce((s,g)=>s+getValCat(g),0);
+  const pago   = lista.reduce((s,g)=>s+pagoEfetivo(g,getValCat),0);
+  const necessario = lista.reduce((s,g)=>s+necessarioEfetivo(g,getValCat),0);
   const dispensavel = lista.filter(g=>g.status==='apagar').reduce((s,g)=>s+getValCat(g),0);
   // Itens para Casa (e cada categoria-filha dela, tipo Decoração/Móveis) só
   // tem "Compra" — usa o mesmo modal moderno de Execução de Obra em vez do
@@ -10377,7 +10487,7 @@ async function deleteAllInCol(status, catKey){
 
 // ── COLUMN ORDER & GRID ──────────────────────────────────────────
 let COL_LABELS_CUSTOM = JSON.parse(localStorage.getItem('col_labels_custom')||'{}');
-const COL_DEFAULT_LABELS = { pago:'Pagos', necessario:'Necessários', apagar:'Dispensáveis' };
+const COL_DEFAULT_LABELS = { pago:'Pagos', pagando:'Pagando', necessario:'Necessários', apagar:'Dispensáveis' };
 function getColLabel(status){ return COL_LABELS_CUSTOM[status] || COL_DEFAULT_LABELS[status] || status; }
 function setColLabel(status, label){
   COL_LABELS_CUSTOM[status] = label;
@@ -10397,17 +10507,30 @@ function refreshStatusOptionLabels(){
   document.querySelectorAll('#f-status option[value="pago"], #e-status option[value="pago"], #sl-status option[value="pago"], #mat-l-status option[value="pago"], #emp-status option[value="pago"]').forEach(el=>{ el.textContent = getColLabel('pago'); });
   document.querySelectorAll('#f-status option[value="necessario"], #e-status option[value="necessario"], #sl-status option[value="necessario"], #mat-l-status option[value="necessario"], #emp-status option[value="necessario"]').forEach(el=>{ el.textContent = getColLabel('necessario'); });
   document.querySelectorAll('#f-status option[value="apagar"], #e-status option[value="apagar"], #sl-status option[value="apagar"], #mat-l-status option[value="apagar"], #emp-status option[value="apagar"]').forEach(el=>{ el.textContent = getColLabel('apagar'); });
+  document.querySelectorAll('#f-status option[value="pagando"], #e-status option[value="pagando"], #mat-l-status option[value="pagando"], #emp-status option[value="pagando"]').forEach(el=>{ el.textContent = getColLabel('pagando'); });
 }
 const COL_DEFS = {
   pago:      {color:'#4caf50', icon:'ti-circle-check'},
+  pagando:   {color:'#ab47bc', icon:'ti-clock-dollar'},
   necessario:{color:'#42a5f5', icon:'ti-alert-circle'},
   apagar:    {color:'#e8b544', icon:'ti-clock'},
 };
-const DEFAULT_COL_ORDER = ['pago','necessario','apagar'];
+const DEFAULT_COL_ORDER = ['pago','pagando','necessario','apagar'];
 
 function getColOrder(contextKey){
-  try{ return JSON.parse(localStorage.getItem('col_order_'+(contextKey||'default'))||'null') || [...DEFAULT_COL_ORDER]; }
-  catch(e){ return [...DEFAULT_COL_ORDER]; }
+  let order;
+  try{ order = JSON.parse(localStorage.getItem('col_order_'+(contextKey||'default'))||'null') || [...DEFAULT_COL_ORDER]; }
+  catch(e){ order = [...DEFAULT_COL_ORDER]; }
+  // Colunas customizadas salvas ANTES de "Pagando" existir não têm essa chave —
+  // insere logo depois de "pago" pra não sumir a coluna nova em telas que já
+  // tinham a ordem das colunas mexida manualmente.
+  DEFAULT_COL_ORDER.forEach(st=>{
+    if(!order.includes(st)){
+      const posPago = order.indexOf('pago');
+      order.splice(posPago>-1?posPago+1:order.length, 0, st);
+    }
+  });
+  return order;
 }
 function saveColOrder(contextKey, order){
   localStorage.setItem('col_order_'+(contextKey||'default'), JSON.stringify(order));
@@ -10416,10 +10539,10 @@ function saveColOrder(contextKey, order){
 function renderColGrid(lista, catKey, groupBy, relevantSubs, placeLabel){
   const order = getColOrder(catKey||'default');
 
-  const BG = {pago:'var(--c-pago-bg)', necessario:'var(--c-necessario-bg)', apagar:'var(--c-apagar-bg2)'};
-  const BORDER = {pago:'var(--c-pago-border)', necessario:'var(--c-necessario-border)', apagar:'var(--c-apagar-bg)'};
-  const BORDER_LEFT = {pago:'#4caf50', necessario:'#42a5f5', apagar:'#e8b544'};
-  const HEAD_BG = {pago:'#0a130a', necessario:'#0a1018', apagar:'#120f00'};
+  const BG = {pago:'var(--c-pago-bg)', pagando:'#170f1c', necessario:'var(--c-necessario-bg)', apagar:'var(--c-apagar-bg2)'};
+  const BORDER = {pago:'var(--c-pago-border)', pagando:'#4a2a55', necessario:'var(--c-necessario-border)', apagar:'var(--c-apagar-bg)'};
+  const BORDER_LEFT = {pago:'#4caf50', pagando:'#ab47bc', necessario:'#42a5f5', apagar:'#e8b544'};
+  const HEAD_BG = {pago:'#0a130a', pagando:'#120a15', necessario:'#0a1018', apagar:'#120f00'};
 
   const cols = order.map(status=>{
     const def = COL_DEFS[status];
@@ -10575,6 +10698,16 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
   const multiSubLineHtml = (ambienteList && ambienteList.length)
     ? `<div style="margin-top:2px;font-size:11px">${ambienteList.map(amb=>`<span style="color:${corDoAmbiente(amb)}">${amb}</span>`).join(' <span style="color:var(--c-faint3)">·</span> ')}</div>`
     : '';
+  // Barrinha de progresso do "Pagando" — quanto já foi pago (verde) vs o que
+  // ainda falta (roxo, cor da coluna Pagando), com o valor de cada lado.
+  const pagandoBarHtml = (status==='pagando') ? (()=>{
+    const pagoAbs = valorPagoParcial(g);
+    const pct = pctPagoParcial(g);
+    return `<div style="margin-top:4px">
+      <div style="height:5px;border-radius:3px;background:#3a2340;overflow:hidden"><div style="height:100%;width:${pct}%;background:#4caf50;border-radius:3px"></div></div>
+      <div style="margin-top:2px;font-size:10.5px;color:var(--c-muted3)">${pct}% pago — ${fmtShort(pagoAbs)} de ${fmtShort(val)}</div>
+    </div>`;
+  })() : '';
   // Link material <-> pacote sem material: cada lado mostra o próprio valor E o
   // total somado, nunca só a soma (senão perde-se de vista quanto é de cada um).
   let linkedInfoHtml = '';
@@ -10611,6 +10744,7 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
       ${linkedInfoHtml}
       ${subLabelLineHtml}
       ${multiSubLineHtml}
+      ${pagandoBarHtml}
     </td>
     <td style="text-align:right;font-weight:500;font-size:12px;white-space:nowrap;padding:4px">${fmtShort(val)}</td>
     <td style="padding:4px 2px">${isPacote
@@ -10760,7 +10894,7 @@ function renderRows(list, hideCat=false){
       ${hideCat?'':'<td style="color:var(--c-primary);font-size:13px">'+(CATS[g.categoria]?.label||g.categoria)+'</td>'}
       <td style="text-align:right;font-weight:500">${fmt(gastoValor(g))}</td>
       <td><div class="qty-wrap"><button class="qty-btn" onclick="changeQty(${g.id},-1)">−</button><span class="qty-val">${g.quantidade||1}</span><button class="qty-btn" onclick="changeQty(${g.id},1)">+</button></div></td>
-      <td><span class="badge ${g.status}">${g.status==='pago'?'Pago':g.status==='necessario'?'Necessário':g.status==='apagar'?'Dispensável':'—'}</span></td>
+      <td><span class="badge ${g.status}">${g.status==='pago'?'Pago':g.status==='pagando'?'Pagando':g.status==='necessario'?'Necessário':g.status==='apagar'?'Dispensável':'—'}</span></td>
       <td style="color:var(--c-primary);font-size:13px">${g.obs||''}</td>
       <td style="white-space:nowrap;text-align:center">${g.link?`<a href="${g.link}" target="_blank" title="${g.link}" style="color:#2a78d6;font-size:16px"><i class="ti ti-external-link"></i></a>`:''}</td>
       <td style="white-space:nowrap">
@@ -11111,6 +11245,7 @@ let bulkCatKey = null;
 
 const STATUS_META = {
   pago:      {label:'Pago',        color:'#4caf50'},
+  pagando:   {label:'Pagando',     color:'#ab47bc'},
   necessario:{label:'Necessários', color:'#42a5f5'},
   apagar:    {label:'Dispensáveis',color:'#e8b544'},
 };
