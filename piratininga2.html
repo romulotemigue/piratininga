@@ -9,7 +9,7 @@
 // guardada. Só recarrega se já existia uma versão salva antes (não na
 // primeiríssima visita), pra não entrar num loop.
 (function(){
-  var BUILD_VERSION = '234';
+  var BUILD_VERSION = '235';
   try{
     var last = localStorage.getItem('pirati_build_version');
     if(last !== BUILD_VERSION){
@@ -339,7 +339,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19SET26 (versão 234)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19SET26 (versão 235)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -10536,59 +10536,71 @@ function saveColOrder(contextKey, order){
   localStorage.setItem('col_order_'+(contextKey||'default'), JSON.stringify(order));
 }
 
+const COL_BG = {pago:'var(--c-pago-bg)', pagando:'#170f1c', necessario:'var(--c-necessario-bg)', apagar:'var(--c-apagar-bg2)'};
+const COL_BORDER = {pago:'var(--c-pago-border)', pagando:'#4a2a55', necessario:'var(--c-necessario-border)', apagar:'var(--c-apagar-bg)'};
+const COL_BORDER_LEFT = {pago:'#4caf50', pagando:'#ab47bc', necessario:'#42a5f5', apagar:'#e8b544'};
+const COL_HEAD_BG = {pago:'#0a130a', pagando:'#120a15', necessario:'#0a1018', apagar:'#120f00'};
+
+function renderSingleCol(status, lista, catKey, groupBy, relevantSubs, placeLabel){
+  const def = COL_DEFS[status];
+  if(!def) return '';
+  const bg = COL_BG[status]||'var(--c-panel)';
+  const border = COL_BORDER[status]||'var(--c-border)';
+  const borderLeft = COL_BORDER_LEFT[status]||def.color;
+  const headBg = COL_HEAD_BG[status]||'var(--c-panel)';
+  return `<div class="col-card" data-col-status="${status}" data-drop-status="${status}"
+    style="background:${bg};border:1px solid ${border};border-left:3px solid ${borderLeft};border-radius:10px;overflow:hidden;min-width:0"
+    onDragOver="onColCardOver(event);onDropZoneOver(event)"
+    onDragLeave="onColCardLeave(event);onDropZoneLeave(event)"
+    onDrop="onColCardDrop(event,'${catKey||''}');onDropZoneDrop(event)">
+    <div style="padding:10px 14px;background:${headBg};border-bottom:1px solid ${border};display:flex;align-items:center;gap:6px;position:sticky;top:0;z-index:2">
+      <span class="col-drag-handle" draggable="true" title="Arrastar coluna"
+        style="color:var(--c-primary);cursor:grab;font-size:14px;user-select:none;transition:color .15s"
+        onmouseover="this.style.color='var(--c-faint3)'" onmouseout="this.style.color='var(--c-border2)'"
+        ondragstart="onColDragStart(event,'${status}','${catKey||''}')"
+        ondragend="onColDragEnd(event)">⠿</span>
+      <i class="ti ${def.icon}" style="font-size:14px;color:${def.color}"></i>
+      <span style="font-size:11px;font-weight:600;color:${def.color};text-transform:uppercase;letter-spacing:.08em">${getColLabel(status)}</span>
+      <button onclick="quickAddFromCol('${catKey||''}','${status}')" title="Lançar em ${(placeLabel||'').replace(/"/g,'&quot;')}"
+        class="col-quick-add" style="margin-left:auto">+</button>
+      <button onclick="openBulkModal('${status}','${catKey||''}')" title="Mover em massa"
+        style="background:none;border:none;color:var(--c-primary);cursor:pointer;font-size:15px;padding:2px 4px;border-radius:4px;transition:color .15s"
+        onmouseover="this.style.color='${def.color}'" onmouseout="this.style.color='var(--c-faint)'">
+        <i class="ti ti-arrows-transfer-down"></i>
+      </button>
+    </div>
+    <table style="width:100%;table-layout:fixed;border-collapse:collapse;font-size:13px">
+      <colgroup>
+        <col style="width:14px"><col style="width:34px"><col><col style="width:56px"><col style="width:64px"><col style="width:112px">
+      </colgroup>
+      <thead><tr style="background:${headBg}">
+        <th style="padding:6px 4px 6px 8px;color:var(--c-primary);font-weight:500;font-size:11px;border-bottom:1px solid ${border}"></th>
+        <th style="padding:6px 4px;color:var(--c-primary);font-weight:500;font-size:11px;border-bottom:1px solid ${border}">Data</th>
+        <th style="padding:6px 4px;color:var(--c-primary);font-weight:500;font-size:11px;border-bottom:1px solid ${border}">Descrição</th>
+        <th style="padding:6px 4px;text-align:right;color:var(--c-primary);font-weight:500;font-size:11px;border-bottom:1px solid ${border}">Valor</th>
+        <th style="padding:6px 4px;color:var(--c-primary);font-weight:500;font-size:11px;border-bottom:1px solid ${border}">Qtd</th>
+        <th style="padding:6px 4px;border-bottom:1px solid ${border}"></th>
+      </tr></thead>
+      <tbody>${renderRowsFiltered(lista,status,catKey,border,groupBy,relevantSubs,placeLabel)}</tbody>
+    </table>
+  </div>`;
+}
+
+// "Pagando" fica de fora da grade das 3 colunas clássicas (Pago/Necessário/
+// Dispensável, lado a lado, do jeito que sempre foi) — vem como uma faixa
+// própria, de largura cheia, logo abaixo. Isso vale em TODO o app (qualquer
+// tela que use renderColGrid), não só Execução de Obra.
 function renderColGrid(lista, catKey, groupBy, relevantSubs, placeLabel){
   const order = getColOrder(catKey||'default');
+  const ordemPrincipal = order.filter(st=>st!=='pagando');
+  const temPagando = order.includes('pagando');
 
-  const BG = {pago:'var(--c-pago-bg)', pagando:'#170f1c', necessario:'var(--c-necessario-bg)', apagar:'var(--c-apagar-bg2)'};
-  const BORDER = {pago:'var(--c-pago-border)', pagando:'#4a2a55', necessario:'var(--c-necessario-border)', apagar:'var(--c-apagar-bg)'};
-  const BORDER_LEFT = {pago:'#4caf50', pagando:'#ab47bc', necessario:'#42a5f5', apagar:'#e8b544'};
-  const HEAD_BG = {pago:'#0a130a', pagando:'#120a15', necessario:'#0a1018', apagar:'#120f00'};
-
-  const cols = order.map(status=>{
-    const def = COL_DEFS[status];
-    if(!def) return '';
-    const bg = BG[status]||'var(--c-panel)';
-    const border = BORDER[status]||'var(--c-border)';
-    const borderLeft = BORDER_LEFT[status]||def.color;
-    const headBg = HEAD_BG[status]||'var(--c-panel)';
-    return `<div class="col-card" data-col-status="${status}" data-drop-status="${status}"
-      style="background:${bg};border:1px solid ${border};border-left:3px solid ${borderLeft};border-radius:10px;overflow:hidden;min-width:0"
-      onDragOver="onColCardOver(event);onDropZoneOver(event)"
-      onDragLeave="onColCardLeave(event);onDropZoneLeave(event)"
-      onDrop="onColCardDrop(event,'${catKey||''}');onDropZoneDrop(event)">
-      <div style="padding:10px 14px;background:${headBg};border-bottom:1px solid ${border};display:flex;align-items:center;gap:6px;position:sticky;top:0;z-index:2">
-        <span class="col-drag-handle" draggable="true" title="Arrastar coluna"
-          style="color:var(--c-primary);cursor:grab;font-size:14px;user-select:none;transition:color .15s"
-          onmouseover="this.style.color='var(--c-faint3)'" onmouseout="this.style.color='var(--c-border2)'"
-          ondragstart="onColDragStart(event,'${status}','${catKey||''}')"
-          ondragend="onColDragEnd(event)">⠿</span>
-        <i class="ti ${def.icon}" style="font-size:14px;color:${def.color}"></i>
-        <span style="font-size:11px;font-weight:600;color:${def.color};text-transform:uppercase;letter-spacing:.08em">${getColLabel(status)}</span>
-        <button onclick="quickAddFromCol('${catKey||''}','${status}')" title="Lançar em ${(placeLabel||'').replace(/"/g,'&quot;')}"
-          class="col-quick-add" style="margin-left:auto">+</button>
-        <button onclick="openBulkModal('${status}','${catKey||''}')" title="Mover em massa"
-          style="background:none;border:none;color:var(--c-primary);cursor:pointer;font-size:15px;padding:2px 4px;border-radius:4px;transition:color .15s"
-          onmouseover="this.style.color='${def.color}'" onmouseout="this.style.color='var(--c-faint)'">
-          <i class="ti ti-arrows-transfer-down"></i>
-        </button>
-      </div>
-      <table style="width:100%;table-layout:fixed;border-collapse:collapse;font-size:13px">
-        <colgroup>
-          <col style="width:14px"><col style="width:34px"><col><col style="width:56px"><col style="width:64px"><col style="width:112px">
-        </colgroup>
-        <thead><tr style="background:${headBg}">
-          <th style="padding:6px 4px 6px 8px;color:var(--c-primary);font-weight:500;font-size:11px;border-bottom:1px solid ${border}"></th>
-          <th style="padding:6px 4px;color:var(--c-primary);font-weight:500;font-size:11px;border-bottom:1px solid ${border}">Data</th>
-          <th style="padding:6px 4px;color:var(--c-primary);font-weight:500;font-size:11px;border-bottom:1px solid ${border}">Descrição</th>
-          <th style="padding:6px 4px;text-align:right;color:var(--c-primary);font-weight:500;font-size:11px;border-bottom:1px solid ${border}">Valor</th>
-          <th style="padding:6px 4px;color:var(--c-primary);font-weight:500;font-size:11px;border-bottom:1px solid ${border}">Qtd</th>
-          <th style="padding:6px 4px;border-bottom:1px solid ${border}"></th>
-        </tr></thead>
-        <tbody>${renderRowsFiltered(lista,status,catKey,border,groupBy,relevantSubs,placeLabel)}</tbody>
-      </table>
-    </div>`;
-  }).join('');
-  return `<div class="col-grid" style="display:grid;gap:12px">${cols}</div>`;
+  const cols = ordemPrincipal.map(status=>renderSingleCol(status, lista, catKey, groupBy, relevantSubs, placeLabel)).join('');
+  const gridHtml = `<div class="col-grid" style="display:grid;gap:12px">${cols}</div>`;
+  const pagandoHtml = temPagando
+    ? `<div style="margin-top:12px">${renderSingleCol('pagando', lista, catKey, groupBy, relevantSubs, placeLabel)}</div>`
+    : '';
+  return gridHtml + pagandoHtml;
 }
 
 let colDragStatus = null;
