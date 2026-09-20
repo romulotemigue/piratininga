@@ -1501,6 +1501,18 @@ if(!CATS['itens-casa']) CATS['itens-casa'] = {label:'Itens para Casa', icon:'�
 // Força essa cor SEMPRE (não só uma vez) — sem depender de nenhuma flag
 // que possa ficar presa, sem precisar de nada salvo antes.
 CATS['itens-casa'].color = '#db6942';
+// "Execução de Obra" virou só "Obra" (fica só a parte bruta/estrutural — o
+// que sobrou dela vira submenus/buckets, ver OBRA_FASE_TO_BUCKET) — força
+// o rótulo sempre, pra pegar tanto quem já tem a etapa salva (rename puro)
+// quanto quem ainda vai criá-la (o fallback mais abaixo no arquivo já nasce
+// com esse nome certo).
+if(CATS['obra-bruta']) CATS['obra-bruta'].label = 'Obra';
+// "Marcenaria e Planejados" — nova etapa própria (irmã de "Obra", não um
+// submenu dela), pois só dá pra orçar planejados com medidas precisas,
+// quando a obra já está quase pronta. Criada/forçada sempre aqui, pra
+// funcionar tanto em contas antigas quanto em instalações novas.
+if(!CATS['marcenaria-planejados']) CATS['marcenaria-planejados'] = {label:'Marcenaria e Planejados', icon:'🪚', color:'#8d6e63'};
+CATS['marcenaria-planejados'].label = 'Marcenaria e Planejados';
 localStorage.setItem('pirati_cats', JSON.stringify(CATS));
 function getItensCasaExtraChildren(){
   try{
@@ -3039,6 +3051,68 @@ async function saveEdit(){
 // ── SUBCATEGORIAS ────────────────────────────────────────────────
 let SUBCATS = JSON.parse(localStorage.getItem('pirati_subcats') || '{}');
 function saveSubCats(){ localStorage.setItem('pirati_subcats', JSON.stringify(SUBCATS)); }
+
+// ── OBRA: buckets (Material bruto/serviço x Acabamentos), substituindo as
+// 16 fases antigas por 7 grupos mais simples de entender. "Marcenaria e
+// Móveis Planejados" não vira bucket — sai de dentro de Obra e vira sua
+// própria etapa (marcenaria-planejados), migrada abaixo.
+const MARCENARIA_FASE_NAME = 'Marcenaria e Móveis Planejados';
+const OBRA_FASE_TO_BUCKET = {
+  'Demolição':'Obra bruta (materiais e serviços)',
+  'Alvenaria':'Obra bruta (materiais e serviços)',
+  'Hidráulica':'Obra bruta (materiais e serviços)',
+  'Elétrica':'Obra bruta (materiais e serviços)',
+  'Impermeabilização':'Obra bruta (materiais e serviços)',
+  'Contrapiso e Regularização':'Obra bruta (materiais e serviços)',
+  'Gesso':'Obra bruta (materiais e serviços)',
+  'Pintura (Preparação)':'Obra bruta (materiais e serviços)',
+  'Revestimentos de Parede':'Revestimentos e acabamentos',
+  'Pisos e Rodapés':'Revestimentos e acabamentos',
+  'Marmoraria':'Marmoraria',
+  'Louças, Metais e Vidros':'Louças, Metais e Vidros',
+  'Esquadrias':'Esquadrias (Portas e Janelas)',
+  'Iluminação e Acabamentos Elétricos':'Iluminação',
+  'Pintura Final e Limpeza Pós-Obra':'Pintura'
+};
+const OBRA_BUCKET_ORDER = ['Obra bruta (materiais e serviços)','Revestimentos e acabamentos','Marmoraria','Louças, Metais e Vidros','Esquadrias (Portas e Janelas)','Iluminação','Pintura'];
+const OBRA_BUCKET_COLORS = {
+  'Obra bruta (materiais e serviços)':'#ff7043',
+  'Revestimentos e acabamentos':'#42a5f5',
+  'Marmoraria':'#b0bec5',
+  'Louças, Metais e Vidros':'#26c6da',
+  'Esquadrias (Portas e Janelas)':'#8d6e63',
+  'Iluminação':'#ffd600',
+  'Pintura':'#ab47bc'
+};
+// Migração única (client-side, só mexe no SUBCATS salvo no localStorage —
+// nada no Supabase): renomeia o campo .grupo das 15 fases antigas de
+// obra-bruta pros 7 buckets novos, e tira os itens de Marcenaria/Planejados
+// de dentro de obra-bruta (eles migram pra SUBCATS['marcenaria-planejados']
+// — a migração dos LANÇAMENTOS correspondentes, mudando g.categoria, roda
+// depois que os gastos carregam, em migrateMarcenariaParaEtapaPropria()).
+(function migrarObraBucketsEMarcenariaUmaVezV1(){
+  try{
+    if(localStorage.getItem('pirati_migr_obra_buckets_v1')) return;
+    localStorage.setItem('pirati_migr_obra_buckets_v1','1');
+    const subsObra = SUBCATS['obra-bruta'];
+    if(subsObra){
+      if(!SUBCATS['marcenaria-planejados']) SUBCATS['marcenaria-planejados'] = {};
+      Object.keys(subsObra).forEach(sk=>{
+        const entry = subsObra[sk];
+        if(!entry) return;
+        if(entry.grupo === MARCENARIA_FASE_NAME){
+          SUBCATS['marcenaria-planejados'][sk] = {label: entry.label, ordem: entry.ordem, ordemCustom: entry.ordemCustom};
+          delete subsObra[sk];
+        } else if(OBRA_FASE_TO_BUCKET[entry.grupo]){
+          entry.grupo = OBRA_FASE_TO_BUCKET[entry.grupo];
+        }
+        // fase sem mapeamento conhecido (ex.: já é um bucket novo, ou uma fase
+        // custom criada por fora do padrão) fica como está — nada some.
+      });
+      saveSubCats();
+    }
+  }catch(e){ console.error('migrarObraBucketsEMarcenariaUmaVezV1 error:', e); }
+})();
 
 // Ensure subcats match migrated keys
 function ensureSubCats(){
@@ -6847,7 +6921,7 @@ function desvincularItensCasaQuebrado(key){
   toast('Desvinculado — agora aparece em "Categorias fantasmas" pra você mover os lançamentos.');
 }
 function isCategoriaFantasma(catKey){
-  const ETAPAS_FIXAS_CONHECIDAS = ['obra-bruta','venda-imovel','compra-imovel','projeto-arq','mudanca','outroscustos','ganho','itens-casa'];
+  const ETAPAS_FIXAS_CONHECIDAS = ['obra-bruta','marcenaria-planejados','venda-imovel','compra-imovel','projeto-arq','mudanca','outroscustos','ganho','itens-casa'];
   if(!catKey || !CATS[catKey]) return false;
   if(IMOVEL_CATS[catKey]) return false;
   if(ETAPAS_FIXAS_CONHECIDAS.includes(catKey)) return false;
@@ -7332,7 +7406,7 @@ function navigate(page, skipHistory){
     render();
     return;
   }
-  const fixedTitles={geral:'Visão Geral',ganhos:'Aportes','venda-imovel':'Venda do Imóvel','compra-imovel':'Compra do Imóvel','projeto-arq':'Projeto de Arquitetura','obra-bruta':'Execução de Obra','definir-ambientes':'Definir Ambientes'};
+  const fixedTitles={geral:'Visão Geral',ganhos:'Aportes','venda-imovel':'Venda do Imóvel','compra-imovel':'Compra do Imóvel','projeto-arq':'Projeto de Arquitetura','obra-bruta':'Obra','definir-ambientes':'Definir Ambientes'};
   const rawTitle = fixedTitles[page] || (CATS[page]?.label) || page;
   const num = getEtapaNum(page);
   const titleEl = document.getElementById('topbar-title');
@@ -7624,7 +7698,7 @@ function saveImovelCatsCustom(){
 
 // Categorias normais "promovidas" visualmente a etapa (numeração + fundo colorido no menu),
 // mas que continuam usando o SUBCATS/renderCat normal — conteúdo interno não muda.
-let EXTRA_PINNED_STAGES = ['moveis','obra-bruta','planejados','decoracao','iluminacao','eletro','loucas','revestimentos','revestimentos-paredes','marmoraria','mudanca','camamesabanho','outroscustos'];
+let EXTRA_PINNED_STAGES = ['moveis','obra-bruta','marcenaria-planejados','planejados','decoracao','iluminacao','eletro','loucas','revestimentos','revestimentos-paredes','marmoraria','mudanca','camamesabanho','outroscustos'];
 const EXTRA_PINNED_STAGES_DEFAULTS = [...EXTRA_PINNED_STAGES];
 try{
   const customStages = JSON.parse(localStorage.getItem('pirati_custom_stages')||'[]');
@@ -7642,7 +7716,7 @@ function getPinnedStageKeys(){
   // Ordem FIXA, sem arrastar — decidida direto pelo Romulo depois de muita
   // dor de cabeça com o drag. Não lê mais 'pinned_stage_order' nem depende
   // de nenhuma lógica de arrastar/soltar pras etapas principais.
-  const ordemFixa = ['venda-imovel','compra-imovel','projeto-arq','obra-bruta','mudanca','itens-casa','outroscustos'];
+  const ordemFixa = ['venda-imovel','compra-imovel','projeto-arq','obra-bruta','marcenaria-planejados','mudanca','itens-casa','outroscustos'];
   const allPinned = [...Object.keys(IMOVEL_CATS), ...EXTRA_PINNED_STAGES.filter(k=>CATS[k])];
   const filhos = getItensCasaExtraChildren();
   const order = [];
@@ -7892,7 +7966,7 @@ try{
     // 3) Garantir que "Execução de Obra" exista como categoria normal (ela já usava
     //    SUBCATS/gastos com a chave 'obra-bruta', então os lançamentos batem certinho)
     if(!CATS['obra-bruta']){
-      CATS['obra-bruta'] = {label:'Execução de Obra', icon:'🔨', color:'#ff7043'};
+      CATS['obra-bruta'] = {label:'Obra', icon:'🔨', color:'#ff7043'};
     }
 
     // 4) Segurança extra: se alguma chave "adivinhada" em EXTRA_PINNED_STAGES não bater
@@ -9425,7 +9499,7 @@ function renderDiagnostico(){
   // de uma categoria criada (ex: dentro de Itens para Casa) e depois
   // removida/renomeada sem limpar o registro dela. Fica "viva" mas
   // inalcançável em qualquer tela — só aparece na busca.
-  const ETAPAS_FIXAS_CONHECIDAS = ['obra-bruta','venda-imovel','compra-imovel','projeto-arq','mudanca','outroscustos','ganho','itens-casa'];
+  const ETAPAS_FIXAS_CONHECIDAS = ['obra-bruta','marcenaria-planejados','venda-imovel','compra-imovel','projeto-arq','mudanca','outroscustos','ganho','itens-casa'];
   const itensCasaAtuais = getItensCasaChildren();
   const fantasmaGroups = {};
   gastos.forEach(g=>{
