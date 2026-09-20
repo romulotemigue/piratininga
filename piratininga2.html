@@ -9,7 +9,7 @@
 // guardada. Só recarrega se já existia uma versão salva antes (não na
 // primeiríssima visita), pra não entrar num loop.
 (function(){
-  var BUILD_VERSION = '238';
+  var BUILD_VERSION = '239';
   try{
     var last = localStorage.getItem('pirati_build_version');
     if(last !== BUILD_VERSION){
@@ -339,7 +339,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20SET26 (versão 238)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20SET26 (versão 239)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1092,9 +1092,16 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
 </div>
 
 <div class="modal-overlay" id="material-lancamento-overlay" onclick="if(event.target===this) closeMaterialModal()">
-  <div class="modal" style="max-width:1040px;width:96vw;max-height:88vh;display:flex;flex-direction:column">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+  <div class="modal" id="mat-l-modal-box" style="max-width:1040px;width:96vw;max-height:88vh;display:flex;flex-direction:column;background:linear-gradient(var(--c-panel),var(--c-panel)) padding-box,linear-gradient(160deg,rgba(199,125,234,.16),rgba(199,125,234,0) 55%) border-box;border:1px solid #7d4a94">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px">
       <h3 style="margin:0;font-size:17px">🛒 Lançar compra</h3>
+      <div style="display:flex;align-items:center;gap:8px">
+        <label style="font-size:11px;color:var(--c-secondary);text-transform:uppercase;letter-spacing:.05em">Tipo</label>
+        <select id="mat-l-tipo" onchange="onMatTipoChange()" style="font-size:13px;font-weight:700;padding:4px 8px;border-radius:6px;background:var(--c-material-bg);color:#c77dea;border:1px solid #7d4a94">
+          <option value="material">🛒 Compra</option>
+          <option value="servico">👷 Serviço</option>
+        </select>
+      </div>
       <button onclick="closeMaterialModal()" style="background:none;border:none;color:var(--c-secondary);font-size:21px;cursor:pointer">×</button>
     </div>
     <div style="overflow-y:auto;flex:1;padding-right:4px">
@@ -1270,9 +1277,16 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
 </div>
 
 <div class="modal-overlay" id="obra-empreitada-overlay" onclick="if(event.target===this) closeObraEmpreitadaModal()">
-  <div class="modal" style="max-width:1400px;width:96vw;max-height:92vh;display:flex;flex-direction:column">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+  <div class="modal" id="obra-empreitada-modal-box" style="max-width:1400px;width:96vw;max-height:92vh;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;gap:10px">
       <h3 style="margin:0" id="empreitada-title">👷 Novo serviço</h3>
+      <div style="display:flex;align-items:center;gap:8px">
+        <label style="font-size:11px;color:var(--c-secondary);text-transform:uppercase;letter-spacing:.05em">Tipo</label>
+        <select id="emp-tipo-lancamento" onchange="onEmpTipoLancamentoChange()" style="font-size:13px;font-weight:700;padding:4px 8px;border-radius:6px">
+          <option value="material">🛒 Compra</option>
+          <option value="servico">👷 Serviço</option>
+        </select>
+      </div>
       <button onclick="closeObraEmpreitadaModal()" style="background:none;border:none;color:var(--c-primary);font-size:21px;cursor:pointer;line-height:1">&times;</button>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
@@ -4555,6 +4569,7 @@ async function confirmMaterialBulk(){
 
 function openMaterialModal(presetCat, presetFase, presetSub, presetLinkPacote, presetBucket){
   materialEditingId = null;
+  document.getElementById('mat-l-tipo').value = 'material';
   document.getElementById('mat-l-btn-confirm').textContent = 'Confirmar lançamento';
   document.getElementById('mat-l-desc').value = '';
   document.getElementById('mat-l-valor').value = '';
@@ -4591,6 +4606,45 @@ function openMaterialModal(presetCat, presetFase, presetSub, presetLinkPacote, p
 function closeMaterialModal(){
   document.getElementById('material-lancamento-overlay').classList.remove('open');
   materialEditingId = null;
+}
+// Dropdown "Tipo" do modal de Compra — esse modal só sabe fazer "Compra"
+// (tipo_contratacao:'material'); virar "Serviço" precisa passar pro outro
+// modal (obra-empreitada-overlay), que é quem sabe lidar com isso. Se já tem
+// um lançamento salvo (editando), converte de verdade e reabre editando lá;
+// se é um lançamento novo (ainda não salvo), só leva o que já foi escolhido
+// de bucket/ambiente pra tela de Serviço e avisa que o resto se perde.
+async function onMatTipoChange(){
+  const tipo = document.getElementById('mat-l-tipo').value;
+  if(tipo!=='servico') return;
+  if(materialEditingId){
+    const g = gastos.find(x=>x.id===materialEditingId);
+    if(!g){ document.getElementById('mat-l-tipo').value = 'material'; return; }
+    if(!confirm('Mudar esse lançamento de Compra pra Serviço? Os campos vão abrir na tela de Serviço pra você conferir e salvar.')){
+      document.getElementById('mat-l-tipo').value = 'material';
+      return;
+    }
+    try{
+      const body = {tipo_contratacao:'sem-material', pacote_subs:null};
+      await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${g.id}`,{method:'PATCH', headers:{...HEADERS}, body: JSON.stringify(body)});
+      g.tipo_contratacao = 'sem-material';
+      g.pacote_subs = null;
+      closeMaterialModal();
+      openEdit(g.id);
+    }catch(e){
+      document.getElementById('mat-l-tipo').value = 'material';
+      toast('Erro ao mudar o tipo: '+e.message,'err');
+    }
+  } else {
+    if(!confirm('Ir pra tela de Serviço? O que já foi preenchido aqui se perde (menos o sub/ambiente escolhidos).')){
+      document.getElementById('mat-l-tipo').value = 'material';
+      return;
+    }
+    const bucket = document.getElementById('mat-l-subetapa').value || null;
+    const amb = document.getElementById('mat-l-subsub').value || null;
+    const sk = (bucket && amb) ? getObraBucketAmbienteSk(bucket, amb) : null;
+    closeMaterialModal();
+    openObraEmpreitadaModal('sem-material', sk, true, amb, bucket);
+  }
 }
 
 // Extrai marca/loja/pagamento/garantia/modelo/contato/entregue de volta da
@@ -4632,6 +4686,7 @@ function parseMaterialObs(obs){
 
 function openMaterialModalForEdit(g){
   materialEditingId = g.id;
+  document.getElementById('mat-l-tipo').value = 'material';
   document.getElementById('mat-l-invest-wrap').innerHTML = investimentoPickerHtml('mat-l', true);
   setInvestimentoValue('mat-l', g.investimento);
   const parsed = parseMaterialObs(g.obs);
@@ -5622,6 +5677,42 @@ function toggleEmpMaterialIncluso(){
   empreitadaMaterial = empreitadaMaterial==='com-material' ? 'sem-material' : 'com-material';
   refreshEmpMaterialFields();
 }
+// Cores dos selos 🛒 compra (roxo) / 👷 serviço (azul) — as mesmas usadas nas
+// listas (renderOneRow) — reaproveitadas aqui pra pintar levemente o modal
+// inteiro, já que os campos são iguais e só o tipo muda.
+const TIPO_LANCAMENTO_CORES = {
+  material: {cor:'#c77dea', bg:'var(--c-material-bg)', borda:'#7d4a94'},
+  servico:  {cor:'#42a5f5', bg:'var(--c-necessario-bg)', borda:'var(--c-necessario-border2)'}
+};
+function updateEmpTipoColors(){
+  const tipo = document.getElementById('emp-tipo-lancamento')?.value || 'servico';
+  const c = TIPO_LANCAMENTO_CORES[tipo];
+  const box = document.getElementById('obra-empreitada-modal-box');
+  if(box){
+    box.style.background = `linear-gradient(var(--c-panel),var(--c-panel)) padding-box,linear-gradient(160deg,${c.cor}29,${c.cor}00 55%) border-box`;
+    box.style.border = `1px solid ${c.borda}`;
+  }
+  const sel = document.getElementById('emp-tipo-lancamento');
+  if(sel){ sel.style.background = c.bg; sel.style.color = c.cor; sel.style.border = `1px solid ${c.borda}`; }
+}
+// Dropdown "Tipo" do modal de Serviço/Compra (pacote) — trocar pra Compra
+// simplesmente vira o mesmo "sem-mao-de-obra" que a triagem já usa; trocar
+// pra Serviço assume "sem material" por padrão (o botão oculto de material
+// incluso, se algum dia for reativado, continua funcionando por cima disso).
+function onEmpTipoLancamentoChange(){
+  const tipo = document.getElementById('emp-tipo-lancamento').value;
+  if(tipo==='material'){
+    empreitadaMaterial = 'sem-mao-de-obra';
+  } else if(empreitadaMaterial==='sem-mao-de-obra' || !empreitadaMaterial){
+    empreitadaMaterial = 'sem-material';
+  }
+  const isSoItem = empreitadaMaterial==='sem-mao-de-obra';
+  const icon = isSoItem ? '🛒' : '👷';
+  const prefixoTitulo = empreitadaEditingId ? 'Editar' : 'Nov'+(isSoItem?'a':'o');
+  document.getElementById('empreitada-title').textContent = `${icon} ${prefixoTitulo} ${isSoItem?'compra':'serviço'}`;
+  refreshEmpMaterialFields();
+  updateEmpTipoColors();
+}
 // Vincula um material a ESTE pacote específico — só funciona depois de salvo
 // (precisa de um id pra vincular), já que um pacote novo ainda não tem um.
 function abrirVincularMaterialEmp(){
@@ -5722,6 +5813,8 @@ function openObraEmpreitadaModal(material, presetSub, isUnico, presetFase, prese
   const icon = isSoItem ? '🛒' : '👷';
   const materialLabel = isSoItem ? 'sem mão de obra' : (material==='com-material'?'com material':'sem material');
   document.getElementById('empreitada-title').textContent = icon+' '+(isSoItem ? 'Nova compra' : 'Novo serviço');
+  document.getElementById('emp-tipo-lancamento').value = isSoItem ? 'material' : 'servico';
+  updateEmpTipoColors();
   document.getElementById('emp-desc').value = '';
   document.getElementById('emp-valor').value = '';
   document.getElementById('emp-data').value = new Date().toISOString().slice(0,10);
@@ -5800,6 +5893,8 @@ function openObraEmpreitadaModalForEdit(g){
   const icon = isSoItem ? '🛒' : '👷';
   const materialLabel = isSoItem ? 'sem mão de obra' : (empreitadaMaterial==='com-material'?'com material':'sem material');
   document.getElementById('empreitada-title').textContent = icon+' Editar '+tipoLabel;
+  document.getElementById('emp-tipo-lancamento').value = isSoItem ? 'material' : 'servico';
+  updateEmpTipoColors();
   document.getElementById('emp-desc').value = g.descricao||'';
   document.getElementById('emp-valor').value = g.valor ? fmtInput(g.valor) : '';
   document.getElementById('emp-data').value = g.data||new Date().toISOString().slice(0,10);
