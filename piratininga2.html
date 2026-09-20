@@ -9,7 +9,7 @@
 // guardada. Só recarrega se já existia uma versão salva antes (não na
 // primeiríssima visita), pra não entrar num loop.
 (function(){
-  var BUILD_VERSION = '237';
+  var BUILD_VERSION = '238';
   try{
     var last = localStorage.getItem('pirati_build_version');
     if(last !== BUILD_VERSION){
@@ -339,7 +339,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20SET26 (versão 237)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20SET26 (versão 238)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1028,7 +1028,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
       <div class="form-group" style="margin-bottom:0">
-        <label>Fase (Execução de Obra)</label>
+        <label>Sub (dentro de Obra)</label>
         <select id="mbulk-fase" onchange="refreshMbulkSubOptions()"></select>
       </div>
       <div class="form-group" style="margin-bottom:0">
@@ -1275,7 +1275,11 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
       <h3 style="margin:0" id="empreitada-title">👷 Novo serviço</h3>
       <button onclick="closeObraEmpreitadaModal()" style="background:none;border:none;color:var(--c-primary);font-size:21px;cursor:pointer;line-height:1">&times;</button>
     </div>
-    <div style="display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:14px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      <div class="form-group" style="margin-bottom:0">
+        <label>Sub (dentro de Obra)</label>
+        <select id="emp-bucket-simples" onchange="onEmpBucketSimplesChange()"></select>
+      </div>
       <div class="form-group" style="margin-bottom:0">
         <label>Ambiente</label>
         <select id="emp-ambiente-simples" onchange="onEmpAmbienteSimplesChange()"></select>
@@ -4381,8 +4385,8 @@ function todasEtapasParaSelect(){
 // removido a pedido do Romulo: "compra em lote" virou desnecessário, já que
 // dá pra simplesmente aumentar a quantidade com os botões +/- na lista
 // principal depois de lançar. Agora sempre abre direto o popup de 1 item.
-function openMaterialEntryChoice(presetCat, presetFase, presetSub, presetLinkPacote){
-  openMaterialModal(presetCat, presetFase, presetSub, presetLinkPacote);
+function openMaterialEntryChoice(presetCat, presetFase, presetSub, presetLinkPacote, presetBucket){
+  openMaterialModal(presetCat, presetFase, presetSub, presetLinkPacote, presetBucket);
 }
 function closeMaterialEntryChoice(){
   document.getElementById('mat-entry-choice-overlay').classList.remove('open');
@@ -4396,7 +4400,7 @@ function chooseMaterialEntryTipo(tipo){
 
 // ── Compra em lote ──────────────────────────────────────────────
 let mbulkItemCount = 0;
-function openMaterialBulkModal(presetFase, presetLinkPacote){
+function openMaterialBulkModal(presetFase, presetLinkPacote, presetBucket){
   document.getElementById('mbulk-loja').value = '';
   document.getElementById('mbulk-contato').value = '';
   document.getElementById('mbulk-endereco').value = '';
@@ -4409,9 +4413,10 @@ function openMaterialBulkModal(presetFase, presetLinkPacote){
   pendingStatusPreset = null;
   setPayPillValue('mbulk', '');
   const faseSel = document.getElementById('mbulk-fase');
-  const fases = [...new Set(Object.values(SUBCATS['obra-bruta']||{}).map(s=>s.grupo).filter(Boolean))];
-  faseSel.innerHTML = fases.map(f=>`<option value="${f}">${f}</option>`).join('');
-  if(presetFase && fases.includes(presetFase)) faseSel.value = presetFase;
+  const fases = obraBucketsPresentes();
+  faseSel.innerHTML = fases.map(f=>`<option value="${f.replace(/"/g,'&quot;')}">${f}</option>`).join('');
+  if(presetBucket && fases.includes(presetBucket)) faseSel.value = presetBucket;
+  else if(presetFase && fases.includes(presetFase)) faseSel.value = presetFase;
   refreshMbulkSubOptions();
   refreshMbulkLinkPacote();
   if(presetLinkPacote) document.getElementById('mbulk-linkpacote').value = presetLinkPacote;
@@ -4548,7 +4553,7 @@ async function confirmMaterialBulk(){
   }
 }
 
-function openMaterialModal(presetCat, presetFase, presetSub, presetLinkPacote){
+function openMaterialModal(presetCat, presetFase, presetSub, presetLinkPacote, presetBucket){
   materialEditingId = null;
   document.getElementById('mat-l-btn-confirm').textContent = 'Confirmar lançamento';
   document.getElementById('mat-l-desc').value = '';
@@ -4579,7 +4584,7 @@ function openMaterialModal(presetCat, presetFase, presetSub, presetLinkPacote){
   etapaSel.innerHTML = todasEtapasParaSelect().map(e=>`<option value="${e.key}">${e.label}</option>`).join('');
   const presetEhFilhoItensCasa = presetCat && getItensCasaChildren().includes(presetCat);
   etapaSel.value = presetEhFilhoItensCasa ? 'itens-casa' : (presetCat || 'obra-bruta');
-  onMatEtapaChange(presetEhFilhoItensCasa ? presetCat : presetFase, presetSub, undefined, presetLinkPacote);
+  onMatEtapaChange(presetEhFilhoItensCasa ? presetCat : presetFase, presetSub, undefined, presetLinkPacote, presetBucket);
   document.getElementById('material-lancamento-overlay').classList.add('open');
   setTimeout(()=>document.getElementById('mat-l-desc').focus(), 80);
 }
@@ -4678,7 +4683,7 @@ async function converterParaMaterial(id){
   }catch(e){ toast('Erro ao converter: '+e.message,'err'); }
 }
 
-function onMatEtapaChange(presetFase, presetSub, presetAmbiente, presetLinkPacote){
+function onMatEtapaChange(presetFase, presetSub, presetAmbiente, presetLinkPacote, presetBucketParam){
   const catKey = document.getElementById('mat-l-etapa').value;
   const isObra = catKey==='obra-bruta';
   const isItensCasa = catKey==='itens-casa';
@@ -4693,21 +4698,20 @@ function onMatEtapaChange(presetFase, presetSub, presetAmbiente, presetLinkPacot
   // pra as duas janelas ficarem com o mesmo design — só aparece quando é
   // uma categoria "solta" de verdade (fantasma) que precisa escolher a etapa.
   if(etapaGroupEl) etapaGroupEl.style.display = (isObra || isItensCasa) ? 'none' : '';
-  document.getElementById('mat-l-subetapa-label').textContent = isObra ? 'Ambiente' : (isItensCasa ? 'Ambiente' : 'Sub-etapa');
+  document.getElementById('mat-l-subetapa-label').textContent = isObra ? 'Sub (dentro de Obra)' : (isItensCasa ? 'Ambiente' : 'Sub-etapa');
   if(isObra){
-    // Fase deixou de ser um campo à parte aqui — só Ambiente, direto (mesma
-    // ideia já usada no Diagnóstico e no modal de serviço: internamente
-    // escolhe pra cada ambiente a fase de menor 'ordem' como representante).
-    const ambientes = getAmbientesAtivosOrdenados().filter(a=>getObraAmbienteRepresentativeSk(a));
+    // Obra agora pede Sub (bucket) + Ambiente — o bucket filtra os ambientes
+    // disponíveis (onMatSubEtapaChange cuida disso quando o bucket muda).
+    const buckets = obraBucketsPresentes();
     const presetEntry = presetSub && SUBCATS['obra-bruta']?.[presetSub];
-    const presetAmb = presetEntry?.label || presetFase || null;
-    const presetAmbValido = presetAmb && ambientes.some(a=>a.toLowerCase()===presetAmb.toLowerCase());
-    // Sem preset (botão geral) ou preset que não bate mais — nunca escolhe
-    // um ambiente sozinho, sempre deixa em branco pra pessoa escolher.
-    subEl.innerHTML = (!presetAmbValido ? '<option value="">— escolha o ambiente —</option>' : '') + ambientes.map(a=>`<option value="${a}">${a}</option>`).join('');
-    if(presetAmbValido) subEl.value = presetAmb;
-    subsubGroup.style.display = 'none';
+    const presetBucket = presetEntry?.grupo || presetBucketParam || null;
+    const presetAmb = presetEntry?.label || presetAmbiente || presetFase || null;
+    const presetBucketValido = presetBucket && buckets.includes(presetBucket);
+    subEl.innerHTML = (!presetBucketValido ? '<option value="">— escolha o sub —</option>' : '') + buckets.map(b=>`<option value="${b.replace(/"/g,'&quot;')}">${b}</option>`).join('');
+    if(presetBucketValido) subEl.value = presetBucket;
+    subsubGroup.style.display = '';
     categoriaGroup.style.display = 'none';
+    onMatSubEtapaChange(null, presetAmb);
   } else if(isItensCasa){
     // Itens para Casa: primeiro escolhe a CATEGORIA de verdade (Móveis,
     // Decoração...), e só depois o ambiente — o "Sub-etapa" vira "Ambiente".
@@ -4737,14 +4741,25 @@ function onMatCategoriaChange(presetSub){
   if(presetSub && subs[presetSub]) subEl.value = presetSub;
 }
 const MAT_AMB_SEP = ' + '; // separador usado quando mais de um ambiente é escolhido (uso legado em g.ambiente)
-function onMatSubEtapaChange(presetSub){
+// Bucket escolhido em "Sub (dentro de Obra)" mudou → repopula o Ambiente
+// (mat-l-subsub) só com os ambientes que existem DENTRO daquele bucket.
+function onMatSubEtapaChange(presetSk, presetAmbName){
   const catKey = document.getElementById('mat-l-etapa').value;
   if(catKey!=='obra-bruta') return;
-  const fase = document.getElementById('mat-l-subetapa').value;
+  const bucket = document.getElementById('mat-l-subetapa').value;
   const subsubEl = document.getElementById('mat-l-subsub');
-  const subs = Object.keys(SUBCATS['obra-bruta']||{}).filter(k=>SUBCATS['obra-bruta'][k].grupo===fase);
-  subsubEl.innerHTML = subs.map(sk=>`<option value="${sk}">${SUBCATS['obra-bruta'][sk].label}</option>`).join('');
-  if(presetSub && subs.includes(presetSub)) subsubEl.value = presetSub;
+  const skDoBucket = Object.keys(SUBCATS['obra-bruta']||{}).filter(k=>SUBCATS['obra-bruta'][k].grupo===bucket);
+  const ambOrder = getAmbientesAtivosOrdenados();
+  const ambientesDoBucket = [...new Set(skDoBucket.map(sk=>SUBCATS['obra-bruta'][sk].label).filter(Boolean))]
+    .sort((a,b)=>{
+      const ia = ambOrder.findIndex(x=>x.toLowerCase()===a.toLowerCase());
+      const ib = ambOrder.findIndex(x=>x.toLowerCase()===b.toLowerCase());
+      return (ia===-1?999999:ia)-(ib===-1?999999:ib);
+    });
+  const presetAmb = presetSk ? (SUBCATS['obra-bruta']?.[presetSk]?.label||null) : (presetAmbName||null);
+  const presetAmbValido = presetAmb && ambientesDoBucket.some(a=>a.toLowerCase()===presetAmb.toLowerCase());
+  subsubEl.innerHTML = (!presetAmbValido ? '<option value="">— escolha o ambiente —</option>' : '') + ambientesDoBucket.map(a=>`<option value="${a}">${a}</option>`).join('');
+  if(presetAmbValido) subsubEl.value = presetAmb;
 }
 // ── Pílulas de forma de pagamento (clicáveis, com parcelas se for crédito) ──
 // ── Seletor "Investimento": Perpétuo / Transferível / Pessoal ──
@@ -4920,9 +4935,10 @@ async function confirmMaterialLancamento(){
   const isObra = catKeySelecionado==='obra-bruta';
   const isItensCasa = catKeySelecionado==='itens-casa';
   const catKey = isItensCasa ? document.getElementById('mat-l-categoria').value : catKeySelecionado;
-  const ambienteEscolhidoObra = isObra ? document.getElementById('mat-l-subetapa').value : null;
-  if(isObra && !ambienteEscolhidoObra){ alert('Escolha o ambiente antes de salvar.'); return; }
-  const subKey = isObra ? (getObraAmbienteRepresentativeSk(ambienteEscolhidoObra)||'') : document.getElementById('mat-l-subetapa').value;
+  const bucketEscolhidoObra = isObra ? document.getElementById('mat-l-subetapa').value : null;
+  const ambienteEscolhidoObra = isObra ? document.getElementById('mat-l-subsub').value : null;
+  if(isObra && (!bucketEscolhidoObra || !ambienteEscolhidoObra)){ alert('Escolha o sub e o ambiente antes de salvar.'); return; }
+  const subKey = isObra ? (getObraBucketAmbienteSk(bucketEscolhidoObra, ambienteEscolhidoObra)||'') : document.getElementById('mat-l-subetapa').value;
 
   const linhas = [];
   const marca = document.getElementById('mat-l-marca').value.trim();
@@ -5260,7 +5276,9 @@ function closeObraTriagemModal(){
 function chooseObraTipo(tipo, material){
   closeObraTriagemModal();
   pendingTipoContratacao = material;
-  openObraEmpreitadaModal(material, obraTriagemPresetSub, tipo==='unico' || tipo==='item', obraTriagemPresetAmbiente || obraTriagemPresetFase);
+  const presetEntry = obraTriagemPresetSub && SUBCATS['obra-bruta']?.[obraTriagemPresetSub];
+  const bucket = presetEntry?.grupo || obraTriagemPresetFase || null;
+  openObraEmpreitadaModal(material, obraTriagemPresetSub, tipo==='unico' || tipo==='item', obraTriagemPresetAmbiente || obraTriagemPresetFase, bucket);
 }
 
 // Opções "Material" da triagem — 1 item vai pro popup de sempre (com o
@@ -5269,8 +5287,9 @@ function chooseObraMaterialTipo(tipo){
   closeObraTriagemModal();
   const sub = obraTriagemPresetSub;
   const amb = sub ? (SUBCATS['obra-bruta']?.[sub]?.label || null) : obraTriagemPresetAmbiente;
-  if(tipo==='unico') openMaterialModal('obra-bruta', amb, sub);
-  else openMaterialBulkModal(amb);
+  const bucket = sub ? (SUBCATS['obra-bruta']?.[sub]?.grupo || null) : obraTriagemPresetFase;
+  if(tipo==='unico') openMaterialModal('obra-bruta', amb, sub, undefined, bucket);
+  else openMaterialBulkModal(amb, undefined, bucket);
 }
 // Clicar em "Material" na triagem primeiro pergunta 1 item ou vários, aí sim
 // abre a janela certa — reaproveita a mesma telinha usada no "+material".
@@ -5278,7 +5297,8 @@ function chooseObraMaterialEscolha(){
   closeObraTriagemModal();
   const sub = obraTriagemPresetSub;
   const amb = sub ? (SUBCATS['obra-bruta']?.[sub]?.label || null) : obraTriagemPresetAmbiente;
-  openMaterialEntryChoice('obra-bruta', amb, sub);
+  const bucket = sub ? (SUBCATS['obra-bruta']?.[sub]?.grupo || null) : obraTriagemPresetFase;
+  openMaterialEntryChoice('obra-bruta', amb, sub, undefined, bucket);
 }
 
 // Simplificado de volta: sempre array puro de serviços/ambientes. Data de início
@@ -5616,6 +5636,27 @@ function abrirVincularMaterialEmp(){
 // (empreitadaCheckedServices), só que agora sempre com 1 só marcado, igual
 // já funciona no material. A grade antiga fica escondida em "Avançado", pra
 // quem realmente precisar cobrir mais de um ambiente no mesmo pacote.
+// Acha o sk exato de um (bucket, ambiente) dentro de Obra — usado agora que
+// os modais de lançamento pedem Sub (bucket) + Ambiente, em vez de só
+// Ambiente (getObraAmbienteRepresentativeSk ainda existe pra quem não tem
+// bucket escolhido, como fallback).
+function getObraBucketAmbienteSk(bucket, ambName){
+  const subs = SUBCATS['obra-bruta']||{};
+  let melhor = null;
+  Object.keys(subs).forEach(sk=>{
+    if(subs[sk].grupo !== bucket) return;
+    if((subs[sk].label||'').toLowerCase() !== (ambName||'').toLowerCase()) return;
+    if(!melhor || (subs[sk].ordem??999999) < (subs[melhor].ordem??999999)) melhor = sk;
+  });
+  return melhor;
+}
+function obraBucketsPresentes(){
+  const subs = SUBCATS['obra-bruta']||{};
+  const presentes = [...new Set(Object.values(subs).map(e=>e.grupo).filter(Boolean))];
+  const ordenados = OBRA_BUCKET_ORDER.filter(b=>presentes.includes(b));
+  presentes.forEach(b=>{ if(!ordenados.includes(b)) ordenados.push(b); });
+  return ordenados;
+}
 function getObraAmbienteRepresentativeSk(ambName){
   const subs = SUBCATS['obra-bruta']||{};
   let melhor = null;
@@ -5625,13 +5666,29 @@ function getObraAmbienteRepresentativeSk(ambName){
   });
   return melhor;
 }
-function populateEmpAmbienteSimples(presetSub, presetAmbienteOnly){
-  const ambSel = document.getElementById('emp-ambiente-simples');
-  const ambientes = getAmbientesAtivosOrdenados().filter(a=>getObraAmbienteRepresentativeSk(a));
+function populateEmpAmbienteSimples(presetSub, presetAmbienteOnly, presetBucketOnly){
+  const bucketSel = document.getElementById('emp-bucket-simples');
+  const buckets = obraBucketsPresentes();
   const presetEntry = presetSub && SUBCATS['obra-bruta']?.[presetSub];
-  const ambReconhecido = !!(presetEntry && ambientes.some(a=>a.toLowerCase()===(presetEntry.label||'').toLowerCase()));
-  const ambSoReconhecido = !ambReconhecido && presetAmbienteOnly && ambientes.some(a=>a.toLowerCase()===presetAmbienteOnly.toLowerCase());
-  const ambFinal = ambReconhecido ? presetEntry.label : (ambSoReconhecido ? presetAmbienteOnly : null);
+  const bucketFinal = presetEntry?.grupo || (presetBucketOnly && buckets.includes(presetBucketOnly) ? presetBucketOnly : null);
+  bucketSel.innerHTML = (!bucketFinal ? '<option value="">— escolha o sub —</option>' : '') + buckets.map(b=>`<option value="${b.replace(/"/g,'&quot;')}">${b}</option>`).join('');
+  if(bucketFinal) bucketSel.value = bucketFinal;
+  const ambFinalPreset = presetEntry?.label || presetAmbienteOnly || null;
+  populateEmpAmbienteOptionsForBucket(bucketFinal, ambFinalPreset);
+}
+// Repopula o Ambiente com só os ambientes que existem dentro do bucket
+// escolhido — chamada tanto na abertura do modal quanto ao trocar o Sub.
+function populateEmpAmbienteOptionsForBucket(bucket, presetAmbienteOnly){
+  const ambSel = document.getElementById('emp-ambiente-simples');
+  const skDoBucket = bucket ? Object.keys(SUBCATS['obra-bruta']||{}).filter(k=>SUBCATS['obra-bruta'][k].grupo===bucket) : [];
+  const ambOrder = getAmbientesAtivosOrdenados();
+  const ambientes = [...new Set(skDoBucket.map(sk=>SUBCATS['obra-bruta'][sk].label).filter(Boolean))]
+    .sort((a,b)=>{
+      const ia = ambOrder.findIndex(x=>x.toLowerCase()===a.toLowerCase());
+      const ib = ambOrder.findIndex(x=>x.toLowerCase()===b.toLowerCase());
+      return (ia===-1?999999:ia)-(ib===-1?999999:ib);
+    });
+  const ambFinal = presetAmbienteOnly && ambientes.some(a=>a.toLowerCase()===presetAmbienteOnly.toLowerCase()) ? presetAmbienteOnly : null;
   // Sem preset nenhum (botão geral, sem contexto de ambiente) OU com preset
   // que não bate mais — nunca escolhe um ambiente sozinho: sempre deixa em
   // branco pra pessoa escolher de propósito, em vez de cair no primeiro da
@@ -5640,17 +5697,22 @@ function populateEmpAmbienteSimples(presetSub, presetAmbienteOnly){
   if(ambFinal) ambSel.value = ambFinal;
   onEmpAmbienteSimplesChange();
 }
+function onEmpBucketSimplesChange(){
+  const bucket = document.getElementById('emp-bucket-simples').value;
+  populateEmpAmbienteOptionsForBucket(bucket, null);
+}
 function onEmpAmbienteSimplesChange(){
+  const bucket = document.getElementById('emp-bucket-simples').value;
   const amb = document.getElementById('emp-ambiente-simples').value;
-  if(!amb) return;
-  const sk = getObraAmbienteRepresentativeSk(amb);
+  if(!amb || !bucket) return;
+  const sk = getObraBucketAmbienteSk(bucket, amb);
   if(!sk) return;
   empreitadaCheckedServices = {[sk]: true};
   const checkEl = document.querySelector(`.emp-sub-check[value="${sk}"]`);
   if(checkEl && !checkEl.checked){ checkEl.checked = true; checkEl.dispatchEvent(new Event('change')); }
   document.querySelectorAll('.emp-sub-check').forEach(el=>{ if(el.value!==sk) el.checked = false; });
 }
-function openObraEmpreitadaModal(material, presetSub, isUnico, presetFase){
+function openObraEmpreitadaModal(material, presetSub, isUnico, presetFase, presetBucket){
   empreitadaEditingId = null;
   empreitadaLegacySemGrade = null;
   empreitadaMaterial = material;
@@ -5706,7 +5768,7 @@ function openObraEmpreitadaModal(material, presetSub, isUnico, presetFase){
   empreitadaShowAllFases = true;
   empreitadaShowOnlySelected = false; // pacote novo — ainda não tem nada marcado, mostra tudo
   renderEmpreitadaServiceGrid();
-  populateEmpAmbienteSimples(presetSub, presetFase);
+  populateEmpAmbienteSimples(presetSub, presetFase, presetBucket);
   if(presetSub){
     const checkEl = document.querySelector(`.emp-sub-check[value="${presetSub}"]`);
     if(checkEl){ checkEl.checked = true; checkEl.dispatchEvent(new Event('change')); }
@@ -6883,7 +6945,8 @@ async function confirmEmpreitada(){
   // realmente marcou a caixinha por baixo dos panos antes de validar — evita
   // o aviso chato de "marque um serviço" quando a pessoa só usou o dropdown.
   const ambSimples = document.getElementById('emp-ambiente-simples')?.value;
-  const skSimples = ambSimples ? getObraAmbienteRepresentativeSk(ambSimples) : null;
+  const bucketSimples = document.getElementById('emp-bucket-simples')?.value;
+  const skSimples = ambSimples ? (getObraBucketAmbienteSk(bucketSimples, ambSimples) || getObraAmbienteRepresentativeSk(ambSimples)) : null;
   if(skSimples && !document.querySelector(`.emp-sub-check[value="${skSimples}"]:checked`)){
     const checkElSimples = document.querySelector(`.emp-sub-check[value="${skSimples}"]`);
     if(checkElSimples){ checkElSimples.checked = true; checkElSimples.dispatchEvent(new Event('change')); }
