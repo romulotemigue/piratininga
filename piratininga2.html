@@ -9,7 +9,7 @@
 // guardada. Só recarrega se já existia uma versão salva antes (não na
 // primeiríssima visita), pra não entrar num loop.
 (function(){
-  var BUILD_VERSION = '236';
+  var BUILD_VERSION = '237';
   try{
     var last = localStorage.getItem('pirati_build_version');
     if(last !== BUILD_VERSION){
@@ -339,7 +339,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20SET26 (versão 236)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20SET26 (versão 237)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -1414,7 +1414,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
       <select id="diag-mover-categoria" onchange="onDiagMoverCategoriaChange()"></select>
     </div>
     <div class="form-group" id="diag-mover-fase-group" style="display:none">
-      <label>Fase</label>
+      <label id="diag-mover-fase-label">Sub</label>
       <select id="diag-mover-fase" onchange="onDiagMoverFaseChange()"></select>
     </div>
     <div class="form-group" id="diag-mover-sub-group" style="display:none">
@@ -9491,34 +9491,49 @@ function abrirMoverDiagnostico(id){
   document.getElementById('diag-mover-overlay').classList.add('open');
 }
 function closeDiagMoverModal(){ document.getElementById('diag-mover-overlay').classList.remove('open'); }
+// Escolhe, dentro de uma lista de sk's, um representante por AMBIENTE (o de
+// menor 'ordem') — usado tanto pro nível de bucket quanto pro de ambiente,
+// já que várias fases antigas podem compartilhar o mesmo ambiente dentro do
+// mesmo bucket (ensureObraBrutaPhases cria um sk por fase×ambiente).
+function representantePorAmbiente(subs, skKeys){
+  const porAmbiente = {};
+  skKeys.forEach(sk=>{
+    const label = subs[sk]?.label;
+    if(!label) return;
+    if(!porAmbiente[label] || (subs[sk].ordem??999999) < (subs[porAmbiente[label]].ordem??999999)) porAmbiente[label] = sk;
+  });
+  const ambientesOrdenados = getAmbientesAtivosOrdenados().filter(a=>porAmbiente[a]);
+  Object.keys(porAmbiente).forEach(a=>{ if(!ambientesOrdenados.includes(a)) ambientesOrdenados.push(a); });
+  return {porAmbiente, ambientesOrdenados};
+}
 function onDiagMoverEtapaChange(){
   const catKey = document.getElementById('diag-mover-etapa').value;
   const isObra = catKey==='obra-bruta';
+  const isMarcenaria = catKey==='marcenaria-planejados';
   const isItensCasa = catKey==='itens-casa';
   document.getElementById('diag-mover-categoria-group').style.display = isItensCasa ? '' : 'none';
-  // Fase não é mais um passo separado aqui — só Etapa + Ambiente, igual ao
-  // resto do app agora. A fase interna (necessária pra estrutura de dados)
-  // é escolhida automaticamente por baixo dos panos.
-  document.getElementById('diag-mover-fase-group').style.display = 'none';
-  document.getElementById('diag-mover-sub-label').textContent = (isObra || isItensCasa) ? 'Ambiente' : 'Cartão (opcional)';
+  // "Obra" agora tem um nível a mais (bucket) entre Etapa e Ambiente — as
+  // outras etapas continuam só Etapa + Ambiente/Cartão como antes.
+  document.getElementById('diag-mover-fase-group').style.display = isObra ? '' : 'none';
+  document.getElementById('diag-mover-sub-label').textContent = (isObra || isMarcenaria || isItensCasa) ? 'Ambiente' : 'Cartão (opcional)';
   if(isItensCasa){
     const catSel = document.getElementById('diag-mover-categoria');
     const filhos = getItensCasaChildren();
     catSel.innerHTML = filhos.map(fk=>`<option value="${fk}">${CATS[fk]?.label||fk}</option>`).join('');
     onDiagMoverCategoriaChange();
   } else if(isObra){
-    // Uma opção por AMBIENTE (não mais por Fase → Ambiente) — escolhe pra cada
-    // ambiente o sk de menor 'ordem' (a fase mais cedo que tem esse ambiente)
-    // como representante interno; a fase deixou de importar pra esse fluxo.
+    // Nível 1: bucket (Obra bruta, Revestimentos..., Marmoraria, etc.)
     const subs = SUBCATS['obra-bruta']||{};
-    const porAmbiente = {};
-    Object.keys(subs).forEach(sk=>{
-      const label = subs[sk].label;
-      if(!label) return;
-      if(!porAmbiente[label] || (subs[sk].ordem??999999) < (subs[porAmbiente[label]].ordem??999999)) porAmbiente[label] = sk;
-    });
-    const ambientesOrdenados = getAmbientesAtivosOrdenados().filter(a=>porAmbiente[a]);
-    Object.keys(porAmbiente).forEach(a=>{ if(!ambientesOrdenados.includes(a)) ambientesOrdenados.push(a); });
+    const bucketsPresentes = [...new Set(Object.values(subs).map(e=>e.grupo).filter(Boolean))];
+    const bucketsOrdenados = OBRA_BUCKET_ORDER.filter(b=>bucketsPresentes.includes(b));
+    bucketsPresentes.forEach(b=>{ if(!bucketsOrdenados.includes(b)) bucketsOrdenados.push(b); });
+    document.getElementById('diag-mover-fase-label').textContent = 'Sub (dentro de Obra)';
+    const faseSel = document.getElementById('diag-mover-fase');
+    faseSel.innerHTML = bucketsOrdenados.map(b=>`<option value="${b.replace(/"/g,'&quot;')}">${b}</option>`).join('');
+    onDiagMoverFaseChange();
+  } else if(isMarcenaria){
+    const subs = SUBCATS['marcenaria-planejados']||{};
+    const {porAmbiente, ambientesOrdenados} = representantePorAmbiente(subs, Object.keys(subs));
     const subSel = document.getElementById('diag-mover-sub');
     subSel.innerHTML = '<option value="">— nenhum —</option>'+ambientesOrdenados.map(a=>`<option value="${porAmbiente[a]}">${a}</option>`).join('');
     document.getElementById('diag-mover-sub-group').style.display = '';
@@ -9537,11 +9552,12 @@ function onDiagMoverCategoriaChange(){
   document.getElementById('diag-mover-sub-group').style.display = '';
 }
 function onDiagMoverFaseChange(){
-  const fase = document.getElementById('diag-mover-fase').value;
+  const bucket = document.getElementById('diag-mover-fase').value;
   const subs = SUBCATS['obra-bruta']||{};
-  const filtrados = Object.keys(subs).filter(sk=>subs[sk].grupo===fase);
+  const skDoBucket = Object.keys(subs).filter(sk=>subs[sk].grupo===bucket);
+  const {porAmbiente, ambientesOrdenados} = representantePorAmbiente(subs, skDoBucket);
   const subSel = document.getElementById('diag-mover-sub');
-  subSel.innerHTML = '<option value="">— nenhum —</option>'+filtrados.map(sk=>`<option value="${sk}">${subs[sk].label}</option>`).join('');
+  subSel.innerHTML = '<option value="">— nenhum —</option>'+ambientesOrdenados.map(a=>`<option value="${porAmbiente[a]}">${a}</option>`).join('');
   document.getElementById('diag-mover-sub-group').style.display = '';
 }
 async function confirmDiagMover(){
@@ -9550,9 +9566,10 @@ async function confirmDiagMover(){
   const etapaSel = document.getElementById('diag-mover-etapa').value;
   const isItensCasa = etapaSel==='itens-casa';
   const isObra = etapaSel==='obra-bruta';
+  const isMarcenaria = etapaSel==='marcenaria-planejados';
   const categoria = isItensCasa ? document.getElementById('diag-mover-categoria').value : etapaSel;
   const subcategoria = document.getElementById('diag-mover-sub').value || '';
-  if((isObra || isItensCasa) && !subcategoria){
+  if((isObra || isMarcenaria || isItensCasa) && !subcategoria){
     alert('Escolha o ambiente antes de mover — sem isso o lançamento fica "sumido", sem aparecer em nenhuma fase.');
     return;
   }
