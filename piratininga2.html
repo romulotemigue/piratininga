@@ -9,7 +9,7 @@
 // guardada. Só recarrega se já existia uma versão salva antes (não na
 // primeiríssima visita), pra não entrar num loop.
 (function(){
-  var BUILD_VERSION = '239';
+  var BUILD_VERSION = '240';
   try{
     var last = localStorage.getItem('pirati_build_version');
     if(last !== BUILD_VERSION){
@@ -339,7 +339,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20SET26 (versão 239)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20SET26 (versão 240)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -11093,9 +11093,16 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
   const val = gastoValor(g);
   const isPacote = !!g.pacote_subs;
   const tipoRaw = g.tipo_contratacao || '';
+  // O selo compra/serviço vale pra QUALQUER lançamento com tipo reconhecido,
+  // não só pacotes — antes só aparecia quando isPacote, então lançamentos
+  // simples (inclusive depois de trocar o Tipo no editar) ficavam sem selo.
+  const tipoConhecido = !!tipoRaw;
   const badgeIsUnico = tipoRaw.startsWith('unico-');
   const badgeMaterial = tipoRaw.replace('unico-','');
-  const isSoItem = badgeMaterial==='sem-mao-de-obra';
+  // 'material' é o tipo_contratacao usado pelo modal simples "🛒 Lançar
+  // compra" (mat-l) — conta como compra igual 'sem-mao-de-obra' (a variante
+  // do modal de Serviço/pacote).
+  const isSoItem = badgeMaterial==='sem-mao-de-obra' || badgeMaterial==='material';
   // Só duas categorias visíveis pro usuário: 🛒 compra/material, 👷 serviço
   // (seja um profissional só ou vários itens/serviços num único lançamento).
   const badgeIcon = isSoItem ? '🛒' : '👷';
@@ -11104,13 +11111,12 @@ function renderOneRow(g, status, catKey, rowBorder, showSubLabel, dimmed, subKey
   const badgeBg = isSoItem ? 'var(--c-material-bg)' : 'var(--c-necessario-bg)';
   const badgeBorder = isSoItem ? '#7d4a94' : 'var(--c-necessario-border2)';
   const materialLabelStr = isSoItem ? 'sem mão de obra' : (badgeMaterial==='com-material'?'com material':'sem material');
-  const pacoteBadge = isPacote ? `<span onclick="event.stopPropagation();openPacoteModal(${g.id})" title="Ver todos os serviços deste ${badgeLabel} (${materialLabelStr})" style="cursor:pointer;color:${badgeColor};font-size:11px;font-weight:700;background:${badgeBg};border:1px solid ${badgeBorder};border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;line-height:1.4;width:88px;flex-shrink:0;box-sizing:border-box">${badgeIcon} ${badgeLabel}</span>` : '';
+  const pacoteBadge = tipoConhecido ? `<span ${isPacote?`onclick="event.stopPropagation();openPacoteModal(${g.id})"`:''} title="${isPacote?`Ver todos os serviços deste ${badgeLabel} (${materialLabelStr})`:(isSoItem?'Compra':'Serviço')}" style="color:${badgeColor};font-size:11px;font-weight:700;background:${badgeBg};border:1px solid ${badgeBorder};border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;line-height:1.4;width:88px;flex-shrink:0;box-sizing:border-box;cursor:${isPacote?'pointer':'default'}">${badgeIcon} ${badgeLabel}</span>` : '';
   const prazoBadgeRow = isPacote ? prazoBadgeHtml(getPacoteMeta(g)) : '';
   const materiaisBadgeRow = '';
-  // 4 linhas fixas quando é pacote: 1) nome, 2) tipo de serviço + material (fixo,
-  // sem quebra — são os selos mais importantes), 3) dias restantes (menos
-  // importante, isolado numa linha própria logo abaixo), 4) sub-etapa em azul.
-  const mainBadgeRowHtml = isPacote
+  // Antes só aparecia essa linha quando isPacote — agora aparece sempre que
+  // o tipo é conhecido, mesmo em lançamentos simples (sem pacote_subs).
+  const mainBadgeRowHtml = tipoConhecido
     ? `<div style="display:flex;align-items:center;gap:4px;margin-top:2px;flex-wrap:nowrap">${materiaisBadgeRow}${pacoteBadge}</div>`
     : '';
   const prazoLineHtml = (isPacote && prazoBadgeRow)
