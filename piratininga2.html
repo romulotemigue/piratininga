@@ -9,7 +9,7 @@
 // guardada. Só recarrega se já existia uma versão salva antes (não na
 // primeiríssima visita), pra não entrar num loop.
 (function(){
-  var BUILD_VERSION = '235';
+  var BUILD_VERSION = '236';
   try{
     var last = localStorage.getItem('pirati_build_version');
     if(last !== BUILD_VERSION){
@@ -339,7 +339,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 19SET26 (versão 235)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20SET26 (versão 236)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -2103,7 +2103,7 @@ function renderCatNav(){
         etapaNum = ++imovelCount;
       }
     }
-    const subs = hasSubs ? (k==='obra-bruta' ? buildSubcatRowsHtmlObraAmbiente(k) : buildSubcatRowsHtml(k)) : '';
+    const subs = hasSubs ? (k==='obra-bruta' ? buildSubcatRowsHtmlObraBucket(k) : (k==='marcenaria-planejados' ? buildSubcatRowsHtmlObraAmbiente(k) : buildSubcatRowsHtml(k))) : '';
     const etapasChecklistRow = k==='obra-bruta'
       ? `<div class="nav-subitem${currentPage==='obra-bruta__etapas'?' active':''}" onclick="event.stopPropagation();navigate('obra-bruta__etapas')" style="font-weight:600;cursor:pointer">
           <span class="nav-subitem-label">📋 Etapas</span>
@@ -2391,6 +2391,77 @@ function toggleAmbienteMenu(k, ambName, e){
   menu.style.top = rect.bottom + 'px';
   menu.style.left = (rect.right - 130) + 'px';
   menu.classList.add('open');
+}
+
+// Sidebar de "Obra" reorganizado por BUCKET (Obra bruta, Revestimentos e
+// acabamentos, Marmoraria, Louças/Metais/Vidros, Esquadrias, Iluminação,
+// Pintura) — um nível a mais que buildSubcatRowsHtmlObraAmbiente: dentro de
+// cada bucket, os ambientes aparecem como sub-linhas (deduplicados, já que
+// várias fases antigas caem no mesmo bucket e compartilham o mesmo ambiente).
+function buildSubcatRowsHtmlObraBucket(k){
+  if(!SUBCATS[k]) return '';
+  const skKeys = Object.keys(SUBCATS[k]);
+  const porBucket = {};
+  skKeys.forEach(sk=>{
+    const entry = SUBCATS[k][sk];
+    const bucket = entry.grupo;
+    if(!bucket || !entry.label) return;
+    (porBucket[bucket] = porBucket[bucket] || []).push(sk);
+  });
+  const bucketsOrdenados = OBRA_BUCKET_ORDER.filter(b=>porBucket[b]);
+  Object.keys(porBucket).forEach(b=>{ if(!bucketsOrdenados.includes(b)) bucketsOrdenados.push(b); });
+  const expandedSub = getExpandedSub();
+  const ambOrder = getAmbientesAtivosOrdenados();
+  return bucketsOrdenados.map((bucketName,bIdx)=>{
+    const skList = porBucket[bucketName];
+    const cor = OBRA_BUCKET_COLORS[bucketName] || '#e8b544';
+    const groupKey = k+'__grp__'+bucketName;
+    const safeId = subGroupSafeId(groupKey);
+    const isOpen = !!expandedSub[groupKey];
+    const bucketAtivo = skList.some(sk=>isSubAtivo(k, sk));
+    const bucketNameEsc = bucketName.replace(/'/g,"\\'");
+    const porAmbiente = {};
+    skList.forEach(sk=>{
+      const label = SUBCATS[k][sk].label;
+      (porAmbiente[label] = porAmbiente[label] || []).push(sk);
+    });
+    const ambientesOrdenados = Object.keys(porAmbiente).sort((a,b)=>{
+      const ia = ambOrder.findIndex(x=>x.toLowerCase()===a.toLowerCase());
+      const ib = ambOrder.findIndex(x=>x.toLowerCase()===b.toLowerCase());
+      return (ia===-1?999999:ia)-(ib===-1?999999:ib);
+    });
+    const groupRow = `
+      <div class="nav-item-wrap" id="fase-wrap-${safeId}"
+        style="display:flex;align-items:center;gap:5px;padding:5px 6px 5px .4rem;user-select:none;${bucketAtivo?'':'opacity:.4'}">
+        <button id="chev-grp-btn-${safeId}" onclick="toggleSubGroup('${k}','${bucketNameEsc}',event)" title="Expandir/recolher ambientes" style="background:none;border:none;cursor:pointer;padding:2px 4px;flex-shrink:0">
+          <span id="chev-grp-${safeId}" style="color:${cor};font-size:10px;transition:transform .15s;transform:rotate(${isOpen?90:0}deg);display:inline-block">▶</span>
+        </button>
+        <span class="nav-item" onclick="handleNavGroupClick('${k}','${bucketNameEsc}',event)" id="nav-${k}__grupo:${encodeURIComponent(bucketName)}" style="padding:0 0 0 4px;cursor:pointer;display:flex;align-items:center;gap:5px;flex:1;min-width:0">
+          <span style="font-size:10px;color:${cor};flex-shrink:0;min-width:14px">${bIdx+1}.</span>
+          <span style="font-size:12px;color:${cor};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${bucketName}</span>
+        </span>
+        <span style="font-size:10px;color:var(--c-muted3);background:var(--c-panel3);border-radius:8px;padding:1px 6px;flex-shrink:0">${ambientesOrdenados.length}</span>
+        <button class="subcat-dots-btn" title="Lancar em ${bucketNameEsc}" style="background:none;border:none;color:var(--c-muted2);cursor:pointer;padding:4px 4px;font-size:15px;transition:color .15s;opacity:1!important" onclick="event.stopPropagation();openObraTriagemModal(null,'${bucketNameEsc}')" onmouseover="this.style.color='${cor}'" onmouseout="this.style.color='var(--c-muted2)'"><i class="ti ti-plus"></i></button>
+        ${miniToggleHtml(bucketAtivo, `toggleFaseAtivo('${k}',${JSON.stringify(skList).replace(/"/g,'&quot;')},event)`)}
+      </div>`;
+    const ambRows = ambientesOrdenados.map(ambName=>{
+      const items = porAmbiente[ambName];
+      const ativo = items.some(sk=>isSubAtivo(k, sk));
+      const corAmb = corDoAmbiente(ambName);
+      const pageKey = `${k}__bucketamb:${encodeURIComponent(bucketName)}|${encodeURIComponent(ambName)}`;
+      return `
+        <div class="subcat-row" id="subcat-row-${k}-bkt-${slugifyEtapaItem(bucketName)}-${slugifyEtapaItem(ambName)}" style="${ativo?'':'opacity:.4'}">
+          <span style="color:transparent;font-size:12px;padding:0 4px 0 1rem;user-select:none">o</span>
+          <div class="nav-item" style="padding-left:0;font-size:12px;color:var(--c-secondary);flex:1;border-left:2px solid var(--c-border);padding-left:8px;margin:2px 0 2px 6px;border-radius:0" onclick="navigate('${pageKey}')" id="nav-${pageKey}"
+            onmouseover="this.style.borderColor='${corAmb}';this.style.color='#fff'"
+            onmouseout="this.style.borderColor='var(--c-border)';this.style.color='var(--c-secondary)'">
+            ${ambName}
+          </div>
+          <button class="subcat-dots-btn" title="Lancar em ${ambName}" style="background:none;border:none;color:var(--c-muted2);cursor:pointer;padding:4px 4px;font-size:15px;transition:color .15s;opacity:1!important" onclick="event.stopPropagation();openObraTriagemModal(null,'${bucketNameEsc}','${ambName.replace(/'/g,"\\'")}')" onmouseover="this.style.color='${corAmb}'" onmouseout="this.style.color='var(--c-muted2)'"><i class="ti ti-plus"></i></button>
+        </div>`;
+    }).join('');
+    return groupRow + `<div id="subgrp-${safeId}" style="overflow:hidden;max-height:${isOpen?'none':'0'}">${ambRows}</div>`;
+  }).join('');
 }
 
 function buildSubcatRowsHtml(k){
@@ -3791,6 +3862,30 @@ async function migrarMudancaParaEtapaPropriaUmaVez(){
     if(afetados.length) render();
   }catch(e){ console.error('migrarMudancaParaEtapaPropriaUmaVez outer error:', e); }
 }
+// Marcenaria e Planejados virou etapa própria (marcenaria-planejados),
+// separada de Obra — os LANÇAMENTOS que já existiam com categoria
+// 'obra-bruta' e uma subcategoria da fase antiga "Marcenaria e Móveis
+// Planejados" precisam mudar de categoria pra bater com o SUBCATS novo
+// (a migração do SUBCATS em si já rodou antes, ver
+// migrarObraBucketsEMarcenariaUmaVezV1). Identifica pelo subcategoria não
+// existir mais em SUBCATS['obra-bruta'] mas existir em
+// SUBCATS['marcenaria-planejados'] — auto-suficiente, roda toda vez sem
+// depender de flag (se não sobrar nenhum lançamento nessa condição, não
+// faz nada).
+async function migrarMarcenariaParaEtapaPropriaUmaVez(){
+  try{
+    const subsObra = SUBCATS['obra-bruta']||{};
+    const subsMarcenaria = SUBCATS['marcenaria-planejados']||{};
+    const afetados = gastos.filter(g=>g.categoria==='obra-bruta' && g.subcategoria && !subsObra[g.subcategoria] && subsMarcenaria[g.subcategoria]);
+    for(const g of afetados){
+      g.categoria = 'marcenaria-planejados';
+      try{
+        await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${g.id}`,{method:'PATCH', headers:{...HEADERS}, body: JSON.stringify({categoria:'marcenaria-planejados'})});
+      }catch(e){ console.error('migrarMarcenariaParaEtapaPropriaUmaVez error:', e); }
+    }
+    if(afetados.length) render();
+  }catch(e){ console.error('migrarMarcenariaParaEtapaPropriaUmaVez outer error:', e); }
+}
 function corrigirPorForaTaxasUmaVez(){
   try{
     if(localStorage.getItem('pirati_fix_por_fora_taxas_v1')) return;
@@ -3869,6 +3964,7 @@ async function loadGastos(){
     corrigirPorForaTaxasUmaVez();
     migrarCompraImovelParaTagPropriaUmaVez();
     migrarMudancaParaEtapaPropriaUmaVez();
+    migrarMarcenariaParaEtapaPropriaUmaVez();
     restoreOrphanSubcats();
     checkPossibleDuplicates();
     renderCatNav();
@@ -4085,36 +4181,46 @@ function ensureObraBrutaPhases(){
       if(f.subgrupos) window.FASE_SUBGRUPOS_ORDEM[f.fase] = f.subgrupos.map(sg=>sg.nome).filter(Boolean);
     });
     if(!SUBCATS['obra-bruta']) SUBCATS['obra-bruta'] = {};
+    if(!SUBCATS['marcenaria-planejados']) SUBCATS['marcenaria-planejados'] = {};
 
     // Guarda a ordem customizada E o estado ligado/desligado de cada sub ANTES
-    // de apagar, pra não perder o que a pessoa já ajustou.
-    // RESET ÚNICO (v130-fix): alguma reordenação antiga (feita enquanto o bug de
-    // ordenação por "primeiro item encontrado" existia) deixou ordemCustom com
+    // de apagar, pra nao perder o que a pessoa ja ajustou.
+    // RESET UNICO (v130-fix): alguma reordenacao antiga (feita enquanto o bug de
+    // ordenacao por "primeiro item encontrado" existia) deixou ordemCustom com
     // valores que embaralhavam a ordem das fases. Na primeira carga depois desse
     // ajuste, ignoramos esses ordemCustom de fase e deixamos tudo voltar pro
-    // padrão de fábrica (a ordem certa das 17 fases). Depois disso, reordenar
+    // padrao de fabrica (a ordem certa das 17 fases). Depois disso, reordenar
     // manualmente arrastando volta a funcionar normalmente.
     const RESET_ORDEM_FASES_FLAG = 'pirati_fase_ordem_reset_v1';
     const jaResetouOrdemFases = !!localStorage.getItem(RESET_ORDEM_FASES_FLAG);
     const ordemCustomizada = {};
     const ativoCustomizado = {};
-    Object.keys(SUBCATS['obra-bruta']).forEach(k=>{
-      if(jaResetouOrdemFases && SUBCATS['obra-bruta'][k].auto && SUBCATS['obra-bruta'][k].ordemCustom!=null){
-        ordemCustomizada[k] = SUBCATS['obra-bruta'][k].ordemCustom;
-      }
-      if(SUBCATS['obra-bruta'][k].auto && SUBCATS['obra-bruta'][k].ativo===false){
-        ativoCustomizado[k] = false;
-      }
+    [SUBCATS['obra-bruta'], SUBCATS['marcenaria-planejados']].forEach(bucketObj=>{
+      Object.keys(bucketObj).forEach(k=>{
+        if(jaResetouOrdemFases && bucketObj[k].auto && bucketObj[k].ordemCustom!=null){
+          ordemCustomizada[k] = bucketObj[k].ordemCustom;
+        }
+        if(bucketObj[k].auto && bucketObj[k].ativo===false){
+          ativoCustomizado[k] = false;
+        }
+      });
     });
     if(!jaResetouOrdemFases) localStorage.setItem(RESET_ORDEM_FASES_FLAG, '1');
 
-    // Apaga TUDO que estiver dentro de uma dessas 16 fases — automático OU
-    // criado manualmente (ex: um cartão de material tipo "Granilite" que a
-    // pessoa adicionou à mão antes dessa mudança) — e recria do zero, sempre,
-    // só com os ambientes. É sempre a mesma foto limpa, todo carregamento.
+    // Apaga TUDO que estiver dentro de uma dessas 16 fases -- automatico OU
+    // criado manualmente (ex: um cartao de material tipo "Granilite" que a
+    // pessoa adicionou a mao antes dessa mudanca) -- e recria do zero, sempre,
+    // so com os ambientes. E sempre a mesma foto limpa, todo carregamento.
+    // Marcenaria e Moveis Planejados NAO entra mais aqui -- virou sua propria
+    // etapa (marcenaria-planejados), tratada junto, logo abaixo.
     const nomesFases = new Set(FASES.map(f=>f.fase));
+    const nomesBuckets = new Set(Object.values(OBRA_FASE_TO_BUCKET));
     Object.keys(SUBCATS['obra-bruta']).forEach(k=>{
-      if(SUBCATS['obra-bruta'][k].auto || nomesFases.has(SUBCATS['obra-bruta'][k].grupo)) delete SUBCATS['obra-bruta'][k];
+      const g = SUBCATS['obra-bruta'][k].grupo;
+      if(SUBCATS['obra-bruta'][k].auto || nomesFases.has(g) || nomesBuckets.has(g)) delete SUBCATS['obra-bruta'][k];
+    });
+    Object.keys(SUBCATS['marcenaria-planejados']).forEach(k=>{
+      if(SUBCATS['marcenaria-planejados'][k].auto) delete SUBCATS['marcenaria-planejados'][k];
     });
 
     const slugify = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
@@ -4122,12 +4228,15 @@ function ensureObraBrutaPhases(){
     let totalEsperado = 0;
     const ambientesOrdenados = getAmbientesAtivosOrdenados();
     FASES.forEach((f,fi)=>{
+      const ehMarcenaria = f.fase === MARCENARIA_FASE_NAME;
+      const bucketKey = ehMarcenaria ? 'marcenaria-planejados' : 'obra-bruta';
+      const grupoNovo = ehMarcenaria ? undefined : (OBRA_FASE_TO_BUCKET[f.fase] || f.fase);
       ambientesOrdenados.forEach((amb, ai)=>{
         totalEsperado++;
         const slug = slugify(f.fase+'-'+amb);
         const ordemPadrao = fi*1000 + ai;
-        SUBCATS['obra-bruta'][slug] = {
-          label:amb, grupo:f.fase, auto:true,
+        SUBCATS[bucketKey][slug] = {
+          label:amb, grupo:grupoNovo, auto:true,
           ordem: ordemCustomizada[slug]!=null ? ordemCustomizada[slug] : ordemPadrao,
           ordemCustom: ordemCustomizada[slug]!=null ? ordemCustomizada[slug] : undefined,
           ativo: ativoCustomizado[slug]===false ? false : undefined
@@ -4135,9 +4244,11 @@ function ensureObraBrutaPhases(){
       });
     });
 
-    // Qualquer coisa que sobrou sem 'grupo' (não faz parte das 17 fases — ex.:
-    // "Mão de Obra", "Material Bruto") sai da etapa e vai pro Diagnóstico. O
-    // lançamento em si nunca é apagado, só a definição do ambiente aqui.
+    // Qualquer coisa que sobrou sem 'grupo' dentro de obra-bruta (nao faz parte
+    // dos buckets -- ex.: "Mao de Obra", "Material Bruto" digitado a mao) sai da
+    // etapa e vai pro Diagnostico. O lancamento em si nunca e apagado, so a
+    // definicao do ambiente aqui. (marcenaria-planejados e flat por ambiente,
+    // sem grupo, entao nao passa por esse filtro.)
     Object.keys(SUBCATS['obra-bruta']).forEach(k=>{
       if(!SUBCATS['obra-bruta'][k].grupo) delete SUBCATS['obra-bruta'][k];
     });
@@ -7397,6 +7508,9 @@ function navigate(page, skipHistory){
     } else if(subKey.startsWith('subgrupo:')){
       const [gNameEnc, sgNameEnc] = subKey.slice(9).split('|');
       document.getElementById('topbar-title').innerHTML = breadcrumbTitleHtml([info?.label||catKey, decodeURIComponent(gNameEnc), decodeURIComponent(sgNameEnc)], corTitulo);
+    } else if(subKey.startsWith('bucketamb:')){
+      const [bNameEnc, aNameEnc] = subKey.slice(10).split('|');
+      document.getElementById('topbar-title').innerHTML = breadcrumbTitleHtml([info?.label||catKey, decodeURIComponent(bNameEnc), decodeURIComponent(aNameEnc)], corTitulo);
     } else {
       document.getElementById('topbar-title').innerHTML = breadcrumbTitleHtml([info?.label||catKey, SUBCATS[catKey]?.[subKey]?.label||''], corTitulo);
     }
@@ -7446,6 +7560,10 @@ function render(){
       else if(subKey.startsWith('subgrupo:')){
         const [gNameEnc, sgNameEnc] = subKey.slice(9).split('|');
         renderSubgrupoGroup(catKey, decodeURIComponent(gNameEnc), decodeURIComponent(sgNameEnc));
+      }
+      else if(subKey.startsWith('bucketamb:')){
+        const [bNameEnc, aNameEnc] = subKey.slice(10).split('|');
+        renderBucketAmbienteGroup(catKey, decodeURIComponent(bNameEnc), decodeURIComponent(aNameEnc));
       }
       else if(IMOVEL_CATS[catKey]) renderImovelCat(catKey, subKey);
       else renderSubCat(currentPage);
@@ -10003,6 +10121,56 @@ function renderAmbienteGroup(catKey, ambName){
     </div>
     ${renderColGrid(lista, catKey+'__ambiente:'+encodeURIComponent(ambName), 'ambiente', skList, ambName)}
     <div style="font-size:11px;color:var(--c-primary);margin-top:10px">As fases de cada lançamento aparecem no menu lateral, dentro deste ambiente.</div>
+  `;
+}
+
+// Página de um AMBIENTE dentro de um BUCKET específico de "Obra" (ex.:
+// Marmoraria > Cozinha) — mesma ideia de renderSubgrupoGroup, filtrando pelo
+// bucket (grupo) E pelo ambiente (label) ao mesmo tempo.
+function renderBucketAmbienteGroup(catKey, bucketName, ambName){
+  const info = CATS[catKey] || IMOVEL_CATS[catKey];
+  if(!info){ navigate('geral'); return; }
+  const skList = Object.keys(SUBCATS[catKey]||{}).filter(sk=>SUBCATS[catKey][sk].grupo===bucketName && (SUBCATS[catKey][sk].label||'').toLowerCase()===ambName.toLowerCase());
+  const catAliasKeys = catKeysFor(catKey);
+  const lista = gastos.filter(g=>{
+    if(!catAliasKeys.includes(g.categoria)) return false;
+    if(skList.includes(g.subcategoria)) return true;
+    if(g.pacote_subs) return parsePacoteSubs(g.pacote_subs).some(p=>skList.includes(p.sub));
+    return false;
+  });
+  const getValG = g => gastoValor(g);
+  const total = lista.filter(g=>g.status!=='cancel').reduce((s,g)=>s+getValG(g),0);
+  const pago  = lista.reduce((s,g)=>s+pagoEfetivo(g,getValG),0);
+  const necessario = lista.reduce((s,g)=>s+necessarioEfetivo(g,getValG),0);
+  const dispensavel = lista.filter(g=>g.status==='apagar').reduce((s,g)=>s+getValG(g),0);
+  const cor = OBRA_BUCKET_COLORS[bucketName] || corDoAmbiente(ambName);
+
+  document.getElementById('content').innerHTML = `
+    <div class="cat-total-card" style="border-left:3px solid ${cor}">
+      <div class="cat-stat">
+        <span class="cat-stat-label">Total</span>
+        <span class="cat-stat-value" style="color:${cor}">${fmt(total)}</span>
+      </div>
+      <div class="cat-stat">
+        <span class="cat-stat-label">${getColLabel('pago')}</span>
+        <span class="cat-stat-value" style="color:#4caf50">${fmt(pago)}</span>
+      </div>
+      <div class="cat-stat">
+        <span class="cat-stat-label">${getColLabel('necessario')}</span>
+        <span class="cat-stat-value" style="color:#42a5f5">${fmt(necessario)}</span>
+      </div>
+      <div class="cat-stat">
+        <span class="cat-stat-label">${getColLabel('apagar')}</span>
+        <span class="cat-stat-value" style="color:#e8b544">${fmt(dispensavel)}</span>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <button onclick="openObraTriagemModal(null,'${bucketName.replace(/'/g,"\\'")}','${ambName.replace(/'/g,"\\'")}')" title="Lançar em ${ambName}"
+          style="width:34px;height:34px;border-radius:50%;background:transparent;border:2px solid ${cor};color:${cor};font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0"
+          onmouseover="this.style.background='${cor}';this.style.color='var(--c-panel)'"
+          onmouseout="this.style.background='transparent';this.style.color='${cor}'">+</button>
+      </div>
+    </div>
+    ${renderColGrid(lista, catKey+'__bucketamb:'+encodeURIComponent(bucketName)+'|'+encodeURIComponent(ambName), 'ambiente', skList, ambName)}
   `;
 }
 
