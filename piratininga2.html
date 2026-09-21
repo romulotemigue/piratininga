@@ -9,7 +9,7 @@
 // guardada. Só recarrega se já existia uma versão salva antes (não na
 // primeiríssima visita), pra não entrar num loop.
 (function(){
-  var BUILD_VERSION = '240';
+  var BUILD_VERSION = '242';
   try{
     var last = localStorage.getItem('pirati_build_version');
     if(last !== BUILD_VERSION){
@@ -339,7 +339,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20SET26 (versão 240)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20SET26 (versão 242)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -2121,7 +2121,7 @@ function renderCatNav(){
         etapaNum = ++imovelCount;
       }
     }
-    const subs = hasSubs ? (k==='obra-bruta' ? buildSubcatRowsHtmlObraBucket(k) : (k==='marcenaria-planejados' ? buildSubcatRowsHtmlObraAmbiente(k) : buildSubcatRowsHtml(k))) : '';
+    const subs = hasSubs ? buildSubcatRowsHtmlFor(k) : '';
     const etapasChecklistRow = k==='obra-bruta'
       ? `<div class="nav-subitem${currentPage==='obra-bruta__etapas'?' active':''}" onclick="event.stopPropagation();navigate('obra-bruta__etapas')" style="font-weight:600;cursor:pointer">
           <span class="nav-subitem-label">📋 Etapas</span>
@@ -2238,7 +2238,7 @@ function toggleAllSubgroupsInFase(k, gName, e){
   sgNames.forEach(sg=>{ expandedSub[groupKey+'__sub__'+sg] = newState; });
   localStorage.setItem('pirati_expanded_sub', JSON.stringify(expandedSub));
   const list = document.getElementById('subcat-list-'+k);
-  if(list) list.innerHTML = buildSubcatRowsHtml(k);
+  if(list) list.innerHTML = buildSubcatRowsHtmlFor(k);
 }
 
 // Solta a etapa "nas entrelinhas" entre duas subs (dentro de uma fase já
@@ -2416,6 +2416,14 @@ function toggleAmbienteMenu(k, ambName, e){
 // Pintura) — um nível a mais que buildSubcatRowsHtmlObraAmbiente: dentro de
 // cada bucket, os ambientes aparecem como sub-linhas (deduplicados, já que
 // várias fases antigas caem no mesmo bucket e compartilham o mesmo ambiente).
+// Ponto único de decisão de qual renderer usar pra sidebar de uma etapa —
+// evita repetir esse if/else (e esquecer de atualizar algum) em cada lugar
+// que precisa redesenhar a lista (expandir, recolher tudo, etc.).
+function buildSubcatRowsHtmlFor(k){
+  if(k==='obra-bruta') return buildSubcatRowsHtmlObraBucket(k);
+  if(k==='marcenaria-planejados') return buildSubcatRowsHtmlObraAmbiente(k);
+  return buildSubcatRowsHtml(k);
+}
 function buildSubcatRowsHtmlObraBucket(k){
   if(!SUBCATS[k]) return '';
   const skKeys = Object.keys(SUBCATS[k]);
@@ -2625,7 +2633,7 @@ function toggleExpand(k, e){
   if(expanded[k]){
     // reconstrói a lista na hora, direto dos dados atuais — não depende
     // do que foi gravado na última vez que o menu inteiro foi desenhado
-    list.innerHTML = buildSubcatRowsHtml(k);
+    list.innerHTML = buildSubcatRowsHtmlFor(k);
     list.style.maxHeight = 'none';
     if(chev) chev.style.transform='rotate(90deg)';
   } else {
@@ -2639,11 +2647,18 @@ function toggleExpand(k, e){
 function toggleAllFaseGroups(k, e){
   if(e) e.stopPropagation();
   if(!SUBCATS[k]) return;
-  const isObraAmbiente = k==='obra-bruta';
-  const groupNames = isObraAmbiente ? getAmbientesAtivosOrdenados() : [...new Set(Object.keys(SUBCATS[k]).map(sk=>SUBCATS[k][sk].grupo).filter(Boolean))];
+  // "Obra" agora agrupa por BUCKET (não mais por ambiente direto) — usa a
+  // mesma chave '__grp__'+bucket que buildSubcatRowsHtmlObraBucket grava.
+  // "Marcenaria e Planejados" é uma lista flat de ambientes, sem grupos
+  // colapsáveis, então não tem o que expandir/recolher em massa aqui.
+  const isObraBucket = k==='obra-bruta';
+  const isFlatAmbiente = k==='marcenaria-planejados';
+  const groupNames = isObraBucket ? obraBucketsPresentes()
+    : isFlatAmbiente ? []
+    : [...new Set(Object.keys(SUBCATS[k]).map(sk=>SUBCATS[k][sk].grupo).filter(Boolean))];
   if(!groupNames.length) return;
   const expandedSub = getExpandedSub();
-  const keyPrefix = isObraAmbiente ? '__ambgrp__' : '__grp__';
+  const keyPrefix = '__grp__';
   const allOpen = groupNames.every(g=>expandedSub[k+keyPrefix+g]);
   const newState = !allOpen;
   groupNames.forEach(g=>{ expandedSub[k+keyPrefix+g] = newState; });
@@ -2651,7 +2666,7 @@ function toggleAllFaseGroups(k, e){
   const btn = document.getElementById('btn-expand-all-'+k);
   if(btn) btn.innerHTML = newState?'<i class="ti ti-chevrons-up"></i>':'<i class="ti ti-chevrons-down"></i>';
   const list = document.getElementById('subcat-list-'+k);
-  if(list) list.innerHTML = isObraAmbiente ? buildSubcatRowsHtmlObraAmbiente(k) : buildSubcatRowsHtml(k);
+  if(list) list.innerHTML = buildSubcatRowsHtmlFor(k);
 }
 
 function toggleAllExpand(){
@@ -10440,7 +10455,7 @@ function renderSubCat(page){
           onmouseout="this.style.background='transparent';this.style.color='${info.color}'">+</button>
       </div>
     </div>
-    ${catKey==='obra-bruta' ? renderColGrid(lista, catKey+'__'+subKey, 'ambiente', [subKey], subLabel) : renderColGrid(lista, catKey+'__'+subKey, null, null, subLabel)}
+    ${catKey==='obra-bruta' ? renderColGrid(lista, catKey+'__'+subKey, 'ambiente', [subKey], subLabel) : (getItensCasaChildren().includes(catKey) ? renderColGrid(lista, catKey+'__'+subKey, 'ambiente', null, subLabel) : renderColGrid(lista, catKey+'__'+subKey, null, null, subLabel))}
   `;
 }
 
@@ -10848,7 +10863,7 @@ function renderCat(cat){
       <div style="position:relative;height:160px"><canvas id="catChart"></canvas></div>
     </div>`:''}
 
-    ${cat==='itens-casa' ? renderColGrid(lista, cat, 'ambiente', null, info.label) : renderColGrid(lista, cat, null, null, info.label)}
+    ${isItensCasaCat ? renderColGrid(lista, cat, 'ambiente', null, info.label) : renderColGrid(lista, cat, null, null, info.label)}
   `;
 
   if(months.length>=2 && cat!=='itens-casa' && cat!=='outroscustos' && cat!=='camamesabanho' && cat!=='moveis'){
