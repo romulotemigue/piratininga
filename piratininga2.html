@@ -9,7 +9,7 @@
 // guardada. Só recarrega se já existia uma versão salva antes (não na
 // primeiríssima visita), pra não entrar num loop.
 (function(){
-  var BUILD_VERSION = '244';
+  var BUILD_VERSION = '245';
   try{
     var last = localStorage.getItem('pirati_build_version');
     if(last !== BUILD_VERSION){
@@ -339,7 +339,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 02OUT26 (versão 244)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 02OUT26 (versão 245)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -2903,6 +2903,16 @@ function evalMoneyExpr(el){
 document.addEventListener('focusout', function(e){
   const t = e.target;
   if(t && t.matches && t.matches('input[oninput*="maskMoney"]')) evalMoneyExpr(t);
+}, true);
+// Apertar Enter também resolve a soma, sem precisar sair do campo (tira o
+// foco e devolve pra ele, já com o resultado, pra não submeter nenhum form).
+document.addEventListener('keydown', function(e){
+  if(e.key !== 'Enter') return;
+  const t = e.target;
+  if(t && t.matches && t.matches('input[oninput*="maskMoney"]') && /[+\-]/.test(t.value)){
+    e.preventDefault();
+    evalMoneyExpr(t);
+  }
 }, true);
 // Teclado numérico (numpad): a tecla "." dele vira "," — assim dá pra digitar
 // valor decimal sem precisar sair do numpad pra pegar a vírgula no teclado
