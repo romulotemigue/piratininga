@@ -9,7 +9,7 @@
 // guardada. Só recarrega se já existia uma versão salva antes (não na
 // primeiríssima visita), pra não entrar num loop.
 (function(){
-  var BUILD_VERSION = '242';
+  var BUILD_VERSION = '243';
   try{
     var last = localStorage.getItem('pirati_build_version');
     if(last !== BUILD_VERSION){
@@ -339,7 +339,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 20SET26 (versão 242)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 02OUT26 (versão 243)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -2852,11 +2852,58 @@ let currentPage = 'geral';
 let barChart, pieChart, catChart, ambienteChart;
 
 function maskMoney(el){
+  // Se já tem + ou - no meio do que foi digitado, é uma somatória sendo
+  // montada (ex: "96,73+12") — não remascara como dinheiro ainda (isso
+  // destruiria o operador), só deixa passar os caracteres válidos. A conta
+  // de verdade roda em evalMoneyExpr(), quando o campo perde o foco.
+  if(/[+\-]/.test(el.value)){
+    el.value = el.value.replace(/[^0-9,.\+\-]/g,'');
+    return;
+  }
   let v = el.value.replace(/\D/g,'');
   if(!v){ el.value=''; return; }
   v = (parseInt(v,10)/100).toFixed(2);
   el.value = Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
+// Lê um número solto dentro de uma expressão tipo "96,73+12" — vírgula como
+// decimal (removendo pontos de milhar), ou ponto como decimal se não tiver vírgula.
+function parseMoneyLoose(s){
+  if(!s) return NaN;
+  s = s.trim();
+  if(s.includes(',')) return parseFloat(s.replace(/\./g,'').replace(',','.'));
+  return parseFloat(s);
+}
+// Resolve a somatória digitada num campo de valor (ex: "96,73+12-5" vira
+// "103,73") quando o campo perde o foco (clica em outro campo, aperta Tab,
+// etc). Chamado por delegação global — funciona em qualquer campo de valor
+// do app, inclusive os criados dinamicamente (linhas de "Compra em lote").
+function evalMoneyExpr(el){
+  const raw = el.value;
+  if(!raw || !/[+\-]/.test(raw)) return;
+  const tokens = raw.match(/[+\-]?[0-9]*[.,]?[0-9]+/g);
+  if(!tokens || !tokens.length) return;
+  let total = 0;
+  tokens.forEach(tok=>{
+    let sign = 1, t = tok;
+    if(t[0]==='+') t = t.slice(1);
+    else if(t[0]==='-'){ sign=-1; t = t.slice(1); }
+    const n = parseMoneyLoose(t);
+    if(!isNaN(n)) total += sign*n;
+  });
+  if(total<0) total = 0;
+  el.value = fmtInput(total);
+  // Dispara o oninput original do campo (maskMoney + qualquer outra função
+  // ligada nele, tipo updateMbulkTotal()) pra tudo que depende do valor
+  // recalcular normalmente, como se a pessoa tivesse digitado o total direto.
+  el.dispatchEvent(new Event('input', {bubbles:true}));
+}
+// Delegação global: qualquer <input> cujo oninput chame maskMoney(this) ganha
+// a soma automática ao perder o foco, sem precisar mexer em cada campo —
+// cobre os campos fixos e os gerados dinamicamente (ex: itens de "Compra em lote").
+document.addEventListener('focusout', function(e){
+  const t = e.target;
+  if(t && t.matches && t.matches('input[oninput*="maskMoney"]')) evalMoneyExpr(t);
+}, true);
 function parseMoney(s){
   if(!s) return NaN;
   return parseFloat(s.replace(/\./g,'').replace(',','.'));
