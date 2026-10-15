@@ -9,7 +9,7 @@
 // guardada. Só recarrega se já existia uma versão salva antes (não na
 // primeiríssima visita), pra não entrar num loop.
 (function(){
-  var BUILD_VERSION = '247';
+  var BUILD_VERSION = '248';
   try{
     var last = localStorage.getItem('pirati_build_version');
     if(last !== BUILD_VERSION){
@@ -339,7 +339,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 15OUT26 (versão 247)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 15OUT26 (versão 248)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -2854,19 +2854,27 @@ let barChart, pieChart, catChart, ambienteChart;
 // Qualquer um desses dentro do valor vira uma conta (soma, subtração,
 // multiplicação, divisão) em vez de um valor direto.
 const MONEY_EXPR_RE = /[+\-*/]/;
+// A mesma máscara de sempre (dígitos entram como centavos, da direita pra
+// esquerda — "973" vira "9,73") aplicada a um pedaço isolado do valor.
+function maskMoneySegment(raw){
+  let v = (raw||'').replace(/\D/g,'');
+  if(!v) return '';
+  v = (parseInt(v,10)/100).toFixed(2);
+  return Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
 function maskMoney(el){
   // Se já tem algum operador no meio do que foi digitado, é uma conta sendo
-  // montada (ex: "96,73+12", "10*3") — não remascara como dinheiro ainda
-  // (isso destruiria o operador), só deixa passar os caracteres válidos. A
-  // conta de verdade roda em evalMoneyExpr(), no Enter ou ao sair do campo.
+  // montada (ex: "96,73+12", "10*3") — separa por +, -, * e / e aplica a
+  // MESMA máscara de centavos em CADA pedaço isoladamente, pra não precisar
+  // digitar vírgula em nenhuma parte da conta, igual já funciona antes do
+  // primeiro operador. A conta de verdade roda em evalMoneyExpr(), no Enter
+  // ou ao sair do campo.
   if(MONEY_EXPR_RE.test(el.value)){
-    el.value = el.value.replace(/[^0-9,.+\-*/]/g,'');
+    const parts = el.value.split(/([+\-*/])/);
+    el.value = parts.map(p => MONEY_EXPR_RE.test(p) ? p : maskMoneySegment(p)).join('');
     return;
   }
-  let v = el.value.replace(/\D/g,'');
-  if(!v){ el.value=''; return; }
-  v = (parseInt(v,10)/100).toFixed(2);
-  el.value = Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  el.value = maskMoneySegment(el.value);
 }
 // Lê um número solto dentro de uma expressão tipo "96,73+12" — vírgula como
 // decimal (removendo pontos de milhar), ou ponto como decimal se não tiver vírgula.
