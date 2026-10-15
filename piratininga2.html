@@ -9,7 +9,7 @@
 // guardada. Só recarrega se já existia uma versão salva antes (não na
 // primeiríssima visita), pra não entrar num loop.
 (function(){
-  var BUILD_VERSION = '245';
+  var BUILD_VERSION = '246';
   try{
     var last = localStorage.getItem('pirati_build_version');
     if(last !== BUILD_VERSION){
@@ -339,7 +339,7 @@ tr.row-drag-over td{background:var(--c-panel6);border-top:2px solid #e8b544}
         <div>
           <div class="name" id="project-name-el" onclick="renameProjectName()" style="cursor:pointer" title="Clique pra renomear o projeto">Piratininga</div>
           <div class="sub">controle de gastos</div>
-          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 02OUT26 (versão 245)</div>
+          <div id="build-marker" style="font-size:10px;color:var(--c-primary);margin-top:2px">atualizado em 15OUT26 (versão 246)</div>
         </div>
         <div style="display:flex;gap:4px">
           <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro"
@@ -2851,13 +2851,16 @@ let orcamento = parseFloat(localStorage.getItem('pirati_orc')||'80000');
 let currentPage = 'geral';
 let barChart, pieChart, catChart, ambienteChart;
 
+// Qualquer um desses dentro do valor vira uma conta (soma, subtração,
+// multiplicação, divisão) em vez de um valor direto.
+const MONEY_EXPR_RE = /[+\-*/]/;
 function maskMoney(el){
-  // Se já tem + ou - no meio do que foi digitado, é uma somatória sendo
-  // montada (ex: "96,73+12") — não remascara como dinheiro ainda (isso
-  // destruiria o operador), só deixa passar os caracteres válidos. A conta
-  // de verdade roda em evalMoneyExpr(), quando o campo perde o foco.
-  if(/[+\-]/.test(el.value)){
-    el.value = el.value.replace(/[^0-9,.\+\-]/g,'');
+  // Se já tem algum operador no meio do que foi digitado, é uma conta sendo
+  // montada (ex: "96,73+12", "10*3") — não remascara como dinheiro ainda
+  // (isso destruiria o operador), só deixa passar os caracteres válidos. A
+  // conta de verdade roda em evalMoneyExpr(), no Enter ou ao sair do campo.
+  if(MONEY_EXPR_RE.test(el.value)){
+    el.value = el.value.replace(/[^0-9,.+\-*/]/g,'');
     return;
   }
   let v = el.value.replace(/\D/g,'');
@@ -2873,43 +2876,59 @@ function parseMoneyLoose(s){
   if(s.includes(',')) return parseFloat(s.replace(/\./g,'').replace(',','.'));
   return parseFloat(s);
 }
-// Resolve a somatória digitada num campo de valor (ex: "96,73+12-5" vira
-// "103,73") quando o campo perde o foco (clica em outro campo, aperta Tab,
-// etc). Chamado por delegação global — funciona em qualquer campo de valor
-// do app, inclusive os criados dinamicamente (linhas de "Compra em lote").
+// Calcula uma expressão tipo "96,73+12*2-5/2", respeitando a ordem normal
+// (multiplicação e divisão antes de soma e subtração). Retorna null se não
+// achar nenhum número válido.
+function computeMoneyExpr(raw){
+  const tokens = raw.match(/[0-9]+(?:[.,][0-9]+)?|[+\-*/]/g);
+  if(!tokens || !tokens.length) return null;
+  if(['*','/','+','-'].includes(tokens[0])) tokens.shift(); // ignora operador sem número antes
+  if(!tokens.length) return null;
+  const terms = [parseMoneyLoose(tokens[0])||0];
+  let i = 1;
+  while(i < tokens.length){
+    const op = tokens[i], numTok = tokens[i+1];
+    if(numTok===undefined) break;
+    const n = parseMoneyLoose(numTok);
+    if(!isNaN(n)){
+      if(op==='*') terms[terms.length-1] *= n;
+      else if(op==='/') { if(n!==0) terms[terms.length-1] /= n; }
+      else if(op==='-') terms.push(-n);
+      else terms.push(n);
+    }
+    i += 2;
+  }
+  return terms.reduce((s,n)=>s+(isNaN(n)?0:n), 0);
+}
+// Resolve a conta digitada num campo de valor (ex: "96,73+12*2" vira
+// "120,73") quando o campo perde o foco (clica em outro campo, aperta Tab,
+// etc) ou quando aperta Enter. Chamado por delegação global — funciona em
+// qualquer campo de valor do app, inclusive os criados dinamicamente
+// (linhas de "Compra em lote").
 function evalMoneyExpr(el){
   const raw = el.value;
-  if(!raw || !/[+\-]/.test(raw)) return;
-  const tokens = raw.match(/[+\-]?[0-9]*[.,]?[0-9]+/g);
-  if(!tokens || !tokens.length) return;
-  let total = 0;
-  tokens.forEach(tok=>{
-    let sign = 1, t = tok;
-    if(t[0]==='+') t = t.slice(1);
-    else if(t[0]==='-'){ sign=-1; t = t.slice(1); }
-    const n = parseMoneyLoose(t);
-    if(!isNaN(n)) total += sign*n;
-  });
-  if(total<0) total = 0;
-  el.value = fmtInput(total);
+  if(!raw || !MONEY_EXPR_RE.test(raw)) return;
+  const total = computeMoneyExpr(raw);
+  if(total===null) return;
+  el.value = fmtInput(total<0?0:total);
   // Dispara o oninput original do campo (maskMoney + qualquer outra função
   // ligada nele, tipo updateMbulkTotal()) pra tudo que depende do valor
   // recalcular normalmente, como se a pessoa tivesse digitado o total direto.
   el.dispatchEvent(new Event('input', {bubbles:true}));
 }
 // Delegação global: qualquer <input> cujo oninput chame maskMoney(this) ganha
-// a soma automática ao perder o foco, sem precisar mexer em cada campo —
+// a conta automática ao perder o foco, sem precisar mexer em cada campo —
 // cobre os campos fixos e os gerados dinamicamente (ex: itens de "Compra em lote").
 document.addEventListener('focusout', function(e){
   const t = e.target;
   if(t && t.matches && t.matches('input[oninput*="maskMoney"]')) evalMoneyExpr(t);
 }, true);
-// Apertar Enter também resolve a soma, sem precisar sair do campo (tira o
+// Apertar Enter também resolve a conta, sem precisar sair do campo (tira o
 // foco e devolve pra ele, já com o resultado, pra não submeter nenhum form).
 document.addEventListener('keydown', function(e){
   if(e.key !== 'Enter') return;
   const t = e.target;
-  if(t && t.matches && t.matches('input[oninput*="maskMoney"]') && /[+\-]/.test(t.value)){
+  if(t && t.matches && t.matches('input[oninput*="maskMoney"]') && MONEY_EXPR_RE.test(t.value)){
     e.preventDefault();
     evalMoneyExpr(t);
   }
